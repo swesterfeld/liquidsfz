@@ -20,3 +20,7 @@ like this:
 Currently, liquidsfz will initialize the fluidsynth jack driver. If you connect
 the jack midi input using a patchbay, you can send midi events to liquidsfz to
 test the sfz loader.
+
+## LICENSE
+
+The code is licensed under the LGPL 2.1 or later.
