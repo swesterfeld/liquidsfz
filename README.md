@@ -1,7 +1,6 @@
-liquidsfz
-=========
+# liquidsfz
 
-# DESCRIPTION
+## DESCRIPTION
 
 liquidsfz is an attempt to implement a full sfz sampler based on fluidsynth. So
 the code here merely contains a parser for sfz files, code to load the samples
@@ -11,7 +10,7 @@ performed using fluidsynth.
 Right now liquidsfz is in the early development phase. Later on, it will have
 a library API so that other programs can also support the sfz format.
 
-# TESTING
+## TESTING
 
 Right now, liquidsfz is only available as command line program. You can use it
 like this:
