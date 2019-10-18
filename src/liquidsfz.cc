@@ -496,8 +496,17 @@ main (int argc, char **argv)
 
   auto mdriver = new_fluid_midi_driver (settings, fluid_synth_handle_midi_event, synth);
 
+  int error = 0;
   if (sfont_id != FLUID_FAILED)
-    sleep (1000);
+    {
+      printf ("Synthesizer running - press \"Enter\" to quit: ");
+      getchar();
+      printf ("\n");
+    }
+  else
+    {
+      error = 1;
+    }
 
   /* Clean up */
   delete_fluid_midi_driver (mdriver);
@@ -505,6 +514,6 @@ main (int argc, char **argv)
   delete_fluid_synth (synth);
   delete_fluid_settings (settings);
 
-  return 0;
+  return error;
 }
 
