@@ -244,11 +244,10 @@ struct Loader
   }
 } sfz_loader;
 
-fluid_preset_t *preset = nullptr;
-
 struct SFZSynth
 {
   std::minstd_rand random_gen;
+  fluid_preset_t *preset = nullptr;
 
   int
   note_on (fluid_synth_t *synth, int chan, int key, int vel)
@@ -436,7 +435,7 @@ parse (const string& filename)
 fluid_sfont_t *
 fluid_sfz_loader_load (fluid_sfloader_t *loader, const char *filename)
 {
-  SFZSynth *sfz_synth = new SFZSynth();
+  SFZSynth *sfz_synth = new SFZSynth(); // FIXME: leak
 
   if (!parse (filename))
     {
@@ -446,22 +445,28 @@ fluid_sfz_loader_load (fluid_sfloader_t *loader, const char *filename)
     }
   auto sfont = new_fluid_sfont (
     [](fluid_sfont_t *){const char *name = "name"; return name;},
-    [](fluid_sfont_t *, int bank, int prenum) {printf ("get preset %d, %d\n", bank, prenum); return preset;},
+    [](fluid_sfont_t *sfont, int bank, int prenum)
+      {
+        SFZSynth *sfz_synth = (SFZSynth *) fluid_sfont_get_data (sfont);
+        return sfz_synth->preset;
+      },
     nullptr, nullptr,
     [](fluid_sfont_t *){return int(0); });
 
-  preset = new_fluid_preset (sfont,
-                             [](fluid_preset_t *) { return "preset"; },
-                             [](fluid_preset_t *) { return 0; },
-                             [](fluid_preset_t *) { return 0; },
-                             [](fluid_preset_t *preset, fluid_synth_t *synth, int chan, int key, int vel)
-                               {
-                                 SFZSynth *sfz_synth = (SFZSynth *) fluid_preset_get_data (preset);
-                                 return sfz_synth->note_on (synth, chan, key, vel);
-                               },
-                             [](fluid_preset_t *) { });
+  fluid_sfont_set_data (sfont, sfz_synth);
 
-  fluid_preset_set_data (preset, sfz_synth); // FIXME: leak
+  sfz_synth->preset = new_fluid_preset (sfont,
+    [](fluid_preset_t *) { return "preset"; },
+    [](fluid_preset_t *) { return 0; },
+    [](fluid_preset_t *) { return 0; },
+    [](fluid_preset_t *preset, fluid_synth_t *synth, int chan, int key, int vel)
+      {
+        SFZSynth *sfz_synth = (SFZSynth *) fluid_preset_get_data (preset);
+        return sfz_synth->note_on (synth, chan, key, vel);
+      },
+    [](fluid_preset_t *) { });
+
+  fluid_preset_set_data (sfz_synth->preset, sfz_synth);
 
   return sfont;
 }
