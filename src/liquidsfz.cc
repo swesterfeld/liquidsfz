@@ -309,7 +309,7 @@ struct SFZSynth
       }
     return 0;
   }
-} sfz_synth;
+};
 
 string
 strip_spaces (const string& s)
@@ -436,9 +436,12 @@ parse (const string& filename)
 fluid_sfont_t *
 fluid_sfz_loader_load (fluid_sfloader_t *loader, const char *filename)
 {
+  SFZSynth *sfz_synth = new SFZSynth();
+
   if (!parse (filename))
     {
       fprintf (stderr, "parse error: exiting\n");
+      delete sfz_synth;
       return 0;
     }
   auto sfont = new_fluid_sfont (
@@ -451,8 +454,14 @@ fluid_sfz_loader_load (fluid_sfloader_t *loader, const char *filename)
                              [](fluid_preset_t *) { return "preset"; },
                              [](fluid_preset_t *) { return 0; },
                              [](fluid_preset_t *) { return 0; },
-                             [](fluid_preset_t *, fluid_synth_t *synth, int chan, int key, int vel) { return sfz_synth.note_on (synth, chan, key, vel); },
+                             [](fluid_preset_t *preset, fluid_synth_t *synth, int chan, int key, int vel)
+                               {
+                                 SFZSynth *sfz_synth = (SFZSynth *) fluid_preset_get_data (preset);
+                                 return sfz_synth->note_on (synth, chan, key, vel);
+                               },
                              [](fluid_preset_t *) { });
+
+  fluid_preset_set_data (preset, sfz_synth); // FIXME: leak
 
   return sfont;
 }
@@ -499,9 +508,8 @@ main (int argc, char **argv)
   int error = 0;
   if (sfont_id != FLUID_FAILED)
     {
-      printf ("Synthesizer running - press \"Enter\" to quit: ");
+      printf ("Synthesizer running - press \"Enter\" to quit.\n");
       getchar();
-      printf ("\n");
     }
   else
     {
