@@ -219,11 +219,6 @@ struct Loader
       printf ("unhandled tag '%s'\n", tag.c_str());
   }
   void
-  next_line()
-  {
-    line_count++;
-  }
-  void
   finish()
   {
     if (!active_region.empty())
@@ -242,12 +237,14 @@ struct Loader
   {
     fprintf (stderr, "parse error: %s: line %d: %s\n", filename.c_str(), line_count, error.c_str());
   }
-} sfz_loader;
+  bool parse (const string& filename);
+};
 
 struct SFZSynth
 {
   std::minstd_rand random_gen;
   fluid_preset_t *preset = nullptr;
+  Loader sfz_loader;
 
   int
   note_on (fluid_synth_t *synth, int chan, int key, int vel)
@@ -321,9 +318,9 @@ strip_spaces (const string& s)
 }
 
 bool
-parse (const string& filename)
+Loader::parse (const string& filename)
 {
-  sfz_loader.sample_path = fs::path (filename).remove_filename();
+  sample_path = fs::path (filename).remove_filename();
 
   FILE *file = fopen (filename.c_str(), "r");
   assert (file);
@@ -352,7 +349,7 @@ parse (const string& filename)
     lines.push_back (input);
   fclose (file);
 
-  sfz_loader.filename = filename;
+  this->filename = filename;
 
   // strip comments
   static const regex comment_re ("//.*$");
@@ -364,7 +361,7 @@ parse (const string& filename)
   static const regex key_val_re ("([a-z0-9_]+)=(\\S+)(.*)");
   for (auto l : lines)
     {
-      sfz_loader.next_line();
+      line_count++;
       while (l.size())
         {
           std::smatch sm;
@@ -375,7 +372,7 @@ parse (const string& filename)
             }
           else if (regex_match (l, sm, tag_re))
             {
-              sfz_loader.handle_tag (sm[1].str());
+              handle_tag (sm[1].str());
               l = sm[2];
             }
           else if (regex_match (l, sm, key_val_re))
@@ -396,39 +393,39 @@ parse (const string& filename)
                   static const regex sample_re_eq ("sample=([^=<]+)(\\s[a-z0-9_]+=.*)");
                   if (regex_match (l, sm, sample_re_eol))
                     {
-                      sfz_loader.set_key_value ("sample", strip_spaces (sm[1].str()));
+                      set_key_value ("sample", strip_spaces (sm[1].str()));
                       l = "";
                     }
                   else if (regex_match (l, sm, sample_re_tag))
                     {
-                      sfz_loader.set_key_value ("sample", strip_spaces (sm[1].str()));
+                      set_key_value ("sample", strip_spaces (sm[1].str()));
                       l = sm[2]; // parse rest
                     }
                   else if (regex_match (l, sm, sample_re_eq))
                     {
-                      sfz_loader.set_key_value ("sample", strip_spaces (sm[1].str()));
+                      set_key_value ("sample", strip_spaces (sm[1].str()));
                       l = sm[2]; // parse rest
                     }
                   else
                     {
-                      sfz_loader.fail ("sample opcode");
+                      fail ("sample opcode");
                       return false;
                     }
                 }
               else
                 {
-                  sfz_loader.set_key_value (key, value);
+                  set_key_value (key, value);
                   l = sm[3];
                 }
             }
           else
             {
-              sfz_loader.fail ("toplevel parsing");
+              fail ("toplevel parsing");
               return false;
             }
         }
     }
-  sfz_loader.finish();
+  finish();
   return true;
 }
 
@@ -437,12 +434,14 @@ fluid_sfz_loader_load (fluid_sfloader_t *loader, const char *filename)
 {
   SFZSynth *sfz_synth = new SFZSynth(); // FIXME: leak
 
-  if (!parse (filename))
+  if (!sfz_synth->sfz_loader.parse (filename))
     {
       fprintf (stderr, "parse error: exiting\n");
       delete sfz_synth;
       return 0;
     }
+  printf ("regions: %zd\n", sfz_synth->sfz_loader.regions.size());
+
   auto sfont = new_fluid_sfont (
     [](fluid_sfont_t *){const char *name = "name"; return name;},
     [](fluid_sfont_t *sfont, int bank, int prenum)
@@ -506,7 +505,6 @@ main (int argc, char **argv)
 
   /* Load SFZ or SoundFont */
   auto sfont_id = fluid_synth_sfload (synth, argv[1], 1);
-  printf ("regions: %zd\n", sfz_loader.regions.size());
 
   auto mdriver = new_fluid_midi_driver (settings, fluid_synth_handle_midi_event, synth);
 
