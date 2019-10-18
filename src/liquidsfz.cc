@@ -61,6 +61,8 @@ struct Region
   Trigger trigger = Trigger::ATTACK;
   int seq_length = 1;
   int seq_position = 1;
+  vector<int> locc = std::vector<int> (128, 0);
+  vector<int> hicc = std::vector<int> (128, 127);
 
   bool empty()
   {
@@ -181,6 +183,18 @@ struct Loader
       region.loop_start = convert_int (value);
     else if (key == "loop_end")
       region.loop_end = convert_int (value);
+    else if (starts_with (key, "locc"))
+      {
+        int cc = convert_int (key.substr (4));
+        if (cc >= 0 && cc <= 127)
+          region.locc[cc] = convert_int (value);
+      }
+    else if (starts_with (key, "hicc"))
+      {
+        int cc = convert_int (key.substr (4));
+        if (cc >= 0 && cc <= 127)
+          region.hicc[cc] = convert_int (value);
+      }
     else if (starts_with (key, "on_locc") || starts_with (key, "on_hicc"))
       region.trigger = Trigger::CC;
     else if (key == "trigger")
@@ -259,6 +273,21 @@ struct SFZSynth
             region.lovel <= vel && region.hivel >= vel &&
             region.trigger == Trigger::ATTACK)
           {
+            bool cc_match = true;
+            for (size_t cc = 0; cc < region.locc.size(); cc++)
+              {
+                if (region.locc[cc] != 0 || region.hicc[cc] != 127)
+                  {
+                    int val;
+                    if (fluid_synth_get_cc (synth, chan, cc, &val) == FLUID_OK)
+                      {
+                        if (val < region.locc[cc] || val > region.hicc[cc])
+                          cc_match = false;
+                      }
+                  }
+              }
+            if (!cc_match)
+              continue;
             if (region.play_seq == region.seq_position)
               {
                 /* in order to make sequences and random play nice together
