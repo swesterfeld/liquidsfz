@@ -311,26 +311,6 @@ struct SFZSynth
   }
 } sfz_synth;
 
-fluid_sfont_t *
-fluid_sfz_loader_load (fluid_sfloader_t *loader, const char *filename)
-{
-  printf ("%s\n", filename);
-  auto sfont = new_fluid_sfont (
-    [](fluid_sfont_t *){const char *name = "name"; return name;},
-    [](fluid_sfont_t *, int bank, int prenum) {printf ("get preset %d, %d\n", bank, prenum); return preset;},
-    nullptr, nullptr,
-    [](fluid_sfont_t *){return int(0); });
-
-  preset = new_fluid_preset (sfont,
-                             [](fluid_preset_t *) { return "preset"; },
-                             [](fluid_preset_t *) { return 0; },
-                             [](fluid_preset_t *) { return 0; },
-                             [](fluid_preset_t *, fluid_synth_t *synth, int chan, int key, int vel) { return sfz_synth.note_on (synth, chan, key, vel); },
-                             [](fluid_preset_t *) { });
-
-  return sfont;
-}
-
 string
 strip_spaces (const string& s)
 {
@@ -453,17 +433,38 @@ parse (const string& filename)
   return true;
 }
 
+fluid_sfont_t *
+fluid_sfz_loader_load (fluid_sfloader_t *loader, const char *filename)
+{
+  if (!parse (filename))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      return 0;
+    }
+  auto sfont = new_fluid_sfont (
+    [](fluid_sfont_t *){const char *name = "name"; return name;},
+    [](fluid_sfont_t *, int bank, int prenum) {printf ("get preset %d, %d\n", bank, prenum); return preset;},
+    nullptr, nullptr,
+    [](fluid_sfont_t *){return int(0); });
+
+  preset = new_fluid_preset (sfont,
+                             [](fluid_preset_t *) { return "preset"; },
+                             [](fluid_preset_t *) { return 0; },
+                             [](fluid_preset_t *) { return 0; },
+                             [](fluid_preset_t *, fluid_synth_t *synth, int chan, int key, int vel) { return sfz_synth.note_on (synth, chan, key, vel); },
+                             [](fluid_preset_t *) { });
+
+  return sfont;
+}
+
 int
 main (int argc, char **argv)
 {
-  assert (argc == 2);
-
-  if (!parse (argv[1]))
+  if (argc != 2)
     {
-      fprintf (stderr, "parse error: exiting\n");
+      fprintf (stderr, "usage: liquidsfz <sfz_filename>");
       return 1;
     }
-  printf ("regions: %zd\n", sfz_loader.regions.size());
 
   fluid_settings_t *settings;
   fluid_synth_t *synth;
@@ -472,39 +473,37 @@ main (int argc, char **argv)
   /* Create the settings. */
   settings = new_fluid_settings();
   fluid_settings_setstr (settings, "audio.driver", "jack");
-  fluid_settings_setint(settings, "audio.jack.autoconnect", 1);
+  fluid_settings_setint (settings, "audio.jack.autoconnect", 1);
   fluid_settings_setstr (settings, "midi.driver", "jack");
   fluid_settings_setnum (settings, "synth.gain", 1.0);
 
   /* Change the settings if necessary*/
 
   /* Create the synthesizer. */
-  synth = new_fluid_synth(settings);
+  synth = new_fluid_synth (settings);
 
   auto sfz_sfloader = new_fluid_sfloader (fluid_sfz_loader_load, delete_fluid_sfloader);
 
-  fluid_synth_add_sfloader(synth, sfz_sfloader);
+  fluid_synth_add_sfloader (synth, sfz_sfloader);
 
   /* Create the audio driver. The synthesizer starts playing as soon
      as the driver is created. */
-  adriver = new_fluid_audio_driver(settings, synth);
+  adriver = new_fluid_audio_driver (settings, synth);
 
-  /* Load a SoundFont and reset presets (so that new instruments
-   * get used from the SoundFont) */
-  /* auto sfont_id = */ fluid_synth_sfload(synth, "example.sf2", 1);
+  /* Load SFZ or SoundFont */
+  auto sfont_id = fluid_synth_sfload (synth, argv[1], 1);
+  printf ("regions: %zd\n", sfz_loader.regions.size());
 
-  auto mdriver = new_fluid_midi_driver(settings, fluid_synth_handle_midi_event, synth);
+  auto mdriver = new_fluid_midi_driver (settings, fluid_synth_handle_midi_event, synth);
 
-  /* Initialize the random number generator */
-  srand(getpid());
-
-  sleep (1000);
+  if (sfont_id != FLUID_FAILED)
+    sleep (1000);
 
   /* Clean up */
   delete_fluid_midi_driver (mdriver);
-  delete_fluid_audio_driver(adriver);
-  delete_fluid_synth(synth);
-  delete_fluid_settings(settings);
+  delete_fluid_audio_driver (adriver);
+  delete_fluid_synth (synth);
+  delete_fluid_settings (settings);
 
   return 0;
 }
