@@ -27,8 +27,18 @@ AC_DEFUN([AC_FLUIDSYNTH_REQUIREMENTS],
     AC_SUBST(FLUIDSYNTH_LIBS)
 ])
 
+dnl
+dnl JACK
+dnl
+AC_DEFUN([AC_JACK_REQUIREMENTS],
+[
+    dnl disable jack if not found using pkg-config
+    PKG_CHECK_MODULES(JACK, [jack], [with_jack="yes"], [with_jack="no"])
+])
+
 AC_SNDFILE_REQUIREMENTS
 AC_FLUIDSYNTH_REQUIREMENTS
+AC_JACK_REQUIREMENTS
 
 # need c++17 mode
 AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])

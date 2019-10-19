@@ -19,6 +19,8 @@
  */
 
 #include <fluidsynth.h>
+#include <jack/jack.h>
+#include <jack/midiport.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
@@ -273,6 +275,10 @@ struct SFZSynth
 {
   std::minstd_rand random_gen;
   fluid_preset_t *preset = nullptr;
+  jack_port_t *midi_input_port = nullptr;
+  jack_port_t *audio_left = nullptr;
+  jack_port_t *audio_right = nullptr;
+  fluid_synth_t *synth = nullptr;
   Loader sfz_loader;
 
   float
@@ -364,6 +370,44 @@ struct SFZSynth
               region.play_seq = 1;
           }
       }
+    return 0;
+  }
+  int
+  process (jack_nframes_t nframes)
+  {
+    void* port_buf = jack_port_get_buffer (midi_input_port, nframes);
+    jack_nframes_t event_count = jack_midi_get_event_count (port_buf);
+
+    for (jack_nframes_t event_index = 0; event_index < event_count; event_index++)
+      {
+        jack_midi_event_t    in_event;
+        jack_midi_event_get (&in_event, port_buf, event_index);
+
+        if (in_event.size == 3)
+          {
+            unsigned char status  = in_event.buffer[0] & 0xf0;
+            unsigned char channel = in_event.buffer[0] & 0x0f;
+            if (status == 0x80)
+              {
+                // printf ("note off, ch = %d\n", channel);
+                fluid_synth_noteoff (synth, channel, in_event.buffer[1]);
+              }
+            else if (status == 0x90)
+              {
+                // printf ("note on, ch = %d, note = %d, vel = %d\n", channel, in_event.buffer[1], in_event.buffer[2]);
+                note_on (synth, channel, in_event.buffer[1], in_event.buffer[2]);
+              }
+          }
+      }
+    float *channel_values[2] = {
+      (float *) jack_port_get_buffer (audio_left, nframes),
+      (float *) jack_port_get_buffer (audio_right, nframes)
+    };
+    std::fill_n (channel_values[0], nframes, 0.0);
+    std::fill_n (channel_values[1], nframes, 0.0);
+    fluid_synth_process (synth, nframes,
+                         0, nullptr, /* no effects */
+                         2, channel_values);
     return 0;
   }
 };
@@ -487,48 +531,8 @@ Loader::parse (const string& filename)
         }
     }
   finish();
+  printf ("*** regions: %zd\n", regions.size());
   return true;
-}
-
-fluid_sfont_t *
-fluid_sfz_loader_load (fluid_sfloader_t *loader, const char *filename)
-{
-  SFZSynth *sfz_synth = new SFZSynth(); // FIXME: leak
-
-  if (!sfz_synth->sfz_loader.parse (filename))
-    {
-      fprintf (stderr, "parse error: exiting\n");
-      delete sfz_synth;
-      return 0;
-    }
-  printf ("regions: %zd\n", sfz_synth->sfz_loader.regions.size());
-
-  auto sfont = new_fluid_sfont (
-    [](fluid_sfont_t *){const char *name = "name"; return name;},
-    [](fluid_sfont_t *sfont, int bank, int prenum)
-      {
-        SFZSynth *sfz_synth = (SFZSynth *) fluid_sfont_get_data (sfont);
-        return sfz_synth->preset;
-      },
-    nullptr, nullptr,
-    [](fluid_sfont_t *){return int(0); });
-
-  fluid_sfont_set_data (sfont, sfz_synth);
-
-  sfz_synth->preset = new_fluid_preset (sfont,
-    [](fluid_preset_t *) { return "preset"; },
-    [](fluid_preset_t *) { return 0; },
-    [](fluid_preset_t *) { return 0; },
-    [](fluid_preset_t *preset, fluid_synth_t *synth, int chan, int key, int vel)
-      {
-        SFZSynth *sfz_synth = (SFZSynth *) fluid_preset_get_data (preset);
-        return sfz_synth->note_on (synth, chan, key, vel);
-      },
-    [](fluid_preset_t *) { });
-
-  fluid_preset_set_data (sfz_synth->preset, sfz_synth);
-
-  return sfont;
 }
 
 int
@@ -539,53 +543,46 @@ main (int argc, char **argv)
       fprintf (stderr, "usage: liquidsfz <sfz_filename>");
       return 1;
     }
+  jack_client_t *client = jack_client_open ("liquidsfz", JackNullOption, NULL);
+  if (!client)
+    {
+       fprintf (stderr, "liquidsfz: unable to connect to jack server\n");
+       exit (1);
+     }
+  SFZSynth sfz_synth;
+  if (!sfz_synth.sfz_loader.parse (argv[1]))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      return 1;
+    }
+  sfz_synth.midi_input_port = jack_port_register (client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
+  sfz_synth.audio_left = jack_port_register (client, "audio_out_1", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+  sfz_synth.audio_right = jack_port_register (client, "audio_out_2", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
 
-  fluid_settings_t *settings;
-  fluid_synth_t *synth;
-  fluid_audio_driver_t *adriver;
+  jack_set_process_callback (client,
+    [](jack_nframes_t nframes, void *arg)
+      {
+        auto synth = static_cast<SFZSynth *> (arg);
+        return synth->process (nframes);
+      }, &sfz_synth);
+  if (jack_activate (client))
+    {
+      fprintf (stderr, "cannot activate client");
+      exit (1);
+    }
 
-  /* Create the settings. */
-  settings = new_fluid_settings();
-  fluid_settings_setstr (settings, "audio.driver", "jack");
-  fluid_settings_setint (settings, "audio.jack.autoconnect", 1);
-  fluid_settings_setstr (settings, "midi.driver", "jack");
+  fluid_settings_t *settings = new_fluid_settings();
+  fluid_settings_setnum (settings, "synth.sample-rate", jack_get_sample_rate (client));
   fluid_settings_setnum (settings, "synth.gain", 1.0);
+  fluid_settings_setint (settings, "synth.reverb.active", 0);
+  fluid_settings_setint (settings, "synth.chorus.active", 0);
+  sfz_synth.synth = new_fluid_synth (settings);
 
-  /* Change the settings if necessary*/
+  printf ("Synthesizer running - press \"Enter\" to quit.\n");
+  getchar();
 
-  /* Create the synthesizer. */
-  synth = new_fluid_synth (settings);
-
-  auto sfz_sfloader = new_fluid_sfloader (fluid_sfz_loader_load, delete_fluid_sfloader);
-
-  fluid_synth_add_sfloader (synth, sfz_sfloader);
-
-  /* Create the audio driver. The synthesizer starts playing as soon
-     as the driver is created. */
-  adriver = new_fluid_audio_driver (settings, synth);
-
-  /* Load SFZ or SoundFont */
-  auto sfont_id = fluid_synth_sfload (synth, argv[1], 1);
-
-  auto mdriver = new_fluid_midi_driver (settings, fluid_synth_handle_midi_event, synth);
-
-  int error = 0;
-  if (sfont_id != FLUID_FAILED)
-    {
-      printf ("Synthesizer running - press \"Enter\" to quit.\n");
-      getchar();
-    }
-  else
-    {
-      error = 1;
-    }
-
-  /* Clean up */
-  delete_fluid_midi_driver (mdriver);
-  delete_fluid_audio_driver (adriver);
-  delete_fluid_synth (synth);
+  delete_fluid_synth (sfz_synth.synth);
   delete_fluid_settings (settings);
 
-  return error;
+  return 0;
 }
-
