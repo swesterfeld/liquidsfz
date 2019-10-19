@@ -32,6 +32,11 @@
 #include <random>
 #include "samplecache.hh"
 
+/* use private API (need to build fluidsynth without CMAKE_C_VISIBILITY_PRESET hidden) */
+extern "C" {
+  void fluid_voice_release (fluid_voice_t *voice);
+};
+
 using std::vector;
 using std::string;
 using std::regex;
@@ -274,7 +279,6 @@ struct Loader
 struct SFZSynth
 {
   std::minstd_rand random_gen;
-  fluid_preset_t *preset = nullptr;
   jack_port_t *midi_input_port = nullptr;
   jack_port_t *audio_left = nullptr;
   jack_port_t *audio_right = nullptr;
@@ -291,8 +295,36 @@ struct SFZSynth
   {
     return -10 * 20 * log10 (std::clamp (level_perc, 0.001f, 100.f) / 100);
   }
-  int
-  note_on (fluid_synth_t *synth, int chan, int key, int vel)
+  struct Voice
+  {
+    bool used = false;
+    int channel = 0;
+    int key = 0;
+    fluid_voice_t *flvoice = 0;
+  };
+  std::vector<Voice> voices;
+  void
+  add_voice (int channel, int key, fluid_voice_t *flvoice)
+  {
+    Voice *voice = nullptr;
+    for (auto& v : voices)
+      if (!v.used)
+        {
+          /* overwrite old voice in vector */
+          voice = &v;
+          break;
+        }
+    if (!voice)
+      {
+        voice = &voices.emplace_back();
+      }
+    voice->used = true;
+    voice->channel = channel;
+    voice->key = key;
+    voice->flvoice = flvoice;
+  }
+  void
+  note_on (int chan, int key, int vel)
   {
     // - random must be >= 0.0
     // - random must be <  1.0  (and never 1.0)
@@ -361,6 +393,7 @@ struct SFZSynth
                             fluid_voice_gen_set (flvoice, GEN_VOLENVRELEASE, env_time2gen (region.ampeg_release));
 
                             fluid_synth_start_voice (synth, flvoice);
+                            add_voice (chan, key, flvoice);
                           }
                       }
                   }
@@ -370,7 +403,21 @@ struct SFZSynth
               region.play_seq = 1;
           }
       }
-    return 0;
+  }
+  void
+  note_off (int chan, int key)
+  {
+    for (auto& voice : voices)
+      {
+        if (voice.used && voice.channel == chan && voice.key == key)
+          {
+            voice.used = false;
+            fluid_voice_release (voice.flvoice);
+
+            // we need to call this to ensure that the fluid synth instance can do some housekeeping jobs
+            fluid_synth_noteoff (synth, 0, 0);
+          }
+      }
   }
   int
   process (jack_nframes_t nframes)
@@ -390,12 +437,12 @@ struct SFZSynth
             if (status == 0x80)
               {
                 // printf ("note off, ch = %d\n", channel);
-                fluid_synth_noteoff (synth, channel, in_event.buffer[1]);
+                note_off (channel, in_event.buffer[1]);
               }
             else if (status == 0x90)
               {
                 // printf ("note on, ch = %d, note = %d, vel = %d\n", channel, in_event.buffer[1], in_event.buffer[2]);
-                note_on (synth, channel, in_event.buffer[1], in_event.buffer[2]);
+                note_on (channel, in_event.buffer[1], in_event.buffer[2]);
               }
           }
       }
