@@ -63,6 +63,11 @@ struct Region
   int seq_position = 1;
   vector<int> locc = std::vector<int> (128, 0);
   vector<int> hicc = std::vector<int> (128, 127);
+  float ampeg_delay = 0;
+  float ampeg_attack = 0;
+  float ampeg_decay = 0;
+  float ampeg_sustain = 100;
+  float ampeg_release = 0;
 
   bool empty()
   {
@@ -203,6 +208,16 @@ struct Loader
       region.seq_length = convert_int (value);
     else if (key == "seq_position")
       region.seq_position = convert_int (value);
+    else if (key == "ampeg_delay")
+      region.ampeg_delay = convert_float (value);
+    else if (key == "ampeg_attack")
+      region.ampeg_attack = convert_float (value);
+    else if (key == "ampeg_decay")
+      region.ampeg_decay = convert_float (value);
+    else if (key == "ampeg_sustain")
+      region.ampeg_sustain = convert_float (value);
+    else if (key == "ampeg_release")
+      region.ampeg_release = convert_float (value);
     else
       printf ("unsupported opcode '%s'\n", key.c_str());
   }
@@ -241,7 +256,7 @@ struct Loader
     for (size_t i = 0; i < regions.size(); i++)
       {
         regions[i].cached_sample = sample_cache.load (regions[i].sample);
-        printf ("loading %.1f %%\r", i * 100.0 / (regions.size() - 1));
+        printf ("loading %.1f %%\r", (i + 1) * 100.0 / regions.size());
         fflush (stdout);
       }
     printf ("\n");
@@ -260,6 +275,16 @@ struct SFZSynth
   fluid_preset_t *preset = nullptr;
   Loader sfz_loader;
 
+  float
+  env_time2gen (float time_sec)
+  {
+    return 1200 * log2f (std::clamp (time_sec, 0.001f, 100.f));
+  }
+  float
+  env_level2gen (float level_perc)
+  {
+    return -10 * 20 * log10 (std::clamp (level_perc, 0.001f, 100.f) / 100);
+  }
   int
   note_on (fluid_synth_t *synth, int chan, int key, int vel)
   {
@@ -322,6 +347,13 @@ struct SFZSynth
                                 else
                                   fluid_voice_gen_set (flvoice, GEN_PAN, 500);
                               }
+                            /* volume envelope */
+                            fluid_voice_gen_set (flvoice, GEN_VOLENVDELAY, env_time2gen (region.ampeg_delay));
+                            fluid_voice_gen_set (flvoice, GEN_VOLENVATTACK, env_time2gen (region.ampeg_attack));
+                            fluid_voice_gen_set (flvoice, GEN_VOLENVDECAY, env_time2gen (region.ampeg_decay));
+                            fluid_voice_gen_set (flvoice, GEN_VOLENVSUSTAIN, env_level2gen (region.ampeg_sustain));
+                            fluid_voice_gen_set (flvoice, GEN_VOLENVRELEASE, env_time2gen (region.ampeg_release));
+
                             fluid_synth_start_voice (synth, flvoice);
                           }
                       }
