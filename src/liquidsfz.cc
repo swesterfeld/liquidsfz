@@ -59,6 +59,7 @@ struct SFZSynth
   {
     int channel = 0;
     int key = 0;
+    int id = -1;
     fluid_voice_t *flvoice = nullptr;
     Region *region = nullptr;
   };
@@ -83,6 +84,7 @@ struct SFZSynth
     voice->region = region;
     voice->channel = channel;
     voice->key = key;
+    voice->id = fluid_voice_get_id (flvoice);
     voice->flvoice = flvoice;
   }
   void
@@ -183,7 +185,7 @@ struct SFZSynth
       {
         if (voice.flvoice && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
           {
-            fluid_synth_release_voice (synth, voice.flvoice);
+            fluid_synth_stop (synth, voice.id);
             voice.flvoice = nullptr;
           }
       }
