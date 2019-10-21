@@ -10,6 +10,13 @@ performed using fluidsynth.
 Right now liquidsfz is in the early development phase. Later on, it will have
 a library API so that other programs can also support the sfz format.
 
+## BUILDING
+
+At the moment, you need to build against a patched version of fluidsynth,
+available in the **liquidsfz branch** of
+
+    https://github.com/swesterfeld/fluidsynth
+
 ## TESTING
 
 Right now, liquidsfz is only available as command line program. You can use it

@@ -31,11 +31,6 @@
 #include <random>
 #include "loader.hh"
 
-/* use private API (need to build fluidsynth without CMAKE_C_VISIBILITY_PRESET hidden) */
-extern "C" {
-  void fluid_voice_release (fluid_voice_t *voice);
-};
-
 using std::vector;
 using std::string;
 using std::regex;
@@ -188,11 +183,8 @@ struct SFZSynth
       {
         if (voice.flvoice && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
           {
-            fluid_voice_release (voice.flvoice);
+            fluid_synth_release_voice (synth, voice.flvoice);
             voice.flvoice = nullptr;
-
-            // we need to call this to ensure that the fluid synth instance can do some housekeeping jobs
-            fluid_synth_noteoff (synth, 0, 0);
           }
       }
   }
