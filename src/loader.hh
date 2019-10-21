@@ -1,0 +1,185 @@
+/*
+ * liquidsfz - sfz support using fluidsynth
+ *
+ * Copyright (C) 2019  Stefan Westerfeld
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by the
+ * Free Software Foundation; either version 2.1 of the License, or (at your
+ * option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+#include <string>
+#include <filesystem>
+
+#include "samplecache.hh"
+
+enum class Trigger {
+  ATTACK,
+  RELEASE,
+  CC
+};
+
+struct Region
+{
+  std::string sample;
+  SampleCache::Entry *cached_sample = nullptr;
+
+  int lokey = 0;
+  int hikey = 127;
+  int lovel = 0;
+  int hivel = 127;
+  double lorand = 0;
+  double hirand = 1;
+  int pitch_keycenter = 60;
+  int loop_start = 0;
+  int loop_end = 0;
+  Trigger trigger = Trigger::ATTACK;
+  int seq_length = 1;
+  int seq_position = 1;
+  std::vector<int> locc = std::vector<int> (128, 0);
+  std::vector<int> hicc = std::vector<int> (128, 127);
+  float ampeg_delay = 0;
+  float ampeg_attack = 0;
+  float ampeg_decay = 0;
+  float ampeg_sustain = 100;
+  float ampeg_release = 0;
+
+  bool empty()
+  {
+    return sample == "";
+  }
+
+  /* playback state */
+  int play_seq = 1;
+};
+
+namespace fs = std::filesystem; // FIXME
+
+struct Loader
+{
+  int line_count = 0;
+  std::string filename;
+  enum class RegionType { NONE, GROUP, REGION };
+  RegionType region_type = RegionType::NONE;
+  Region active_group;
+  Region active_region;
+  std::vector<Region> regions;
+  fs::path sample_path;
+  SampleCache sample_cache; // FIXME: should share sample cache between different instances
+
+  int
+  convert_key (const std::string& k)
+  {
+    if (k.size() >= 2)
+      {
+        int offset = -1;
+
+        std::string::const_iterator ki = k.begin();
+        switch (tolower (*ki++))
+          {
+            case 'c': offset = 0; break;
+            case 'd': offset = 2; break;
+            case 'e': offset = 4; break;
+            case 'f': offset = 5; break;
+            case 'g': offset = 7; break;
+            case 'a': offset = 9; break;
+            case 'b': offset = 11; break;
+          }
+        if (offset >= 0)
+          {
+            if (*ki == '#')
+              {
+                offset++;
+                ki++;
+              }
+            else if (*ki == 'b')
+              {
+                offset--;
+                ki++;
+              }
+            // c4 should be 60
+            return atoi (std::string (ki, k.end()).c_str()) * 12 + offset + 12;
+          }
+      }
+    return atoi (k.c_str());
+  }
+  int
+  convert_int (const std::string& s)
+  {
+    return atoi (s.c_str());
+  }
+  float
+  convert_float (const std::string& s)
+  {
+    return atof (s.c_str());
+  }
+  Trigger
+  convert_trigger (const std::string& t)
+  {
+    if (t == "release")
+      return Trigger::RELEASE;
+    return Trigger::ATTACK;
+  }
+  bool
+  starts_with (const std::string& key, const std::string& start)
+  {
+    return key.substr (0, start.size()) == start;
+  }
+  void set_key_value (const std::string& key, const std::string& value);
+  void
+  handle_tag (const std::string& tag)
+  {
+    printf ("+++ TAG %s\n", tag.c_str());
+
+    /* if we are done building a region, store it */
+    if (tag == "region" || tag == "group")
+      if (!active_region.empty())
+        {
+          regions.push_back (active_region);
+          active_region = Region();
+        }
+
+    if (tag == "region")
+      {
+        region_type   = RegionType::REGION;
+        active_region = active_group; /* inherit parameters from group */
+      }
+    else if (tag == "group")
+      {
+        region_type  = RegionType::GROUP;
+        active_group = Region();
+      }
+    else
+      printf ("unhandled tag '%s'\n", tag.c_str());
+  }
+  void
+  finish()
+  {
+    if (!active_region.empty())
+      regions.push_back (active_region);
+
+    for (size_t i = 0; i < regions.size(); i++)
+      {
+        regions[i].cached_sample = sample_cache.load (regions[i].sample);
+        printf ("loading %.1f %%\r", (i + 1) * 100.0 / regions.size());
+        fflush (stdout);
+      }
+    printf ("\n");
+  }
+  void
+  fail (const std::string& error)
+  {
+    fprintf (stderr, "parse error: %s: line %d: %s\n", filename.c_str(), line_count, error.c_str());
+  }
+  bool parse (const std::string& filename);
+};
