@@ -531,7 +531,7 @@ Loader::parse (const string& filename)
             {
               string key = sm[1];
               string value = sm[2];
-              if (key == "sample")
+              if (key == "sample" || key == "sw_label")
                 {
                   /* parsing sample=filename is problematic because filename can contain spaces
                    * we need to handle three cases:
@@ -540,27 +540,27 @@ Loader::parse (const string& filename)
                    * - filename is followed by <tag>
                    * - filename is followed by key=value
                    */
-                  static const regex sample_re_eol ("sample=([^=<]+)");
-                  static const regex sample_re_tag ("sample=([^=<]+)(<.*)");
-                  static const regex sample_re_eq ("sample=([^=<]+)(\\s[a-z0-9_]+=.*)");
-                  if (regex_match (l, sm, sample_re_eol))
+                  static const regex key_val_space_re_eol ("[a-z0-9_]+=([^=<]+)");
+                  static const regex key_val_space_re_tag ("[a-z0-9_]+=([^=<]+)(<.*)");
+                  static const regex key_val_space_re_eq ("[a-z0-9_]+=([^=<]+)(\\s[a-z0-9_]+=.*)");
+                  if (regex_match (l, sm, key_val_space_re_eol))
                     {
-                      set_key_value ("sample", strip_spaces (sm[1].str()));
+                      set_key_value (key, strip_spaces (sm[1].str()));
                       l = "";
                     }
-                  else if (regex_match (l, sm, sample_re_tag))
+                  else if (regex_match (l, sm, key_val_space_re_tag))
                     {
-                      set_key_value ("sample", strip_spaces (sm[1].str()));
+                      set_key_value (key, strip_spaces (sm[1].str()));
                       l = sm[2]; // parse rest
                     }
-                  else if (regex_match (l, sm, sample_re_eq))
+                  else if (regex_match (l, sm, key_val_space_re_eq))
                     {
-                      set_key_value ("sample", strip_spaces (sm[1].str()));
+                      set_key_value (key, strip_spaces (sm[1].str()));
                       l = sm[2]; // parse rest
                     }
                   else
                     {
-                      fail ("sample opcode");
+                      fail ("sample/sw_label opcode");
                       return false;
                     }
                 }
