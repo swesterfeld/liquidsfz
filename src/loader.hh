@@ -51,7 +51,7 @@ struct Region
   int pitch_keycenter = 60;
   int loop_start = 0;
   int loop_end = 0;
-  LoopMode loop_mode = LoopMode::NONE;
+  LoopMode loop_mode = LoopMode::DEFAULT;
   Trigger trigger = Trigger::ATTACK;
   int seq_length = 1;
   int seq_position = 1;
@@ -183,20 +183,6 @@ struct Loader
       }
     else
       printf ("unhandled tag '%s'\n", tag.c_str());
-  }
-  void
-  finish()
-  {
-    if (!active_region.empty())
-      regions.push_back (active_region);
-
-    for (size_t i = 0; i < regions.size(); i++)
-      {
-        regions[i].cached_sample = sample_cache.load (regions[i].sample);
-        printf ("loading %.1f %%\r", (i + 1) * 100.0 / regions.size());
-        fflush (stdout);
-      }
-    printf ("\n");
   }
   void
   fail (const std::string& error)

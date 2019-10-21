@@ -138,19 +138,16 @@ struct SFZSynth
                             auto flsample = region.cached_sample->flsamples[ch];
 
                             printf ("%d %s#%zd\n", key, region.sample.c_str(), ch);
-                            if (region.loop_end)
-                              {
-                                fluid_sample_set_loop (flsample, region.loop_start, region.loop_end);
-                              }
-                            else if (region.cached_sample->loop)
-                              {
-                                fluid_sample_set_loop (flsample, region.cached_sample->loop_start, region.cached_sample->loop_end);
-                              }
                             fluid_sample_set_pitch (flsample, region.pitch_keycenter, 0);
 
                             auto flvoice = fluid_synth_alloc_voice (synth, flsample, chan, key, vel);
                             cleanup_finished_voice (flvoice);
-                            fluid_voice_gen_set (flvoice, GEN_SAMPLEMODE, 1);
+
+                            if (region.loop_mode == LoopMode::SUSTAIN || region.loop_mode == LoopMode::CONTINUOUS)
+                              {
+                                fluid_sample_set_loop (flsample, region.loop_start, region.loop_end);
+                                fluid_voice_gen_set (flvoice, GEN_SAMPLEMODE, 1);
+                              }
 
                             if (region.cached_sample->flsamples.size() == 2) /* pan stereo voices */
                               {
@@ -185,7 +182,8 @@ struct SFZSynth
       {
         if (voice.flvoice && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
           {
-            fluid_synth_stop (synth, voice.id);
+            // fluid_synth_stop (synth, voice.id));
+            fluid_synth_release_voice (synth, voice.flvoice);
             voice.flvoice = nullptr;
           }
       }

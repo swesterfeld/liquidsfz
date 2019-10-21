@@ -225,7 +225,31 @@ Loader::parse (const string& filename)
             }
         }
     }
-  finish();
+  if (!active_region.empty())
+    regions.push_back (active_region);
+
+  for (size_t i = 0; i < regions.size(); i++)
+    {
+      const auto cached_sample = sample_cache.load (regions[i].sample);
+      regions[i].cached_sample = cached_sample;
+
+      if (regions[i].loop_mode == LoopMode::DEFAULT)
+        {
+          if (cached_sample->loop)
+            {
+              regions[i].loop_mode = LoopMode::CONTINUOUS;
+              regions[i].loop_start = cached_sample->loop_start;
+              regions[i].loop_end = cached_sample->loop_end;
+            }
+          else
+            {
+              regions[i].loop_mode = LoopMode::NONE;
+            }
+        }
+      printf ("loading %.1f %%\r", (i + 1) * 100.0 / regions.size());
+      fflush (stdout);
+    }
+  printf ("\n");
   printf ("*** regions: %zd\n", regions.size());
   return true;
 }
