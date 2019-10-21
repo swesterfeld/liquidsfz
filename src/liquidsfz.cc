@@ -274,6 +274,8 @@ main (int argc, char **argv)
   printf ("Synthesizer running - press \"Enter\" to quit.\n");
   getchar();
 
+  jack_client_close (client);
+
   delete_fluid_synth (sfz_synth.synth);
   delete_fluid_settings (settings);
 
