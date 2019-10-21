@@ -24,9 +24,9 @@ like this:
 
     liquidsfz ~/sfz/SalamanderGrandPianoV3_44.1khz16bit/SalamanderGrandPianoV3.sfz
 
-Currently, liquidsfz will initialize the fluidsynth jack driver. If you connect
-the jack midi input using a patchbay, you can send midi events to liquidsfz to
-test the sfz loader.
+liquidsfz works as jack client with midi input and audio ouput. If you connect
+the jack midi input / audio output using a patchbay, you can send midi events
+to liquidsfz to test the sfz loader.
 
 ## LICENSE
 
