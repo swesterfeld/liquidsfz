@@ -29,6 +29,14 @@ enum class Trigger {
   CC
 };
 
+enum class LoopMode {
+  NONE, /* no_loop */
+  ONE_SHOT, /* one_shot */
+  CONTINUOUS, /* loop_continuous */
+  SUSTAIN, /* loop_sustain */
+  DEFAULT /* automatically use NONE or CONTINUOUS (from sample) */
+};
+
 struct Region
 {
   std::string sample;
@@ -43,6 +51,7 @@ struct Region
   int pitch_keycenter = 60;
   int loop_start = 0;
   int loop_end = 0;
+  LoopMode loop_mode = LoopMode::NONE;
   Trigger trigger = Trigger::ATTACK;
   int seq_length = 1;
   int seq_position = 1;
@@ -129,6 +138,19 @@ struct Loader
     if (t == "release")
       return Trigger::RELEASE;
     return Trigger::ATTACK;
+  }
+  LoopMode
+  convert_loop_mode (const std::string& l)
+  {
+    if (l == "no_loop")
+      return LoopMode::NONE;
+    else if (l == "one_shot")
+      return LoopMode::ONE_SHOT;
+    else if (l == "loop_continuous")
+      return LoopMode::CONTINUOUS;
+    else if (l == "loop_sustain")
+      return LoopMode::SUSTAIN;
+    return LoopMode::DEFAULT;
   }
   bool
   starts_with (const std::string& key, const std::string& start)

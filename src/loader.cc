@@ -21,8 +21,24 @@
 #include "loader.hh"
 
 #include <algorithm>
+#include <regex>
+
+#include <assert.h>
 
 using std::string;
+using std::vector;
+using std::regex;
+using std::regex_replace;
+
+static string
+strip_spaces (const string& s)
+{
+  static const regex lws_re ("^\\s*");
+  static const regex tws_re ("\\s*$");
+
+  string r = regex_replace (s, tws_re, "");
+  return regex_replace (r, lws_re, "");
+}
 
 void
 Loader::set_key_value (const string& key, const string& value)
@@ -61,6 +77,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.lorand = convert_float (value);
   else if (key == "hirand")
     region.hirand = convert_float (value);
+  else if (key == "loop_mode")
+    region.loop_mode = convert_loop_mode (value);
   else if (key == "loop_start")
     region.loop_start = convert_int (value);
   else if (key == "loop_end")
@@ -99,3 +117,115 @@ Loader::set_key_value (const string& key, const string& value)
     printf ("unsupported opcode '%s'\n", key.c_str());
 }
 
+bool
+Loader::parse (const string& filename)
+{
+  sample_path = fs::path (filename).remove_filename();
+
+  FILE *file = fopen (filename.c_str(), "r");
+  assert (file);
+
+  // read file
+  vector<string> lines;
+
+  string input;
+  int ch = 0;
+  while ((ch = fgetc (file)) >= 0)
+    {
+      if (ch != '\r' && ch != '\n')
+        {
+          input += ch;
+        }
+      else
+        {
+          if (ch == '\n')
+            {
+              lines.push_back (input);
+              input = "";
+            }
+        }
+    }
+  if (!input.empty())
+    lines.push_back (input);
+  fclose (file);
+
+  this->filename = filename;
+
+  // strip comments
+  static const regex comment_re ("//.*$");
+  for (auto& l : lines)
+    l = regex_replace (l, comment_re, "");
+
+  static const regex space_re ("\\s+(.*)");
+  static const regex tag_re ("<([^>]*)>(.*)");
+  static const regex key_val_re ("([a-z0-9_]+)=(\\S+)(.*)");
+  for (auto l : lines)
+    {
+      line_count++;
+      while (l.size())
+        {
+          std::smatch sm;
+          //printf ("@%s@\n", l.c_str());
+          if (regex_match (l, sm, space_re))
+            {
+              l = sm[1];
+            }
+          else if (regex_match (l, sm, tag_re))
+            {
+              handle_tag (sm[1].str());
+              l = sm[2];
+            }
+          else if (regex_match (l, sm, key_val_re))
+            {
+              string key = sm[1];
+              string value = sm[2];
+              if (key == "sample" || key == "sw_label")
+                {
+                  /* parsing sample=filename is problematic because filename can contain spaces
+                   * we need to handle three cases:
+                   *
+                   * - filename extends until end of line
+                   * - filename is followed by <tag>
+                   * - filename is followed by key=value
+                   */
+                  static const regex key_val_space_re_eol ("[a-z0-9_]+=([^=<]+)");
+                  static const regex key_val_space_re_tag ("[a-z0-9_]+=([^=<]+)(<.*)");
+                  static const regex key_val_space_re_eq ("[a-z0-9_]+=([^=<]+)(\\s[a-z0-9_]+=.*)");
+                  if (regex_match (l, sm, key_val_space_re_eol))
+                    {
+                      set_key_value (key, strip_spaces (sm[1].str()));
+                      l = "";
+                    }
+                  else if (regex_match (l, sm, key_val_space_re_tag))
+                    {
+                      set_key_value (key, strip_spaces (sm[1].str()));
+                      l = sm[2]; // parse rest
+                    }
+                  else if (regex_match (l, sm, key_val_space_re_eq))
+                    {
+                      set_key_value (key, strip_spaces (sm[1].str()));
+                      l = sm[2]; // parse rest
+                    }
+                  else
+                    {
+                      fail ("sample/sw_label opcode");
+                      return false;
+                    }
+                }
+              else
+                {
+                  set_key_value (key, value);
+                  l = sm[3];
+                }
+            }
+          else
+            {
+              fail ("toplevel parsing");
+              return false;
+            }
+        }
+    }
+  finish();
+  printf ("*** regions: %zd\n", regions.size());
+  return true;
+}
