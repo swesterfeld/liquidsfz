@@ -36,6 +36,14 @@ using std::string;
 using std::regex;
 using std::regex_replace;
 
+double
+db_to_factor (double dB)
+{
+  return pow (10, dB / 20);
+}
+
+constexpr double VOLUME_HEADROOM_DB = 12;
+
 struct SFZSynth
 {
   std::minstd_rand random_gen;
@@ -200,6 +208,10 @@ struct SFZSynth
                             fluid_voice_gen_set (flvoice, GEN_VOLENVSUSTAIN, env_level2gen (region.ampeg_sustain));
                             fluid_voice_gen_set (flvoice, GEN_VOLENVRELEASE, env_time2gen (region.ampeg_release));
 
+                            /* volume */
+                            double attenuation = -10 * (region.volume - VOLUME_HEADROOM_DB);
+                            fluid_voice_gen_set (flvoice, GEN_ATTENUATION, attenuation);
+
                             fluid_synth_start_voice (synth, flvoice);
                             add_voice (&region, chan, key, flvoice);
                           }
@@ -303,7 +315,7 @@ main (int argc, char **argv)
 
   fluid_settings_t *settings = new_fluid_settings();
   fluid_settings_setnum (settings, "synth.sample-rate", jack_get_sample_rate (client));
-  fluid_settings_setnum (settings, "synth.gain", 1.0);
+  fluid_settings_setnum (settings, "synth.gain", db_to_factor (VOLUME_HEADROOM_DB));
   fluid_settings_setint (settings, "synth.reverb.active", 0);
   fluid_settings_setint (settings, "synth.chorus.active", 0);
   sfz_synth.synth = new_fluid_synth (settings);

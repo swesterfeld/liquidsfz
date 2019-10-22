@@ -113,6 +113,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.ampeg_sustain = convert_float (value);
   else if (key == "ampeg_release")
     region.ampeg_release = convert_float (value);
+  else if (key == "volume")
+    region.volume = convert_float (value);
   else
     printf ("unsupported opcode '%s'\n", key.c_str());
 }

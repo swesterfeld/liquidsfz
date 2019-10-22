@@ -62,6 +62,7 @@ struct Region
   float ampeg_decay = 0;
   float ampeg_sustain = 100;
   float ampeg_release = 0;
+  float volume = 0;
 
   bool empty()
   {
