@@ -270,7 +270,7 @@ main (int argc, char **argv)
 {
   if (argc != 2)
     {
-      fprintf (stderr, "usage: liquidsfz <sfz_filename>");
+      fprintf (stderr, "usage: liquidsfz <sfz_filename>\n");
       return 1;
     }
   jack_client_t *client = jack_client_open ("liquidsfz", JackNullOption, NULL);

@@ -233,9 +233,12 @@ Loader::parse (const string& filename)
       const auto cached_sample = sample_cache.load (regions[i].sample);
       regions[i].cached_sample = cached_sample;
 
+      if (!cached_sample)
+        printf ("*** missing sample: '%s'\n", regions[i].sample.c_str());
+
       if (regions[i].loop_mode == LoopMode::DEFAULT)
         {
-          if (cached_sample->loop)
+          if (cached_sample && cached_sample->loop)
             {
               regions[i].loop_mode = LoopMode::CONTINUOUS;
               regions[i].loop_start = cached_sample->loop_start;
