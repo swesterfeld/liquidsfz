@@ -43,8 +43,44 @@ struct SFZSynth
   jack_port_t *audio_left = nullptr;
   jack_port_t *audio_right = nullptr;
   fluid_synth_t *synth = nullptr;
+  fluid_sfont_t *fake_sfont = nullptr;
+  fluid_preset_t *fake_preset = nullptr;
+  unsigned int next_id = 0;
   Loader sfz_loader;
 
+  fluid_voice_t *
+  alloc_voice_with_id (fluid_sample_t *flsample, int chan, int key, int vel)
+  {
+    struct Data {
+      fluid_sample_t *flsample = nullptr;
+      fluid_voice_t *flvoice = nullptr;
+    } data;
+    if (!fake_preset)
+      {
+        fake_sfont = new_fluid_sfont (
+          [](fluid_sfont_t *) { return ""; },
+          [](fluid_sfont_t *sfont, int bank, int prenum) { return (fluid_preset_t *) nullptr; },
+          nullptr, nullptr,
+          [](fluid_sfont_t *) { return int(0); });
+
+        auto note_on_lambda = [](fluid_preset_t *preset, fluid_synth_t *synth, int chan, int key, int vel)
+          {
+            Data *data = (Data *) fluid_preset_get_data (preset);
+            data->flvoice = fluid_synth_alloc_voice (synth, data->flsample, chan, key, vel);
+            return 0;
+          };
+        fake_preset = new_fluid_preset (fake_sfont,
+          [](fluid_preset_t *) { return "preset"; },
+          [](fluid_preset_t *) { return 0; },
+          [](fluid_preset_t *) { return 0; },
+          note_on_lambda,
+          [](fluid_preset_t *) { });
+      }
+    data.flsample = flsample;
+    fluid_preset_set_data (fake_preset, &data);
+    fluid_synth_start (synth, next_id++, fake_preset, 0, chan, key, vel);
+    return data.flvoice;
+  }
   float
   env_time2gen (float time_sec)
   {
@@ -140,7 +176,8 @@ struct SFZSynth
                             printf ("%d %s#%zd\n", key, region.sample.c_str(), ch);
                             fluid_sample_set_pitch (flsample, region.pitch_keycenter, 0);
 
-                            auto flvoice = fluid_synth_alloc_voice (synth, flsample, chan, key, vel);
+                            // auto flvoice = fluid_synth_alloc_voice (synth, flsample, chan, key, vel);
+                            auto flvoice = alloc_voice_with_id (flsample, chan, key, vel);
                             cleanup_finished_voice (flvoice);
 
                             if (region.loop_mode == LoopMode::SUSTAIN || region.loop_mode == LoopMode::CONTINUOUS)
@@ -182,8 +219,8 @@ struct SFZSynth
       {
         if (voice.flvoice && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
           {
-            // fluid_synth_stop (synth, voice.id));
-            fluid_synth_release_voice (synth, voice.flvoice);
+            // fluid_synth_release_voice (synth, voice.flvoice);
+            fluid_synth_stop (synth, voice.id);
             voice.flvoice = nullptr;
           }
       }
