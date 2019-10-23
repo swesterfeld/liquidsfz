@@ -42,6 +42,15 @@ db_to_factor (double dB)
   return pow (10, dB / 20);
 }
 
+double
+db_from_factor (double factor, double min_dB)
+{
+  if (factor > 0)
+    return 20 * log10 (factor);
+  else
+    return min_dB;
+}
+
 constexpr double VOLUME_HEADROOM_DB = 12;
 
 struct SFZSynth
@@ -98,6 +107,17 @@ struct SFZSynth
   env_level2gen (float level_perc)
   {
     return -10 * 20 * log10 (std::clamp (level_perc, 0.001f, 100.f) / 100);
+  }
+  double
+  velocity_track_db (const Region& r, int midi_velocity)
+  {
+    double curve = (midi_velocity * midi_velocity) / (127.0 * 127.0);
+    double veltrack_factor = r.amp_veltrack * 0.01;
+
+    double offset = (veltrack_factor >= 0) ? 1 : 0;
+    double v = (offset - veltrack_factor) + veltrack_factor * curve;
+
+    return db_from_factor (v, -144);
   }
   struct Voice
   {
@@ -185,7 +205,9 @@ struct SFZSynth
                             fluid_sample_set_pitch (flsample, region.pitch_keycenter, 0);
 
                             // auto flvoice = fluid_synth_alloc_voice (synth, flsample, chan, key, vel);
-                            auto flvoice = alloc_voice_with_id (flsample, chan, key, vel);
+                            /* note: we handle velocity based volume (amp_veltrack) ourselves:
+                             *    -> we play all notes via fluidsynth at maximum velocity */
+                            auto flvoice = alloc_voice_with_id (flsample, chan, key, 127);
                             cleanup_finished_voice (flvoice);
 
                             if (region.loop_mode == LoopMode::SUSTAIN || region.loop_mode == LoopMode::CONTINUOUS)
@@ -209,7 +231,7 @@ struct SFZSynth
                             fluid_voice_gen_set (flvoice, GEN_VOLENVRELEASE, env_time2gen (region.ampeg_release));
 
                             /* volume */
-                            double attenuation = -10 * (region.volume - VOLUME_HEADROOM_DB);
+                            double attenuation = -10 * (region.volume - VOLUME_HEADROOM_DB + velocity_track_db (region, vel));
                             fluid_voice_gen_set (flvoice, GEN_ATTENUATION, attenuation);
 
                             fluid_synth_start_voice (synth, flvoice);

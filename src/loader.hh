@@ -63,6 +63,7 @@ struct Region
   float ampeg_sustain = 100;
   float ampeg_release = 0;
   float volume = 0;
+  float amp_veltrack = 100;
 
   bool empty()
   {
