@@ -24,8 +24,6 @@ struct Synth
 
   std::minstd_rand random_gen;
   jack_port_t *midi_input_port = nullptr;
-  jack_port_t *audio_left = nullptr;
-  jack_port_t *audio_right = nullptr;
   fluid_synth_t *synth = nullptr;
   fluid_sfont_t *fake_sfont = nullptr;
   fluid_preset_t *fake_preset = nullptr;
@@ -227,7 +225,7 @@ struct Synth
       }
   }
   int
-  process (jack_nframes_t nframes)
+  process (float **outputs, jack_nframes_t nframes)
   {
     void* port_buf = jack_port_get_buffer (midi_input_port, nframes);
     jack_nframes_t event_count = jack_midi_get_event_count (port_buf);
@@ -253,15 +251,11 @@ struct Synth
               }
           }
       }
-    float *channel_values[2] = {
-      (float *) jack_port_get_buffer (audio_left, nframes),
-      (float *) jack_port_get_buffer (audio_right, nframes)
-    };
-    std::fill_n (channel_values[0], nframes, 0.0);
-    std::fill_n (channel_values[1], nframes, 0.0);
+    std::fill_n (outputs[0], nframes, 0.0);
+    std::fill_n (outputs[1], nframes, 0.0);
     fluid_synth_process (synth, nframes,
                          0, nullptr, /* no effects */
-                         2, channel_values);
+                         2, outputs);
     return 0;
   }
 };
