@@ -70,6 +70,16 @@ struct JackStandalone
   int
   process (jack_nframes_t nframes)
   {
+    void* port_buf = jack_port_get_buffer (synth.midi_input_port, nframes);
+    jack_nframes_t event_count = jack_midi_get_event_count (port_buf);
+
+    for (jack_nframes_t event_index = 0; event_index < event_count; event_index++)
+      {
+        jack_midi_event_t    in_event;
+        jack_midi_event_get (&in_event, port_buf, event_index);
+        synth.add_midi_event (in_event.time, in_event.buffer);
+      }
+
     float *outputs[2] = {
       (float *) jack_port_get_buffer (audio_left, nframes),
       (float *) jack_port_get_buffer (audio_right, nframes)

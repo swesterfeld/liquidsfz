@@ -224,31 +224,41 @@ struct Synth
           }
       }
   }
+  struct
+  MidiEvent
+  {
+    uint offset;
+    unsigned char midi_data[3];
+  };
+  std::vector<MidiEvent> midi_events;
+  void
+  add_midi_event (uint offset, unsigned char *midi_data)
+  {
+    unsigned char status = midi_data[0] & 0xf0;
+    if (status == 0x80 || status == 0x90)
+      {
+        MidiEvent event;
+        event.offset = offset;
+        std::copy_n (midi_data, 3, event.midi_data);
+        midi_events.push_back (event);
+      }
+  }
   int
   process (float **outputs, jack_nframes_t nframes)
   {
-    void* port_buf = jack_port_get_buffer (midi_input_port, nframes);
-    jack_nframes_t event_count = jack_midi_get_event_count (port_buf);
-
-    for (jack_nframes_t event_index = 0; event_index < event_count; event_index++)
+    for (const auto& midi_event : midi_events)
       {
-        jack_midi_event_t    in_event;
-        jack_midi_event_get (&in_event, port_buf, event_index);
-
-        if (in_event.size == 3)
+        unsigned char status  = midi_event.midi_data[0] & 0xf0;
+        unsigned char channel = midi_event.midi_data[0] & 0x0f;
+        if (status == 0x80)
           {
-            unsigned char status  = in_event.buffer[0] & 0xf0;
-            unsigned char channel = in_event.buffer[0] & 0x0f;
-            if (status == 0x80)
-              {
-                // printf ("note off, ch = %d\n", channel);
-                note_off (channel, in_event.buffer[1]);
-              }
-            else if (status == 0x90)
-              {
-                // printf ("note on, ch = %d, note = %d, vel = %d\n", channel, in_event.buffer[1], in_event.buffer[2]);
-                note_on (channel, in_event.buffer[1], in_event.buffer[2]);
-              }
+            // printf ("note off, ch = %d\n", channel);
+            note_off (channel, midi_event.midi_data[1]);
+          }
+        else if (status == 0x90)
+          {
+            // printf ("note on, ch = %d, note = %d, vel = %d\n", channel, in_event.buffer[1], in_event.buffer[2]);
+            note_on (channel, midi_event.midi_data[1], midi_event.midi_data[2]);
           }
       }
     std::fill_n (outputs[0], nframes, 0.0);
@@ -256,6 +266,7 @@ struct Synth
     fluid_synth_process (synth, nframes,
                          0, nullptr, /* no effects */
                          2, outputs);
+    midi_events.clear();
     return 0;
   }
 };
