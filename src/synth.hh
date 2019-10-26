@@ -18,17 +18,42 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-struct Synth
+#include <random>
+#include <algorithm>
+#include <fluidsynth.h>
+#include <assert.h>
+
+#include "loader.hh"
+#include "utils.hh"
+
+class Synth
 {
   static constexpr double VOLUME_HEADROOM_DB = 12;
 
   std::minstd_rand random_gen;
-  jack_port_t *midi_input_port = nullptr;
   fluid_synth_t *synth = nullptr;
+  fluid_settings_t *settings = nullptr;
   fluid_sfont_t *fake_sfont = nullptr;
   fluid_preset_t *fake_preset = nullptr;
   unsigned int next_id = 0;
+
+public:
   Loader sfz_loader;
+
+  Synth (uint sample_rate)
+  {
+    settings = new_fluid_settings();
+    fluid_settings_setnum (settings, "synth.sample-rate", sample_rate);
+    fluid_settings_setnum (settings, "synth.gain", db_to_factor (Synth::VOLUME_HEADROOM_DB));
+    fluid_settings_setint (settings, "synth.reverb.active", 0);
+    fluid_settings_setint (settings, "synth.chorus.active", 0);
+    synth = new_fluid_synth (settings);
+  }
+  ~Synth()
+  {
+    delete_fluid_synth (synth);
+    delete_fluid_settings (settings);
+  }
 
   fluid_voice_t *
   alloc_voice_with_id (fluid_sample_t *flsample, int chan, int key, int vel)
@@ -244,7 +269,7 @@ struct Synth
       }
   }
   int
-  process (float **outputs, jack_nframes_t nframes)
+  process (float **outputs, uint nframes)
   {
     for (const auto& midi_event : midi_events)
       {

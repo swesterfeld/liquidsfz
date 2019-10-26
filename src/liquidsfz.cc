@@ -38,22 +38,21 @@ using std::string;
 using std::regex;
 using std::regex_replace;
 
-struct JackStandalone
+class JackStandalone
 {
-  Synth synth;
-
   jack_client_t *client = nullptr;
+  jack_port_t *midi_input_port = nullptr;
   jack_port_t *audio_left = nullptr;
   jack_port_t *audio_right = nullptr;
 
-  bool
-  open()
-  {
-    client = jack_client_open ("liquidsfz", JackNullOption, NULL);
-    if (!client)
-      return false;
+public:
+  Synth synth;
 
-    synth.midi_input_port = jack_port_register (client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
+  JackStandalone (jack_client_t *client) :
+    client (client),
+    synth (jack_get_sample_rate (client))
+  {
+    midi_input_port = jack_port_register (client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
 
     audio_left = jack_port_register (client, "audio_out_1", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
     audio_right = jack_port_register (client, "audio_out_2", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
@@ -64,13 +63,11 @@ struct JackStandalone
           auto self = static_cast<JackStandalone *> (arg);
           return self->process (nframes);
         }, this);
-
-    return true;
   }
   int
   process (jack_nframes_t nframes)
   {
-    void* port_buf = jack_port_get_buffer (synth.midi_input_port, nframes);
+    void* port_buf = jack_port_get_buffer (midi_input_port, nframes);
     jack_nframes_t event_count = jack_midi_get_event_count (port_buf);
 
     for (jack_nframes_t event_index = 0; event_index < event_count; event_index++)
@@ -95,19 +92,8 @@ struct JackStandalone
         exit (1);
       }
 
-    fluid_settings_t *settings = new_fluid_settings();
-    fluid_settings_setnum (settings, "synth.sample-rate", jack_get_sample_rate (client));
-    fluid_settings_setnum (settings, "synth.gain", db_to_factor (Synth::VOLUME_HEADROOM_DB));
-    fluid_settings_setint (settings, "synth.reverb.active", 0);
-    fluid_settings_setint (settings, "synth.chorus.active", 0);
-    synth.synth = new_fluid_synth (settings);
-
     printf ("Synthesizer running - press \"Enter\" to quit.\n");
     getchar();
-
-    jack_client_close (client);
-    delete_fluid_synth (synth.synth);
-    delete_fluid_settings (settings);
   }
 };
 
@@ -119,13 +105,15 @@ main (int argc, char **argv)
       fprintf (stderr, "usage: liquidsfz <sfz_filename>\n");
       return 1;
     }
-  JackStandalone jack_standalone;
 
-  if (!jack_standalone.open())
+  jack_client_t *client = jack_client_open ("liquidsfz", JackNullOption, NULL);
+  if (!client)
     {
-       fprintf (stderr, "liquidsfz: unable to connect to jack server\n");
-       exit (1);
-     }
+      fprintf (stderr, "liquidsfz: unable to connect to jack server\n");
+      exit (1);
+    }
+
+  JackStandalone jack_standalone (client);
 
   if (!jack_standalone.synth.sfz_loader.parse (argv[1]))
     {
@@ -133,5 +121,7 @@ main (int argc, char **argv)
       return 1;
     }
   jack_standalone.run();
+
+  jack_client_close (client);
   return 0;
 }

@@ -18,6 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef LIQUIDSFZ_SAMPLECACHE_HH
+#define LIQUIDSFZ_SAMPLECACHE_HH
+
 #include <vector>
 #include <map>
 #include <memory>
@@ -103,3 +106,5 @@ public:
     return cache[filename].get();
   }
 };
+
+#endif /* LIQUIDSFZ_SAMPLECACHE_HH */

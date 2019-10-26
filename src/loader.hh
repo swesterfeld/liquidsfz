@@ -18,6 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef LIQUIDSFZ_LOADER_HH
+#define LIQUIDSFZ_LOADER_HH
+
 #include <string>
 #include <filesystem>
 
@@ -193,3 +196,5 @@ struct Loader
   }
   bool parse (const std::string& filename);
 };
+
+#endif /* LIQUIDSFZ_LOADER_HH */
