@@ -38,9 +38,11 @@ main (int argc, char **argv)
   std::vector<float> out_left (1024), out_right (1024);
 
   float *outputs[2] = { out_left.data(), out_right.data() };
-  unsigned char note_on[3] = { 0x90, 60, 100 };
+  unsigned char note_on[3] = { 0x90, 60, 127 };
   synth.add_midi_event (0, note_on);
   std::vector<float> interleaved;
+  float left_peak = 0;
+  float right_peak = 0;
   for (int pos = 0; pos < 100; pos++)
     {
       synth.process (outputs, 1024);
@@ -50,8 +52,13 @@ main (int argc, char **argv)
           //printf ("%d %f %f\n", i, out_left[i], out_right[i]);
           interleaved.push_back (out_left[i]);
           interleaved.push_back (out_right[i]);
+          left_peak = std::max (std::abs (out_left[i]), left_peak);
+          right_peak = std::max (std::abs (out_right[i]), right_peak);
         }
     }
+
+  printf ("left_peak %f\n", left_peak);
+  printf ("right_peak %f\n", right_peak);
 
   SF_INFO sfinfo = {0, };
   sfinfo.samplerate = 48000;

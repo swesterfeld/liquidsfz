@@ -99,6 +99,16 @@ public:
     return -10 * 20 * log10 (std::clamp (level_perc, 0.001f, 100.f) / 100);
   }
   double
+  pan_stereo_db (const Region& r, int ch)
+  {
+    /* sine panning law: we use this because fluidsynth also uses the same law
+     * for panning mono voices (and we want identical stereo/mono panning)
+     */
+
+    const double pan = ch == 0 ? -r.pan : r.pan;
+    return db_from_factor (sin ((pan + 100) / 400 * M_PI), -144);
+  }
+  double
   velocity_track_db (const Region& r, int midi_velocity)
   {
     double curve = (midi_velocity * midi_velocity) / (127.0 * 127.0);
@@ -206,12 +216,18 @@ public:
                                 fluid_voice_gen_set (flvoice, GEN_SAMPLEMODE, 1);
                               }
 
+                            double pan_vol_db = 0;
                             if (region.cached_sample->flsamples.size() == 2) /* pan stereo voices */
                               {
+                                pan_vol_db = pan_stereo_db (region, ch);
                                 if (ch == 0)
                                   fluid_voice_gen_set (flvoice, GEN_PAN, -500);
                                 else
                                   fluid_voice_gen_set (flvoice, GEN_PAN, 500);
+                              }
+                            else
+                              {
+                                fluid_voice_gen_set (flvoice, GEN_PAN, 5 * region.pan);
                               }
                             /* volume envelope */
                             fluid_voice_gen_set (flvoice, GEN_VOLENVDELAY, env_time2gen (region.ampeg_delay));
@@ -221,7 +237,7 @@ public:
                             fluid_voice_gen_set (flvoice, GEN_VOLENVRELEASE, env_time2gen (region.ampeg_release));
 
                             /* volume */
-                            double attenuation = -10 * (region.volume - VOLUME_HEADROOM_DB + velocity_track_db (region, vel));
+                            double attenuation = -10 * (region.volume - VOLUME_HEADROOM_DB + velocity_track_db (region, vel) + pan_vol_db);
                             fluid_voice_gen_set (flvoice, GEN_ATTENUATION, attenuation);
 
                             fluid_synth_start_voice (synth, flvoice);

@@ -117,6 +117,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.volume = convert_float (value);
   else if (key == "amp_veltrack")
     region.amp_veltrack = convert_float (value);
+  else if (key == "pan")
+    region.pan = convert_float (value);
   else
     printf ("unsupported opcode '%s'\n", key.c_str());
 }
