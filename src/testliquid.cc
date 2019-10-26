@@ -40,10 +40,29 @@ main (int argc, char **argv)
   float *outputs[2] = { out_left.data(), out_right.data() };
   unsigned char note_on[3] = { 0x90, 60, 100 };
   synth.add_midi_event (0, note_on);
-  synth.process (outputs, 1024);
-
-  for (int i = 0; i < 1024; i++)
+  std::vector<float> interleaved;
+  for (int pos = 0; pos < 100; pos++)
     {
-      printf ("%d %f %f\n", i, out_left[i], out_right[i]);
+      synth.process (outputs, 1024);
+
+      for (int i = 0; i < 1024; i++)
+        {
+          //printf ("%d %f %f\n", i, out_left[i], out_right[i]);
+          interleaved.push_back (out_left[i]);
+          interleaved.push_back (out_right[i]);
+        }
     }
+
+  SF_INFO sfinfo = {0, };
+  sfinfo.samplerate = 48000;
+  sfinfo.format = SF_FORMAT_PCM_24 | SF_FORMAT_WAV;
+  sfinfo.channels = 2;
+
+  SNDFILE *sndfile = sf_open ("testliquid.wav", SFM_WRITE, &sfinfo);
+
+  sf_count_t frames = interleaved.size() / 2;
+  sf_count_t count = sf_writef_float (sndfile, &interleaved[0], frames);
+  printf ("%zd\n", frames);
+
+  sf_close (sndfile);
 }
