@@ -25,7 +25,6 @@
 #include <map>
 #include <memory>
 
-#include <fluidsynth.h>
 #include <sndfile.h>
 
 class SampleCache
@@ -36,7 +35,7 @@ public:
     int             loop_start = 0;
     int             loop_end = 0;
 
-    std::vector<fluid_sample_t *> flsamples;
+    // FIXME: std::vector<fluid_sample_t *> flsamples;
   };
 private:
   std::map<std::string, std::unique_ptr<Entry>> cache;
@@ -91,6 +90,7 @@ public:
         return nullptr;
       }
 
+#if 0 /* FIXME */
     for (int ch = 0; ch < std::min (sfinfo.channels, 2); ch++)
       {
         std::vector<short> data;
@@ -101,6 +101,7 @@ public:
         fluid_sample_set_sound_data (flsample, &data[0], nullptr, sfinfo.frames, sfinfo.samplerate, /* copy */1);
         new_entry->flsamples.push_back (flsample);
       }
+#endif
 
     cache[filename] = std::move (new_entry);
     return cache[filename].get();

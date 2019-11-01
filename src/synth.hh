@@ -20,7 +20,6 @@
 
 #include <random>
 #include <algorithm>
-#include <fluidsynth.h>
 #include <assert.h>
 
 #include "loader.hh"
@@ -31,10 +30,12 @@ class Synth
   static constexpr double VOLUME_HEADROOM_DB = 12;
 
   std::minstd_rand random_gen;
+#if 0 /* FIXME */
   fluid_synth_t *synth = nullptr;
   fluid_settings_t *settings = nullptr;
   fluid_sfont_t *fake_sfont = nullptr;
   fluid_preset_t *fake_preset = nullptr;
+#endif
   unsigned int next_id = 0;
 
 public:
@@ -42,19 +43,24 @@ public:
 
   Synth (uint sample_rate)
   {
+#if 0
     settings = new_fluid_settings();
     fluid_settings_setnum (settings, "synth.sample-rate", sample_rate);
     fluid_settings_setnum (settings, "synth.gain", db_to_factor (Synth::VOLUME_HEADROOM_DB));
     fluid_settings_setint (settings, "synth.reverb.active", 0);
     fluid_settings_setint (settings, "synth.chorus.active", 0);
     synth = new_fluid_synth (settings);
+#endif /* FIXME */
   }
   ~Synth()
   {
+#if 0
     delete_fluid_synth (synth);
     delete_fluid_settings (settings);
+#endif
   }
 
+#if 0
   fluid_voice_t *
   alloc_voice_with_id (fluid_sample_t *flsample, int chan, int key, int vel)
   {
@@ -88,6 +94,7 @@ public:
     fluid_synth_start (synth, next_id++, fake_preset, 0, chan, key, vel);
     return data.flvoice;
   }
+#endif /* FIXME */
   float
   env_time2gen (float time_sec)
   {
@@ -124,10 +131,11 @@ public:
     int channel = 0;
     int key = 0;
     int id = -1;
-    fluid_voice_t *flvoice = nullptr;
+    // FIXME fluid_voice_t *flvoice = nullptr;
     Region *region = nullptr;
   };
   std::vector<Voice> voices;
+#if 0
   void
   add_voice (Region *region, int channel, int key, fluid_voice_t *flvoice)
   {
@@ -160,6 +168,7 @@ public:
           voice.flvoice = nullptr;
       }
   }
+#endif /* FIXME */
   void
   note_on (int chan, int key, int vel)
   {
@@ -178,12 +187,14 @@ public:
               {
                 if (region.locc[cc] != 0 || region.hicc[cc] != 127)
                   {
+#if 0
                     int val;
                     if (fluid_synth_get_cc (synth, chan, cc, &val) == FLUID_OK)
                       {
                         if (val < region.locc[cc] || val > region.hicc[cc])
                           cc_match = false;
                       }
+#endif /* FIXME */
                   }
               }
             if (!cc_match)
@@ -197,6 +208,7 @@ public:
                   {
                     if (region.cached_sample)
                       {
+#if 0
                         for (size_t ch = 0; ch < region.cached_sample->flsamples.size(); ch++)
                           {
                             auto flsample = region.cached_sample->flsamples[ch];
@@ -243,6 +255,7 @@ public:
                             fluid_synth_start_voice (synth, flvoice);
                             add_voice (&region, chan, key, flvoice);
                           }
+#endif /* FIXME */
                       }
                   }
               }
@@ -255,6 +268,7 @@ public:
   void
   note_off (int chan, int key)
   {
+#if 0
     for (auto& voice : voices)
       {
         if (voice.flvoice && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
@@ -264,6 +278,7 @@ public:
             voice.flvoice = nullptr;
           }
       }
+#endif /* FIXME */
   }
   struct
   MidiEvent
@@ -304,9 +319,11 @@ public:
       }
     std::fill_n (outputs[0], nframes, 0.0);
     std::fill_n (outputs[1], nframes, 0.0);
+#if 0
     fluid_synth_process (synth, nframes,
                          0, nullptr, /* no effects */
                          2, outputs);
+#endif /* FIXME */
     midi_events.clear();
     return 0;
   }

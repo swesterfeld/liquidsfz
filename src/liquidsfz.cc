@@ -18,7 +18,6 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <fluidsynth.h>
 #include <jack/jack.h>
 #include <jack/midiport.h>
 #include <stdlib.h>
