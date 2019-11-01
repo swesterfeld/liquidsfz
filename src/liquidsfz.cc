@@ -48,9 +48,9 @@ public:
   Synth synth;
 
   JackStandalone (jack_client_t *client) :
-    client (client),
-    synth (jack_get_sample_rate (client))
+    client (client)
   {
+    synth.set_sample_rate (jack_get_sample_rate (client));
     midi_input_port = jack_port_register (client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
 
     audio_left = jack_port_register (client, "audio_out_1", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);

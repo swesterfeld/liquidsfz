@@ -28,7 +28,8 @@ main (int argc, char **argv)
       fprintf (stderr, "usage: testliquid <sfz_filename>\n");
       return 1;
     }
-  Synth synth (48000);
+  Synth synth;
+  synth.set_sample_rate (48000);
   if (!synth.sfz_loader.parse (argv[1]))
     {
       fprintf (stderr, "parse error: exiting\n");

@@ -30,71 +30,16 @@ class Synth
   static constexpr double VOLUME_HEADROOM_DB = 12;
 
   std::minstd_rand random_gen;
-#if 0 /* FIXME */
-  fluid_synth_t *synth = nullptr;
-  fluid_settings_t *settings = nullptr;
-  fluid_sfont_t *fake_sfont = nullptr;
-  fluid_preset_t *fake_preset = nullptr;
-#endif
-  unsigned int next_id = 0;
+  uint sample_rate_ = 44100; // default
 
 public:
   Loader sfz_loader;
 
-  Synth (uint sample_rate)
+  void
+  set_sample_rate (uint sample_rate)
   {
-#if 0
-    settings = new_fluid_settings();
-    fluid_settings_setnum (settings, "synth.sample-rate", sample_rate);
-    fluid_settings_setnum (settings, "synth.gain", db_to_factor (Synth::VOLUME_HEADROOM_DB));
-    fluid_settings_setint (settings, "synth.reverb.active", 0);
-    fluid_settings_setint (settings, "synth.chorus.active", 0);
-    synth = new_fluid_synth (settings);
-#endif /* FIXME */
+    sample_rate_ = sample_rate;
   }
-  ~Synth()
-  {
-#if 0
-    delete_fluid_synth (synth);
-    delete_fluid_settings (settings);
-#endif
-  }
-
-#if 0
-  fluid_voice_t *
-  alloc_voice_with_id (fluid_sample_t *flsample, int chan, int key, int vel)
-  {
-    struct Data {
-      fluid_sample_t *flsample = nullptr;
-      fluid_voice_t *flvoice = nullptr;
-    } data;
-    if (!fake_preset)
-      {
-        fake_sfont = new_fluid_sfont (
-          [](fluid_sfont_t *) { return ""; },
-          [](fluid_sfont_t *sfont, int bank, int prenum) { return (fluid_preset_t *) nullptr; },
-          nullptr, nullptr,
-          [](fluid_sfont_t *) { return int(0); });
-
-        auto note_on_lambda = [](fluid_preset_t *preset, fluid_synth_t *synth, int chan, int key, int vel)
-          {
-            Data *data = (Data *) fluid_preset_get_data (preset);
-            data->flvoice = fluid_synth_alloc_voice (synth, data->flsample, chan, key, vel);
-            return 0;
-          };
-        fake_preset = new_fluid_preset (fake_sfont,
-          [](fluid_preset_t *) { return "preset"; },
-          [](fluid_preset_t *) { return 0; },
-          [](fluid_preset_t *) { return 0; },
-          note_on_lambda,
-          [](fluid_preset_t *) { });
-      }
-    data.flsample = flsample;
-    fluid_preset_set_data (fake_preset, &data);
-    fluid_synth_start (synth, next_id++, fake_preset, 0, chan, key, vel);
-    return data.flvoice;
-  }
-#endif /* FIXME */
   float
   env_time2gen (float time_sec)
   {
@@ -300,6 +245,11 @@ public:
         midi_events.push_back (event);
       }
   }
+  static double
+  note_to_freq (int note)
+  {
+    return 440 * exp (log (2) * (note - 69) / 12.0);
+  }
   int
   process (float **outputs, uint nframes)
   {
@@ -326,6 +276,8 @@ public:
           {
             const auto csample = voice.region->cached_sample;
             const auto channels = csample->channels;
+            const double step = double (csample->sample_rate) / sample_rate_ * note_to_freq (voice.key) / note_to_freq (voice.region->pitch_keycenter);
+
 
             for (uint i = 0; i < nframes; i++)
               {
@@ -336,7 +288,7 @@ public:
                     if (x < csample->samples.size())
                       outputs[c][i] += csample->samples[x] * (1 / 32768.);
                   }
-                voice.ppos += 1;
+                voice.ppos += step;
               }
           }
       }
