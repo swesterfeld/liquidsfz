@@ -102,9 +102,10 @@ public:
     voice->channel = channel;
     voice->key = key;
     voice->ppos = 0;
+    double volume_gain = db_to_factor (region.volume);
     double velocity_gain = velocity_track_factor (region, velocity);
-    voice->left_gain = velocity_gain;
-    voice->right_gain = velocity_gain;
+    voice->left_gain = velocity_gain * volume_gain;
+    voice->right_gain = velocity_gain * volume_gain;
     voice->used = true;
     printf ("new voice %s\n", region.sample.c_str());
   }
