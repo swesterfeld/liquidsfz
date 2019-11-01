@@ -130,20 +130,18 @@ public:
   {
     int channel = 0;
     int key = 0;
-    int id = -1;
-    // FIXME fluid_voice_t *flvoice = nullptr;
-    Region *region = nullptr;
+    bool used = false;
+    double ppos = 0;
+
+    const Region *region = nullptr;
   };
   std::vector<Voice> voices;
-#if 0
   void
-  add_voice (Region *region, int channel, int key, fluid_voice_t *flvoice)
+  add_voice (const Region& region, int channel, int key, int velocity)
   {
-    assert (flvoice);
-
     Voice *voice = nullptr;
     for (auto& v : voices)
-      if (!v.flvoice)
+      if (!v.used)
         {
           /* overwrite old voice in vector */
           voice = &v;
@@ -153,12 +151,14 @@ public:
       {
         voice = &voices.emplace_back();
       }
-    voice->region = region;
+    voice->region = &region;
     voice->channel = channel;
     voice->key = key;
-    voice->id = fluid_voice_get_id (flvoice);
-    voice->flvoice = flvoice;
+    voice->ppos = 0;
+    voice->used = true;
+    printf ("new voice %s\n", region.sample.c_str());
   }
+#if 0
   void
   cleanup_finished_voice (fluid_voice_t *flvoice)
   {
@@ -208,6 +208,7 @@ public:
                   {
                     if (region.cached_sample)
                       {
+                        add_voice (region, chan, key, vel);
 #if 0
                         for (size_t ch = 0; ch < region.cached_sample->flsamples.size(); ch++)
                           {
@@ -319,11 +320,26 @@ public:
       }
     std::fill_n (outputs[0], nframes, 0.0);
     std::fill_n (outputs[1], nframes, 0.0);
-#if 0
-    fluid_synth_process (synth, nframes,
-                         0, nullptr, /* no effects */
-                         2, outputs);
-#endif /* FIXME */
+    for (auto& voice : voices)
+      {
+        if (voice.used)
+          {
+            const auto csample = voice.region->cached_sample;
+            const auto channels = csample->channels;
+
+            for (uint i = 0; i < nframes; i++)
+              {
+                uint ii = voice.ppos;
+                uint x = ii * channels;
+                for (uint c = 0; c < csample->channels; c++)
+                  {
+                    if (x < csample->samples.size())
+                      outputs[c][i] += csample->samples[x] * (1 / 32768.);
+                  }
+                voice.ppos += 1;
+              }
+          }
+      }
     midi_events.clear();
     return 0;
   }

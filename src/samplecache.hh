@@ -31,11 +31,13 @@ class SampleCache
 {
 public:
   struct Entry {
-    bool            loop = false;
-    int             loop_start = 0;
-    int             loop_end = 0;
+    bool                loop = false;
+    int                 loop_start = 0;
+    int                 loop_end = 0;
 
-    // FIXME: std::vector<fluid_sample_t *> flsamples;
+    std::vector<short>  samples; /* FIXME: what about same sample, different settings */
+    uint                sample_rate;
+    uint                channels;
   };
 private:
   std::map<std::string, std::unique_ptr<Entry>> cache;
@@ -90,18 +92,9 @@ public:
         return nullptr;
       }
 
-#if 0 /* FIXME */
-    for (int ch = 0; ch < std::min (sfinfo.channels, 2); ch++)
-      {
-        std::vector<short> data;
-        for (int i = 0; i < sfinfo.frames; i++)
-          data.push_back (isamples[sfinfo.channels * i + ch]);
-
-        auto flsample = new_fluid_sample();
-        fluid_sample_set_sound_data (flsample, &data[0], nullptr, sfinfo.frames, sfinfo.samplerate, /* copy */1);
-        new_entry->flsamples.push_back (flsample);
-      }
-#endif
+    new_entry->samples = std::move (isamples);
+    new_entry->sample_rate = sfinfo.samplerate;
+    new_entry->channels = sfinfo.channels;
 
     cache[filename] = std::move (new_entry);
     return cache[filename].get();

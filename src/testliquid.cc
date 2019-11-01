@@ -68,7 +68,7 @@ main (int argc, char **argv)
   SNDFILE *sndfile = sf_open ("testliquid.wav", SFM_WRITE, &sfinfo);
 
   sf_count_t frames = interleaved.size() / 2;
-  sf_count_t count = sf_writef_float (sndfile, &interleaved[0], frames);
+  sf_writef_float (sndfile, &interleaved[0], frames);
   printf ("%zd\n", frames);
 
   sf_close (sndfile);
