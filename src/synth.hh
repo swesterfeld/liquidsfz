@@ -61,7 +61,7 @@ public:
     return db_from_factor (sin ((pan + 100) / 400 * M_PI), -144);
   }
   double
-  velocity_track_db (const Region& r, int midi_velocity)
+  velocity_track_factor (const Region& r, int midi_velocity)
   {
     double curve = (midi_velocity * midi_velocity) / (127.0 * 127.0);
     double veltrack_factor = r.amp_veltrack * 0.01;
@@ -69,7 +69,7 @@ public:
     double offset = (veltrack_factor >= 0) ? 1 : 0;
     double v = (offset - veltrack_factor) + veltrack_factor * curve;
 
-    return db_from_factor (v, -144);
+    return v;
   }
   struct Voice
   {
@@ -77,6 +77,8 @@ public:
     int key = 0;
     bool used = false;
     double ppos = 0;
+    float left_gain = 0;
+    float right_gain = 0;
 
     const Region *region = nullptr;
   };
@@ -100,6 +102,9 @@ public:
     voice->channel = channel;
     voice->key = key;
     voice->ppos = 0;
+    double velocity_gain = velocity_track_factor (region, velocity);
+    voice->left_gain = velocity_gain;
+    voice->right_gain = velocity_gain;
     voice->used = true;
     printf ("new voice %s\n", region.sample.c_str());
   }
@@ -283,10 +288,22 @@ public:
               {
                 uint ii = voice.ppos;
                 uint x = ii * channels;
-                for (uint c = 0; c < csample->channels; c++)
+                if (x < csample->samples.size())
                   {
-                    if (x < csample->samples.size())
-                      outputs[c][i] += csample->samples[x] * (1 / 32768.);
+                    if (channels == 1)
+                      {
+                        outputs[0][i] += csample->samples[x] * voice.left_gain * (1 / 32768.);
+                        outputs[1][i] += csample->samples[x] * voice.right_gain * (1 / 32768.);
+                      }
+                    else if (channels == 2)
+                      {
+                        outputs[0][i] += csample->samples[x] * voice.left_gain * (1 / 32768.);
+                        outputs[1][i] += csample->samples[x + 1] * voice.right_gain * (1 / 32768.);
+                      }
+                    else
+                      {
+                        assert (false);
+                      }
                   }
                 voice.ppos += step;
               }
