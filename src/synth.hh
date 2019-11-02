@@ -27,8 +27,6 @@
 
 class Synth
 {
-  static constexpr double VOLUME_HEADROOM_DB = 12;
-
   std::minstd_rand random_gen;
   uint sample_rate_ = 44100; // default
 
@@ -109,17 +107,6 @@ public:
     voice->used = true;
     printf ("new voice %s\n", region.sample.c_str());
   }
-#if 0
-  void
-  cleanup_finished_voice (fluid_voice_t *flvoice)
-  {
-    for (auto& voice : voices)
-      {
-        if (flvoice == voice.flvoice)
-          voice.flvoice = nullptr;
-      }
-  }
-#endif /* FIXME */
   void
   note_on (int chan, int key, int vel)
   {
@@ -220,17 +207,13 @@ public:
   void
   note_off (int chan, int key)
   {
-#if 0
     for (auto& voice : voices)
       {
-        if (voice.flvoice && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
+        if (voice.used && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
           {
-            // fluid_synth_release_voice (synth, voice.flvoice);
-            fluid_synth_stop (synth, voice.id);
-            voice.flvoice = nullptr;
+            voice.used = false; // FIXME: envelope
           }
       }
-#endif /* FIXME */
   }
   struct
   MidiEvent
@@ -305,6 +288,10 @@ public:
                       {
                         assert (false);
                       }
+                  }
+                else
+                  {
+                    voice.used = false; // FIXME: envelope
                   }
                 voice.ppos += step;
               }
