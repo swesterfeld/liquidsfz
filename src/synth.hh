@@ -271,9 +271,16 @@ public:
               {
                 for (uint i = 0; i < fsamples.size(); i++)
                   {
-                    fsamples[i] = csample->samples[x];
-                    x++;
-                    // FIXME: wrap around
+                    if (x >= csample->samples.size())
+                      {
+                        fsamples[i] = 0;
+                      }
+                    else
+                      {
+                        fsamples[i] = csample->samples[x];
+                        x++;
+                        // FIXME: wrap around
+                      }
                   }
               };
 
@@ -281,10 +288,18 @@ public:
               {
                 for (uint i = 0; i < fsamples.size(); i += 2)
                   {
-                    fsamples[i]     = csample->samples[x];
-                    fsamples[i + 1] = csample->samples[x + 1];
-                    x += 2;
-                    // FIXME: wrap around
+                    if (x >= csample->samples.size())
+                      {
+                        fsamples[i]     = 0;
+                        fsamples[i + 1] = 0;
+                      }
+                    else
+                      {
+                        fsamples[i]     = csample->samples[x];
+                        fsamples[i + 1] = csample->samples[x + 1];
+                        x += 2;
+                        // FIXME: wrap around
+                      }
                   }
               };
 
