@@ -267,7 +267,7 @@ public:
             const auto channels = csample->channels;
             const double step = double (csample->sample_rate) / sample_rate_ * note_to_freq (voice.key) / note_to_freq (voice.region->pitch_keycenter);
 
-            auto get_samples_mono = [csample] (uint x, auto& fsamples)
+            auto get_samples_mono = [csample, &voice] (uint x, auto& fsamples)
               {
                 for (uint i = 0; i < fsamples.size(); i++)
                   {
@@ -279,12 +279,15 @@ public:
                       {
                         fsamples[i] = csample->samples[x];
                         x++;
-                        // FIXME: wrap around
+
+                        if (voice.region->loop_mode == LoopMode::SUSTAIN || voice.region->loop_mode == LoopMode::CONTINUOUS)
+                          if (x > uint (voice.region->loop_end))
+                            x = voice.region->loop_start;
                       }
                   }
               };
 
-            auto get_samples_stereo = [csample] (uint x, auto& fsamples)
+            auto get_samples_stereo = [csample, &voice] (uint x, auto& fsamples)
               {
                 for (uint i = 0; i < fsamples.size(); i += 2)
                   {
@@ -298,7 +301,10 @@ public:
                         fsamples[i]     = csample->samples[x];
                         fsamples[i + 1] = csample->samples[x + 1];
                         x += 2;
-                        // FIXME: wrap around
+
+                        if (voice.region->loop_mode == LoopMode::SUSTAIN || voice.region->loop_mode == LoopMode::CONTINUOUS)
+                          if (x > uint (voice.region->loop_end * 2))
+                            x = voice.region->loop_start * 2;
                       }
                   }
               };
