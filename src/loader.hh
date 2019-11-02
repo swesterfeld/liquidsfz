@@ -156,6 +156,7 @@ struct Loader
       return LoopMode::CONTINUOUS;
     else if (l == "loop_sustain")
       return LoopMode::SUSTAIN;
+    warn ("unknown loop mode: " + l);
     return LoopMode::DEFAULT;
   }
   bool
@@ -189,6 +190,11 @@ struct Loader
       }
     else
       printf ("unhandled tag '%s'\n", tag.c_str());
+  }
+  void
+  warn (const std::string& error)
+  {
+    fprintf (stderr, "warning: %s: line %d: %s\n", filename.c_str(), line_count, error.c_str());
   }
   void
   fail (const std::string& error)

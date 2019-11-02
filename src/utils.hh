@@ -21,6 +21,8 @@
 #ifndef LIQUIDSFZ_UTILS_HH
 #define LIQUIDSFZ_UTILS_HH
 
+#include <sys/time.h>
+
 double
 db_to_factor (double dB)
 {
@@ -34,6 +36,16 @@ db_from_factor (double factor, double min_dB)
     return 20 * log10 (factor);
   else
     return min_dB;
+}
+
+double
+get_time()
+{
+  /* return timestamp in seconds as double */
+  timeval tv;
+  gettimeofday (&tv, 0);
+
+  return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
 #endif /* LIQUIDSFZ_UTILS_HH */
