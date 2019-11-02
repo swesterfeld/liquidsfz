@@ -51,14 +51,14 @@ public:
     return -10 * 20 * log10 (std::clamp (level_perc, 0.001f, 100.f) / 100);
   }
   double
-  pan_stereo_db (const Region& r, int ch)
+  pan_stereo_factor (const Region& r, int ch)
   {
     /* sine panning law: we use this because fluidsynth also uses the same law
      * for panning mono voices (and we want identical stereo/mono panning)
      */
 
     const double pan = ch == 0 ? -r.pan : r.pan;
-    return db_from_factor (sin ((pan + 100) / 400 * M_PI), -144);
+    return sin ((pan + 100) / 400 * M_PI);
   }
   double
   velocity_track_factor (const Region& r, int midi_velocity)
@@ -104,8 +104,8 @@ public:
     voice->ppos = 0;
     double volume_gain = db_to_factor (region.volume);
     double velocity_gain = velocity_track_factor (region, velocity);
-    voice->left_gain = velocity_gain * volume_gain;
-    voice->right_gain = velocity_gain * volume_gain;
+    voice->left_gain = velocity_gain * volume_gain * pan_stereo_factor (region, 0);
+    voice->right_gain = velocity_gain * volume_gain * pan_stereo_factor (region, 1);
     voice->used = true;
     printf ("new voice %s\n", region.sample.c_str());
   }
