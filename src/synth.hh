@@ -294,6 +294,12 @@ public:
                     voice.used = false; // FIXME: envelope
                   }
                 voice.ppos += step;
+                if (voice.region->loop_mode == LoopMode::SUSTAIN || voice.region->loop_mode == LoopMode::CONTINUOUS)
+                  {
+                    if (voice.region->loop_end > voice.region->loop_start)
+                      while (voice.ppos > voice.region->loop_end)
+                        voice.ppos -= (voice.region->loop_end - voice.region->loop_start);
+                  }
               }
           }
       }
