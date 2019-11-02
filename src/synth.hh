@@ -105,7 +105,7 @@ public:
     voice->left_gain = velocity_gain * volume_gain * pan_stereo_factor (region, 0);
     voice->right_gain = velocity_gain * volume_gain * pan_stereo_factor (region, 1);
     voice->used = true;
-    printf ("new voice %s\n", region.sample.c_str());
+    printf ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
   }
   void
   note_on (int chan, int key, int vel)
@@ -267,22 +267,50 @@ public:
             const auto channels = csample->channels;
             const double step = double (csample->sample_rate) / sample_rate_ * note_to_freq (voice.key) / note_to_freq (voice.region->pitch_keycenter);
 
+            auto get_samples_mono = [csample] (uint x, auto& fsamples)
+              {
+                for (uint i = 0; i < fsamples.size(); i++)
+                  {
+                    fsamples[i] = csample->samples[x];
+                    x++;
+                    // FIXME: wrap around
+                  }
+              };
+
+            auto get_samples_stereo = [csample] (uint x, auto& fsamples)
+              {
+                for (uint i = 0; i < fsamples.size(); i += 2)
+                  {
+                    fsamples[i]     = csample->samples[x];
+                    fsamples[i + 1] = csample->samples[x + 1];
+                    x += 2;
+                    // FIXME: wrap around
+                  }
+              };
 
             for (uint i = 0; i < nframes; i++)
               {
-                uint ii = voice.ppos;
-                uint x = ii * channels;
+                const uint ii = voice.ppos;
+                const uint x = ii * channels;
+                const float frac = voice.ppos - ii;
                 if (x < csample->samples.size())
                   {
                     if (channels == 1)
                       {
-                        outputs[0][i] += csample->samples[x] * voice.left_gain * (1 / 32768.);
-                        outputs[1][i] += csample->samples[x] * voice.right_gain * (1 / 32768.);
+                        std::array<float, 2> fsamples;
+                        get_samples_mono (x, fsamples);
+
+                        const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
+                        outputs[0][i] += interp * voice.left_gain * (1 / 32768.);
+                        outputs[1][i] += interp * voice.right_gain * (1 / 32768.);
                       }
                     else if (channels == 2)
                       {
-                        outputs[0][i] += csample->samples[x] * voice.left_gain * (1 / 32768.);
-                        outputs[1][i] += csample->samples[x + 1] * voice.right_gain * (1 / 32768.);
+                        std::array<float, 4> fsamples;
+                        get_samples_stereo (x, fsamples);
+
+                        outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * voice.left_gain * (1 / 32768.);
+                        outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * voice.right_gain * (1 / 32768.);
                       }
                     else
                       {
