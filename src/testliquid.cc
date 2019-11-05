@@ -40,12 +40,16 @@ main (int argc, char **argv)
 
   float *outputs[2] = { out_left.data(), out_right.data() };
   unsigned char note_on[3] = { 0x90, 60, 127 };
+  unsigned char note_off[3] = { 0x80, 60, 127 };
   synth.add_midi_event (0, note_on);
   std::vector<float> interleaved;
   float left_peak = 0;
   float right_peak = 0;
   for (int pos = 0; pos < 100; pos++)
     {
+      if (pos == 50)
+        synth.add_midi_event (0, note_off);
+
       synth.process (outputs, 1024);
 
       for (int i = 0; i < 1024; i++)

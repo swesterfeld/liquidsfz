@@ -1,6 +1,6 @@
 bin_PROGRAMS = liquidsfz
 
-liquidsfz_SOURCES = liquidsfz.cc samplecache.hh loader.cc loader.hh
+liquidsfz_SOURCES = liquidsfz.cc samplecache.hh loader.cc loader.hh envelope.hh
 liquidsfz_LDFLAGS = $(SNDFILE_LIBS) $(JACK_LIBS) -lstdc++fs
 
 AM_CXXFLAGS = $(SNDFILE_CFLAGS) $(JACK_CFLAGS)
