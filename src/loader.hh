@@ -24,6 +24,7 @@
 #include <string>
 #include <filesystem>
 
+#include "log.hh"
 #include "samplecache.hh"
 
 enum class Trigger {
@@ -168,7 +169,7 @@ struct Loader
   void
   handle_tag (const std::string& tag)
   {
-    printf ("+++ TAG %s\n", tag.c_str());
+    log_printf (LiquidSFZ::Log::DEBUG, "+++ TAG %s\n", tag.c_str());
 
     /* if we are done building a region, store it */
     if (tag == "region" || tag == "group")

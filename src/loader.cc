@@ -30,6 +30,8 @@ using std::vector;
 using std::regex;
 using std::regex_replace;
 
+using namespace LiquidSFZ;
+
 static string
 strip_spaces (const string& s)
 {
@@ -47,7 +49,7 @@ Loader::set_key_value (const string& key, const string& value)
     return;
 
   Region& region = (region_type == RegionType::REGION) ? active_region : active_group;
-  printf ("+++ '%s' = '%s'\n", key.c_str(), value.c_str());
+  log_printf (Log::DEBUG, "+++ '%s' = '%s'\n", key.c_str(), value.c_str());
   if (key == "sample")
     {
       // on unix, convert \-seperated filename to /-separated filename

@@ -1,14 +1,16 @@
 bin_PROGRAMS = liquidsfz
 
-liquidsfz_SOURCES = liquidsfz.cc samplecache.hh loader.cc loader.hh envelope.hh
+COMMON_SOURCES = log.hh log.cc
+
+liquidsfz_SOURCES = liquidsfz.cc samplecache.hh loader.cc loader.hh envelope.hh $(COMMON_SOURCES)
 liquidsfz_LDFLAGS = $(SNDFILE_LIBS) $(JACK_LIBS) -lstdc++fs
 
 AM_CXXFLAGS = $(SNDFILE_CFLAGS) $(JACK_CFLAGS)
 
 noinst_PROGRAMS = testliquid testperf
 
-testliquid_SOURCES = testliquid.cc loader.cc
+testliquid_SOURCES = testliquid.cc loader.cc $(COMMON_SOURCES)
 testliquid_LDFLAGS = $(SNDFILE_LIBS) -lstdc++fs
 
-testperf_SOURCES = testperf.cc loader.cc
+testperf_SOURCES = testperf.cc loader.cc $(COMMON_SOURCES)
 testperf_LDFLAGS = $(SNDFILE_LIBS) -lstdc++fs

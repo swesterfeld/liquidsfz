@@ -21,15 +21,31 @@
 #ifndef LIQUIDSFZ_UTILS_HH
 #define LIQUIDSFZ_UTILS_HH
 
-#include <sys/time.h>
+// detect compiler
+#if __clang__
+  #define LIQUIDSFZ_COMP_CLANG
+#elif __GNUC__ > 2
+  #define LIQUIDSFZ_COMP_GCC
+#else
+  #error "unsupported compiler"
+#endif
 
-double
+#ifdef LIQUIDSFZ_COMP_GCC
+  #define LIQUIDSFZ_PRINTF(format_idx, arg_idx)      __attribute__ ((__format__ (gnu_printf, format_idx, arg_idx)))
+#else
+  #define LIQUIDSFZ_PRINTF(format_idx, arg_idx)      __attribute__ ((__format__ (__printf__, format_idx, arg_idx)))
+#endif
+
+#include <sys/time.h>
+#include <math.h>
+
+inline double
 db_to_factor (double dB)
 {
   return pow (10, dB / 20);
 }
 
-double
+inline double
 db_from_factor (double factor, double min_dB)
 {
   if (factor > 0)
@@ -38,7 +54,7 @@ db_from_factor (double factor, double min_dB)
     return min_dB;
 }
 
-double
+inline double
 get_time()
 {
   /* return timestamp in seconds as double */
