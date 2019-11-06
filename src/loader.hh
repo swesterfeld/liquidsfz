@@ -1,5 +1,5 @@
 /*
- * liquidsfz - sfz support using fluidsynth
+ * liquidsfz - sfz sampler
  *
  * Copyright (C) 2019  Stefan Westerfeld
  *
