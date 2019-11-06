@@ -58,12 +58,3 @@ Synth::process (float **outputs, uint nframes)
 {
   impl->synth.process (outputs, nframes);
 }
-
-/**
- * \mainpage LiquidSFZ
- *
- * \section intro_sec Introduction
- *
- * LiquidSFZ is a library to load and replay sample based instruments in .sfz format. If you want
- * to use libquidsfz in your own project, use the LiquidSFZ::Synth class.
- */

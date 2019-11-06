@@ -46,6 +46,8 @@ public:
    * \brief Load .sfz file including all samples
    *
    * @param filename   name of the .sfz file
+   *
+   * @returns true if the .sfz could be loaded successfully
    */
   bool load (const std::string& filename);
 
@@ -65,6 +67,8 @@ public:
    *
    * This will render one stereo output stream, left output to outputs[0] and
    * right output to outputs[1]. The contents of the output buffers will be overwritten.
+   * The midi events added by add_midi_event() will be processed at the appropriate time
+   * offsets. After process() is done, the contents  of midi buffer will be discarded.
    *
    * @param outputs    buffers for the output of the synthesizer
    * @param n_frames   number of stereo frames to be written
@@ -73,5 +77,14 @@ public:
 };
 
 }
+
+/**
+ * \mainpage LiquidSFZ
+ *
+ * \section intro_sec Introduction
+ *
+ * LiquidSFZ is a library to load and replay sample based instruments in .sfz format. If you want
+ * to use libquidsfz in your own project, use the LiquidSFZ::Synth class.
+ */
 
 #endif
