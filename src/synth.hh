@@ -166,7 +166,7 @@ public:
   };
   std::vector<MidiEvent> midi_events;
   void
-  add_midi_event (uint offset, unsigned char *midi_data)
+  add_midi_event (uint offset, const unsigned char *midi_data)
   {
     unsigned char status = midi_data[0] & 0xf0;
     if (status == 0x80 || status == 0x90)

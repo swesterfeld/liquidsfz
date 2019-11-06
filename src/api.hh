@@ -55,12 +55,14 @@ public:
    * \brief Add a new midi event to the event list for the next process() call
    *
    * Events must be added in the correct order, sorted by offset. The events
-   * will be processed during the next process() call.
+   * will be processed during the next process() call. The number of bytes
+   * for the midi_data will be computed from the midi event type in first byte.
+   * Typically there are 3 bytes for common midi events (note on, note off, ...).
    *
    * @param offset      time index for the midi event
    * @param midi_data   raw midi data (for instance {0x90, 60, 100} for note on, middle C, velocity 100)
    */
-  void add_midi_event (uint offset, unsigned char *midi_data);
+  void add_midi_event (uint offset, const unsigned char *midi_data);
 
   /**
    * \brief Synthesize audio

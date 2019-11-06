@@ -48,7 +48,7 @@ Synth::load (const std::string& filename)
 }
 
 void
-Synth::add_midi_event (uint offset, unsigned char *midi_data)
+Synth::add_midi_event (uint offset, const unsigned char *midi_data)
 {
   impl->synth.add_midi_event (offset, midi_data);
 }
