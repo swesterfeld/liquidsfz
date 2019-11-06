@@ -20,17 +20,16 @@
 
 #include "utils.hh"
 
+#include <string>
+
 namespace LiquidSFZ
 {
 
-enum class Log
-{
-  DEBUG,
-  INFO,
-  WARNING,
-  ERROR
-};
+void log_error (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
+void log_warning (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
+void log_info (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
+void log_debug (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
 
-void log_printf (Log level, const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
+std::string string_printf (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
 
 }

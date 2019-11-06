@@ -49,7 +49,7 @@ Loader::set_key_value (const string& key, const string& value)
     return;
 
   Region& region = (region_type == RegionType::REGION) ? active_region : active_group;
-  log_printf (Log::DEBUG, "+++ '%s' = '%s'\n", key.c_str(), value.c_str());
+  log_debug ("+++ '%s' = '%s'\n", key.c_str(), value.c_str());
   if (key == "sample")
     {
       // on unix, convert \-seperated filename to /-separated filename
@@ -122,7 +122,7 @@ Loader::set_key_value (const string& key, const string& value)
   else if (key == "pan")
     region.pan = convert_float (value);
   else
-    printf ("unsupported opcode '%s'\n", key.c_str());
+    log_warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }
 
 bool
@@ -216,7 +216,7 @@ Loader::parse (const string& filename)
                     }
                   else
                     {
-                      fail ("sample/sw_label opcode");
+                      log_error ("%s parse error in sample/sw_label opcode parsing\n", location().c_str());
                       return false;
                     }
                 }
@@ -228,7 +228,7 @@ Loader::parse (const string& filename)
             }
           else
             {
-              fail ("toplevel parsing");
+              log_error ("%s toplevel parsing failed\n", location().c_str());
               return false;
             }
         }

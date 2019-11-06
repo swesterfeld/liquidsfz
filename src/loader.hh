@@ -157,7 +157,7 @@ struct Loader
       return LoopMode::CONTINUOUS;
     else if (l == "loop_sustain")
       return LoopMode::SUSTAIN;
-    warn ("unknown loop mode: " + l);
+    LiquidSFZ::log_warning ("%s unknown loop mode: %s\n", location().c_str(), l.c_str());
     return LoopMode::DEFAULT;
   }
   bool
@@ -169,7 +169,7 @@ struct Loader
   void
   handle_tag (const std::string& tag)
   {
-    log_printf (LiquidSFZ::Log::DEBUG, "+++ TAG %s\n", tag.c_str());
+    LiquidSFZ::log_debug ("+++ TAG %s\n", tag.c_str());
 
     /* if we are done building a region, store it */
     if (tag == "region" || tag == "group")
@@ -192,15 +192,10 @@ struct Loader
     else
       printf ("unhandled tag '%s'\n", tag.c_str());
   }
-  void
-  warn (const std::string& error)
+  std::string
+  location()
   {
-    fprintf (stderr, "warning: %s: line %d: %s\n", filename.c_str(), line_count, error.c_str());
-  }
-  void
-  fail (const std::string& error)
-  {
-    fprintf (stderr, "parse error: %s: line %d: %s\n", filename.c_str(), line_count, error.c_str());
+    return LiquidSFZ::string_printf ("%s: line %d:", filename.c_str(), line_count);
   }
   bool parse (const std::string& filename);
 };
