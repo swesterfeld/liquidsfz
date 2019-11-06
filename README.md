@@ -2,13 +2,10 @@
 
 ## DESCRIPTION
 
-liquidsfz is an attempt to implement a full sfz sampler based on fluidsynth. So
-the code here merely contains a parser for sfz files, code to load the samples
-and code to map the sfz parameters to fluidsynth. The actual synthesis is
-performed using fluidsynth.
-
-Right now liquidsfz is in the early development phase. Later on, it will have
-a library API so that other programs can also support the sfz format.
+liquidsfz is an attempt to implement an free and open source sampler that can
+load and play .sfz files. The main goal is to provide a library that is easy
+to integrate into other projects. Right now the API is still changing fast,
+but in the long term goal is to provide a library API that is stable.
 
 ## TESTING
 
