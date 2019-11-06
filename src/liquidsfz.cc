@@ -34,8 +34,8 @@
 
 using std::vector;
 using std::string;
-using std::regex;
-using std::regex_replace;
+
+using namespace LiquidSFZ;
 
 class JackStandalone
 {

@@ -27,6 +27,9 @@
 
 #include <sndfile.h>
 
+namespace LiquidSFZ
+{
+
 class SampleCache
 {
 public:
@@ -100,5 +103,7 @@ public:
     return cache[filename].get();
   }
 };
+
+}
 
 #endif /* LIQUIDSFZ_SAMPLECACHE_HH */

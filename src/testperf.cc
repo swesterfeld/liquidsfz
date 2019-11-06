@@ -21,6 +21,8 @@
 #include "synth.hh"
 #include "utils.hh"
 
+using namespace LiquidSFZ;
+
 int
 main (int argc, char **argv)
 {

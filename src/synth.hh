@@ -26,6 +26,9 @@
 #include "utils.hh"
 #include "envelope.hh"
 
+namespace LiquidSFZ
+{
+
 class Synth
 {
   std::minstd_rand random_gen;
@@ -362,4 +365,4 @@ public:
   }
 };
 
-
+}

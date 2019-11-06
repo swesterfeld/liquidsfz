@@ -6,6 +6,9 @@
 
 using namespace LiquidSFZ;
 
+namespace LiquidSFZ
+{
+
 enum class Log
 {
   DEBUG,
@@ -26,6 +29,7 @@ log2str (Log level)
       case Log::WARNING:  return "warning";
       case Log::ERROR:    return "error";
     }
+  return "***loglevel?***";
 }
 
 static string
@@ -45,15 +49,16 @@ string_vprintf (const char *format, va_list vargs)
   return s;
 }
 
-static inline void
+static void
 logv (Log level, const char *format, va_list vargs)
 {
   string s = string_vprintf (format, vargs);
+
   fprintf (stderr, "[%s] %s", log2str (level).c_str(), s.c_str());
 }
 
 void
-LiquidSFZ::log_error (const char *format, ...)
+log_error (const char *format, ...)
 {
   va_list ap;
 
@@ -63,7 +68,7 @@ LiquidSFZ::log_error (const char *format, ...)
 }
 
 void
-LiquidSFZ::log_warning (const char *format, ...)
+log_warning (const char *format, ...)
 {
   va_list ap;
 
@@ -73,7 +78,7 @@ LiquidSFZ::log_warning (const char *format, ...)
 }
 
 void
-LiquidSFZ::log_info (const char *format, ...)
+log_info (const char *format, ...)
 {
   va_list ap;
 
@@ -83,7 +88,7 @@ LiquidSFZ::log_info (const char *format, ...)
 }
 
 void
-LiquidSFZ::log_debug (const char *format, ...)
+log_debug (const char *format, ...)
 {
   va_list ap;
 
@@ -93,7 +98,7 @@ LiquidSFZ::log_debug (const char *format, ...)
 }
 
 string
-LiquidSFZ::string_printf (const char *format, ...)
+string_printf (const char *format, ...)
 {
   va_list ap;
 
@@ -102,4 +107,6 @@ LiquidSFZ::string_printf (const char *format, ...)
   va_end (ap);
 
   return s;
+}
+
 }

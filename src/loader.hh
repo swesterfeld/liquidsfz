@@ -27,6 +27,9 @@
 #include "log.hh"
 #include "samplecache.hh"
 
+namespace LiquidSFZ
+{
+
 enum class Trigger {
   ATTACK,
   RELEASE,
@@ -157,7 +160,7 @@ struct Loader
       return LoopMode::CONTINUOUS;
     else if (l == "loop_sustain")
       return LoopMode::SUSTAIN;
-    LiquidSFZ::log_warning ("%s unknown loop mode: %s\n", location().c_str(), l.c_str());
+    log_warning ("%s unknown loop mode: %s\n", location().c_str(), l.c_str());
     return LoopMode::DEFAULT;
   }
   bool
@@ -169,7 +172,7 @@ struct Loader
   void
   handle_tag (const std::string& tag)
   {
-    LiquidSFZ::log_debug ("+++ TAG %s\n", tag.c_str());
+    log_debug ("+++ TAG %s\n", tag.c_str());
 
     /* if we are done building a region, store it */
     if (tag == "region" || tag == "group")
@@ -195,9 +198,11 @@ struct Loader
   std::string
   location()
   {
-    return LiquidSFZ::string_printf ("%s: line %d:", filename.c_str(), line_count);
+    return string_printf ("%s: line %d:", filename.c_str(), line_count);
   }
   bool parse (const std::string& filename);
 };
+
+}
 
 #endif /* LIQUIDSFZ_LOADER_HH */

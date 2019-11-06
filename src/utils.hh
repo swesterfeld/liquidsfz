@@ -39,6 +39,9 @@
 #include <sys/time.h>
 #include <math.h>
 
+namespace LiquidSFZ
+{
+
 inline double
 db_to_factor (double dB)
 {
@@ -62,6 +65,8 @@ get_time()
   gettimeofday (&tv, 0);
 
   return tv.tv_sec + tv.tv_usec / 1000000.0;
+}
+
 }
 
 #endif /* LIQUIDSFZ_UTILS_HH */

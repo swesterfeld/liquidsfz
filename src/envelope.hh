@@ -18,6 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+namespace LiquidSFZ
+{
+
 class Envelope
 {
   int attack_len_ = 0;
@@ -138,3 +141,5 @@ public:
     return level_;
   }
 };
+
+}
