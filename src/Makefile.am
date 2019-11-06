@@ -1,6 +1,6 @@
 bin_PROGRAMS = liquidsfz
 
-COMMON_SOURCES = log.hh log.cc voice.hh voice.cc
+COMMON_SOURCES = log.hh log.cc voice.hh voice.cc utils.hh synth.hh
 
 liquidsfz_SOURCES = liquidsfz.cc samplecache.hh loader.cc loader.hh envelope.hh $(COMMON_SOURCES)
 liquidsfz_LDFLAGS = $(SNDFILE_LIBS) $(JACK_LIBS) -lstdc++fs
