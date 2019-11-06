@@ -45,16 +45,6 @@ public:
   {
     sample_rate_ = sample_rate;
   }
-  float
-  env_time2gen (float time_sec)
-  {
-    return 1200 * log2f (std::clamp (time_sec, 0.001f, 100.f));
-  }
-  float
-  env_level2gen (float level_perc)
-  {
-    return -10 * 20 * log10 (std::clamp (level_perc, 0.001f, 100.f) / 100);
-  }
   bool
   load (const std::string& filename)
   {
@@ -108,7 +98,7 @@ public:
     voice->right_gain = velocity_gain * volume_gain * pan_stereo_factor (region, 1);
     voice->used = true;
     voice->envelope.start (region, sample_rate_);
-    printf ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
+    log_debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
   }
   void
   note_on (int chan, int key, int vel)
@@ -148,57 +138,7 @@ public:
                 if (region.lorand <= random && region.hirand > random)
                   {
                     if (region.cached_sample)
-                      {
-                        add_voice (region, chan, key, vel);
-#if 0
-                        for (size_t ch = 0; ch < region.cached_sample->flsamples.size(); ch++)
-                          {
-                            auto flsample = region.cached_sample->flsamples[ch];
-
-                            printf ("%d %s#%zd\n", key, region.sample.c_str(), ch);
-                            fluid_sample_set_pitch (flsample, region.pitch_keycenter, 0);
-
-                            // auto flvoice = fluid_synth_alloc_voice (synth, flsample, chan, key, vel);
-                            /* note: we handle velocity based volume (amp_veltrack) ourselves:
-                             *    -> we play all notes via fluidsynth at maximum velocity */
-                            auto flvoice = alloc_voice_with_id (flsample, chan, key, 127);
-                            cleanup_finished_voice (flvoice);
-
-                            if (region.loop_mode == LoopMode::SUSTAIN || region.loop_mode == LoopMode::CONTINUOUS)
-                              {
-                                fluid_sample_set_loop (flsample, region.loop_start, region.loop_end);
-                                fluid_voice_gen_set (flvoice, GEN_SAMPLEMODE, 1);
-                              }
-
-                            double pan_vol_db = 0;
-                            if (region.cached_sample->flsamples.size() == 2) /* pan stereo voices */
-                              {
-                                pan_vol_db = pan_stereo_db (region, ch);
-                                if (ch == 0)
-                                  fluid_voice_gen_set (flvoice, GEN_PAN, -500);
-                                else
-                                  fluid_voice_gen_set (flvoice, GEN_PAN, 500);
-                              }
-                            else
-                              {
-                                fluid_voice_gen_set (flvoice, GEN_PAN, 5 * region.pan);
-                              }
-                            /* volume envelope */
-                            fluid_voice_gen_set (flvoice, GEN_VOLENVDELAY, env_time2gen (region.ampeg_delay));
-                            fluid_voice_gen_set (flvoice, GEN_VOLENVATTACK, env_time2gen (region.ampeg_attack));
-                            fluid_voice_gen_set (flvoice, GEN_VOLENVDECAY, env_time2gen (region.ampeg_decay));
-                            fluid_voice_gen_set (flvoice, GEN_VOLENVSUSTAIN, env_level2gen (region.ampeg_sustain));
-                            fluid_voice_gen_set (flvoice, GEN_VOLENVRELEASE, env_time2gen (region.ampeg_release));
-
-                            /* volume */
-                            double attenuation = -10 * (region.volume - VOLUME_HEADROOM_DB + velocity_track_db (region, vel) + pan_vol_db);
-                            fluid_voice_gen_set (flvoice, GEN_ATTENUATION, attenuation);
-
-                            fluid_synth_start_voice (synth, flvoice);
-                            add_voice (&region, chan, key, flvoice);
-                          }
-#endif /* FIXME */
-                      }
+                      add_voice (region, chan, key, vel);
                   }
               }
             region.play_seq++;
