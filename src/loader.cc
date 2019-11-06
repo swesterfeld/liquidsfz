@@ -242,7 +242,7 @@ Loader::parse (const string& filename)
       regions[i].cached_sample = cached_sample;
 
       if (!cached_sample)
-        printf ("*** missing sample: '%s'\n", regions[i].sample.c_str());
+        log_warning ("%s: missing sample: '%s'\n", filename.c_str(), regions[i].sample.c_str());
 
       if (regions[i].loop_mode == LoopMode::DEFAULT)
         {
@@ -261,6 +261,6 @@ Loader::parse (const string& filename)
       fflush (stdout);
     }
   printf ("\n");
-  printf ("*** regions: %zd\n", regions.size());
+  log_debug ("*** regions: %zd\n", regions.size());
   return true;
 }
