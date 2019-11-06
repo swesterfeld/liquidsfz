@@ -30,17 +30,16 @@
 #include "envelope.hh"
 #include "voice.hh"
 
-namespace LiquidSFZ
+namespace LiquidSFZInternal
 {
 
 class Synth
 {
   std::minstd_rand random_gen;
   uint sample_rate_ = 44100; // default
-
-public:
   Loader sfz_loader;
 
+public:
   void
   set_sample_rate (uint sample_rate)
   {
@@ -55,6 +54,11 @@ public:
   env_level2gen (float level_perc)
   {
     return -10 * 20 * log10 (std::clamp (level_perc, 0.001f, 100.f) / 100);
+  }
+  bool
+  load (const std::string& filename)
+  {
+    return sfz_loader.parse (filename);
   }
   double
   pan_stereo_factor (const Region& r, int ch)

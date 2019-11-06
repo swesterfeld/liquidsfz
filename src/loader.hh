@@ -27,7 +27,7 @@
 #include "log.hh"
 #include "samplecache.hh"
 
-namespace LiquidSFZ
+namespace LiquidSFZInternal
 {
 
 enum class Trigger {

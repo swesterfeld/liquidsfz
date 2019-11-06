@@ -30,7 +30,7 @@ using std::vector;
 using std::regex;
 using std::regex_replace;
 
-using namespace LiquidSFZ;
+using namespace LiquidSFZInternal;
 
 static string
 strip_spaces (const string& s)

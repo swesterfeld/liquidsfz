@@ -31,6 +31,7 @@
 #include "loader.hh"
 #include "utils.hh"
 #include "synth.hh"
+#include "api.hh"
 
 using std::vector;
 using std::string;
@@ -80,7 +81,8 @@ public:
       (float *) jack_port_get_buffer (audio_left, nframes),
       (float *) jack_port_get_buffer (audio_right, nframes)
     };
-    return synth.process (outputs, nframes);
+    synth.process (outputs, nframes);
+    return 0;
   }
   void
   run()
@@ -114,7 +116,7 @@ main (int argc, char **argv)
 
   JackStandalone jack_standalone (client);
 
-  if (!jack_standalone.synth.sfz_loader.parse (argv[1]))
+  if (!jack_standalone.synth.load (argv[1]))
     {
       fprintf (stderr, "parse error: exiting\n");
       return 1;

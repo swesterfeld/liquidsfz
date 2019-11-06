@@ -22,7 +22,7 @@
 
 #include "voice.hh"
 
-using namespace LiquidSFZ;
+using namespace LiquidSFZInternal;
 
 static double
 note_to_freq (int note)

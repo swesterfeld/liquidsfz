@@ -18,18 +18,43 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "utils.hh"
+#include "api.hh"
+#include "synth.hh"
 
-#include <string>
+using namespace LiquidSFZ;
 
-namespace LiquidSFZInternal
+struct Synth::Impl {
+  LiquidSFZInternal::Synth synth;
+};
+
+Synth::Synth() : impl (new Synth::Impl())
 {
+}
 
-void log_error (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
-void log_warning (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
-void log_info (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
-void log_debug (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
+Synth::~Synth()
+{
+}
 
-std::string string_printf (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
+void
+Synth::set_sample_rate (uint sample_rate)
+{
+  impl->synth.set_sample_rate (sample_rate);
+}
 
+bool
+Synth::load (const std::string& filename)
+{
+  return impl->synth.load (filename);
+}
+
+void
+Synth::add_midi_event (uint offset, unsigned char *midi_data)
+{
+  impl->synth.add_midi_event (offset, midi_data);
+}
+
+void
+Synth::process (float **outputs, uint nframes)
+{
+  impl->synth.process (outputs, nframes);
 }

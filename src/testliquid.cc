@@ -19,6 +19,7 @@
  */
 
 #include "synth.hh"
+#include "api.hh"
 
 using namespace LiquidSFZ;
 
@@ -32,7 +33,7 @@ main (int argc, char **argv)
     }
   Synth synth;
   synth.set_sample_rate (48000);
-  if (!synth.sfz_loader.parse (argv[1]))
+  if (!synth.load (argv[1]))
     {
       fprintf (stderr, "parse error: exiting\n");
       return 1;

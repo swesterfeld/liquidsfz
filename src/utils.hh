@@ -39,7 +39,7 @@
 #include <sys/time.h>
 #include <math.h>
 
-namespace LiquidSFZ
+namespace LiquidSFZInternal
 {
 
 inline double

@@ -27,7 +27,7 @@
 
 #include <sndfile.h>
 
-namespace LiquidSFZ
+namespace LiquidSFZInternal
 {
 
 class SampleCache

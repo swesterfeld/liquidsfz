@@ -27,7 +27,7 @@
 
 #include <assert.h>
 
-namespace LiquidSFZ
+namespace LiquidSFZInternal
 {
 
 class Envelope

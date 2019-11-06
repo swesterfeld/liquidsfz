@@ -23,7 +23,7 @@
 #ifndef LIQUIDSFZ_VOICE_HH
 #define LIQUIDSFZ_VOICE_HH
 
-namespace LiquidSFZ
+namespace LiquidSFZInternal
 {
 
 struct Voice

@@ -4,9 +4,7 @@
 
 #include <string>
 
-using namespace LiquidSFZ;
-
-namespace LiquidSFZ
+namespace LiquidSFZInternal
 {
 
 enum class Log

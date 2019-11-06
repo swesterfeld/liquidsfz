@@ -18,10 +18,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "synth.hh"
+#include "api.hh"
 #include "utils.hh"
 
+#include <vector>
+
 using namespace LiquidSFZ;
+using namespace LiquidSFZInternal;
 
 int
 main (int argc, char **argv)
@@ -33,7 +36,7 @@ main (int argc, char **argv)
     }
   Synth synth;
   synth.set_sample_rate (48000);
-  if (!synth.sfz_loader.parse (argv[1]))
+  if (!synth.load (argv[1]))
     {
       fprintf (stderr, "parse error: exiting\n");
       return 1;
