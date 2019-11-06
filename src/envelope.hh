@@ -18,6 +18,15 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef LIQUIDSFZ_ENVELOPE_HH
+#define LIQUIDSFZ_ENVELOPE_HH
+
+#include "loader.hh"
+
+#include <algorithm>
+
+#include <assert.h>
+
 namespace LiquidSFZ
 {
 
@@ -143,3 +152,5 @@ public:
 };
 
 }
+
+#endif /* LIQUIDSFZ_ENVELOPE_HH */

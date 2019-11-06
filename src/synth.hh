@@ -18,6 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef LIQUIDSFZ_SYNTH_HH
+#define LIQUIDSFZ_SYNTH_HH
+
 #include <random>
 #include <algorithm>
 #include <assert.h>
@@ -25,6 +28,7 @@
 #include "loader.hh"
 #include "utils.hh"
 #include "envelope.hh"
+#include "voice.hh"
 
 namespace LiquidSFZ
 {
@@ -73,19 +77,6 @@ public:
 
     return v;
   }
-  struct Voice
-  {
-    int channel = 0;
-    int key = 0;
-    bool used = false;
-    double ppos = 0;
-    float left_gain = 0;
-    float right_gain = 0;
-
-    Envelope envelope;
-
-    const Region *region = nullptr;
-  };
   std::vector<Voice> voices;
   void
   add_voice (const Region& region, int channel, int key, int velocity)
@@ -102,6 +93,7 @@ public:
       {
         voice = &voices.emplace_back();
       }
+    voice->sample_rate_ = sample_rate_;
     voice->region = &region;
     voice->channel = channel;
     voice->key = key;
@@ -241,11 +233,6 @@ public:
         midi_events.push_back (event);
       }
   }
-  static double
-  note_to_freq (int note)
-  {
-    return 440 * exp (log (2) * (note - 69) / 12.0);
-  }
   int
   process (float **outputs, uint nframes)
   {
@@ -269,96 +256,7 @@ public:
     for (auto& voice : voices)
       {
         if (voice.used)
-          {
-            const auto csample = voice.region->cached_sample;
-            const auto channels = csample->channels;
-            const double step = double (csample->sample_rate) / sample_rate_ * note_to_freq (voice.key) / note_to_freq (voice.region->pitch_keycenter);
-
-            auto get_samples_mono = [csample, &voice] (uint x, auto& fsamples)
-              {
-                for (uint i = 0; i < fsamples.size(); i++)
-                  {
-                    if (x >= csample->samples.size())
-                      {
-                        fsamples[i] = 0;
-                      }
-                    else
-                      {
-                        fsamples[i] = csample->samples[x];
-                        x++;
-
-                        if (voice.region->loop_mode == LoopMode::SUSTAIN || voice.region->loop_mode == LoopMode::CONTINUOUS)
-                          if (x > uint (voice.region->loop_end))
-                            x = voice.region->loop_start;
-                      }
-                  }
-              };
-
-            auto get_samples_stereo = [csample, &voice] (uint x, auto& fsamples)
-              {
-                for (uint i = 0; i < fsamples.size(); i += 2)
-                  {
-                    if (x >= csample->samples.size())
-                      {
-                        fsamples[i]     = 0;
-                        fsamples[i + 1] = 0;
-                      }
-                    else
-                      {
-                        fsamples[i]     = csample->samples[x];
-                        fsamples[i + 1] = csample->samples[x + 1];
-                        x += 2;
-
-                        if (voice.region->loop_mode == LoopMode::SUSTAIN || voice.region->loop_mode == LoopMode::CONTINUOUS)
-                          if (x > uint (voice.region->loop_end * 2))
-                            x = voice.region->loop_start * 2;
-                      }
-                  }
-              };
-
-            for (uint i = 0; i < nframes; i++)
-              {
-                const uint ii = voice.ppos;
-                const uint x = ii * channels;
-                const float frac = voice.ppos - ii;
-                if (x < csample->samples.size() && !voice.envelope.done())
-                  {
-                    const float amp_gain = voice.envelope.get_next() * (1 / 32768.);
-                    if (channels == 1)
-                      {
-                        std::array<float, 2> fsamples;
-                        get_samples_mono (x, fsamples);
-
-                        const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
-                        outputs[0][i] += interp * voice.left_gain * amp_gain;
-                        outputs[1][i] += interp * voice.right_gain * amp_gain;
-                      }
-                    else if (channels == 2)
-                      {
-                        std::array<float, 4> fsamples;
-                        get_samples_stereo (x, fsamples);
-
-                        outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * voice.left_gain * amp_gain;
-                        outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * voice.right_gain * amp_gain;
-                      }
-                    else
-                      {
-                        assert (false);
-                      }
-                  }
-                else
-                  {
-                    voice.used = false; // FIXME: envelope
-                  }
-                voice.ppos += step;
-                if (voice.region->loop_mode == LoopMode::SUSTAIN || voice.region->loop_mode == LoopMode::CONTINUOUS)
-                  {
-                    if (voice.region->loop_end > voice.region->loop_start)
-                      while (voice.ppos > voice.region->loop_end)
-                        voice.ppos -= (voice.region->loop_end - voice.region->loop_start);
-                  }
-              }
-          }
+          voice.process (outputs, nframes);
       }
     midi_events.clear();
     return 0;
@@ -366,3 +264,5 @@ public:
 };
 
 }
+
+#endif /* LIQUIDSFZ_SYNTH_HH */
