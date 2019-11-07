@@ -101,7 +101,6 @@ class Loader
     }
   };
   LineInfo current_line_info;
-  std::string filename;
   std::set<std::string> preprocess_done;
 
 public:

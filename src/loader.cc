@@ -214,8 +214,6 @@ Loader::parse (const string& filename)
       return false;
     }
 
-  this->filename = filename;
-
   static const regex space_re ("\\s+(.*)");
   static const regex tag_re ("<([^>]*)>(.*)");
   static const regex key_val_re ("([a-z0-9_]+)=(\\S+)(.*)");
