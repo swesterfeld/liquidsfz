@@ -193,7 +193,7 @@ struct Loader
         active_group = Region();
       }
     else
-      printf ("unhandled tag '%s'\n", tag.c_str());
+      log_warning ("%s unsupported tag '<%s>'\n", location().c_str(), tag.c_str());
   }
   std::string
   location()
