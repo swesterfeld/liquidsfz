@@ -26,22 +26,27 @@
 namespace LiquidSFZInternal
 {
 
-struct Voice
+class Voice
 {
+public:
   int sample_rate_ = 44100;
-  int channel = 0;
-  int key = 0;
-  int velocity = 0;
-  bool used = false;
-  double ppos = 0;
-  float left_gain = 0;
-  float right_gain = 0;
-  uint64_t start_frame_count = 0;
-  Trigger trigger = Trigger::ATTACK;
-  Envelope envelope;
+  int channel_ = 0;
+  int key_ = 0;
+  int velocity_ = 0;
+  bool used_ = false;
+  double ppos_ = 0;
+  float left_gain_ = 0;
+  float right_gain_ = 0;
+  uint64_t start_frame_count_ = 0;
+  Trigger trigger_ = Trigger::ATTACK;
+  Envelope envelope_;
 
-  const Region *region = nullptr;
+  const Region *region_ = nullptr;
 
+  double pan_stereo_factor (const Region& r, int ch);
+  double velocity_track_factor (const Region& r, int midi_velocity);
+
+  void start (const Region& region, int channel, int key, int velocity, double time_since_note_on, uint64_t global_frame_count, uint sample_rate);
   void process (float **outputs, uint nframes);
 };
 

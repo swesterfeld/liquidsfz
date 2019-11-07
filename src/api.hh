@@ -43,6 +43,13 @@ public:
   void set_sample_rate (uint sample_rate);
 
   /**
+   * \brief Set maximum number of voices
+   *
+   * @param n_voices   maxmimum number of voices
+   */
+  void set_max_voices (uint n_voices);
+
+  /**
    * \brief Load .sfz file including all samples
    *
    * @param filename   name of the .sfz file

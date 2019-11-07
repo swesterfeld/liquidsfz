@@ -39,76 +39,40 @@ class Synth
   uint sample_rate_ = 44100; // default
   Loader sfz_loader;
   uint64_t global_frame_count = 0;
+  std::vector<Voice> voices_;
 
 public:
+  Synth()
+  {
+    set_max_voices (64); // default
+  }
   void
   set_sample_rate (uint sample_rate)
   {
     sample_rate_ = sample_rate;
+  }
+  void
+  set_max_voices (uint n_voices)
+  {
+    voices_.resize (n_voices);
   }
   bool
   load (const std::string& filename)
   {
     return sfz_loader.parse (filename);
   }
-  double
-  pan_stereo_factor (const Region& r, int ch)
+  Voice *
+  alloc_voice()
   {
-    /* sine panning law: we use this because fluidsynth also uses the same law
-     * for panning mono voices (and we want identical stereo/mono panning)
-     */
-
-    const double pan = ch == 0 ? -r.pan : r.pan;
-    return sin ((pan + 100) / 400 * M_PI);
-  }
-  double
-  velocity_track_factor (const Region& r, int midi_velocity)
-  {
-    double curve = (midi_velocity * midi_velocity) / (127.0 * 127.0);
-    double veltrack_factor = r.amp_veltrack * 0.01;
-
-    double offset = (veltrack_factor >= 0) ? 1 : 0;
-    double v = (offset - veltrack_factor) + veltrack_factor * curve;
-
-    return v;
-  }
-  std::vector<Voice> voices;
-  void
-  add_voice (const Region& region, int channel, int key, int velocity, double time_since_note_on)
-  {
-    Voice *voice = nullptr;
-    for (auto& v : voices)
-      if (!v.used)
-        {
-          /* overwrite old voice in vector */
-          voice = &v;
-          break;
-        }
-    if (!voice)
+    for (auto& v : voices_)
       {
-        voice = &voices.emplace_back();
+        if (!v.used_)
+          {
+            return &v;
+          }
       }
-    voice->start_frame_count = global_frame_count;
-    voice->sample_rate_ = sample_rate_;
-    voice->region = &region;
-    voice->channel = channel;
-    voice->key = key;
-    voice->velocity = velocity;
-    voice->ppos = 0;
-    voice->trigger = region.trigger;
-    double volume_gain = db_to_factor (region.volume);
-    double velocity_gain = velocity_track_factor (region, velocity);
-    double rt_decay_gain = 1.0;
-    if (region.trigger == Trigger::RELEASE)
-      {
-        rt_decay_gain = db_to_factor (-time_since_note_on * region.rt_decay);
-        log_debug ("rt_decay_gain %f\n", rt_decay_gain);
-      }
-    voice->left_gain = velocity_gain * volume_gain * rt_decay_gain * pan_stereo_factor (region, 0);
-    voice->right_gain = velocity_gain * volume_gain * rt_decay_gain * pan_stereo_factor (region, 1);
-    voice->used = true;
-    voice->envelope.start (region, sample_rate_);
-    log_debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
+    log_debug ("alloc_voice: no voices left\n");
+    return nullptr;
   }
   void
   note_on (int chan, int key, int vel)
@@ -148,7 +112,11 @@ public:
                 if (region.lorand <= random && region.hirand > random)
                   {
                     if (region.cached_sample)
-                      add_voice (region, chan, key, vel, 0.0);
+                      {
+                        auto voice = alloc_voice();
+                        if (voice)
+                          voice->start (region, chan, key, vel, 0.0 /* time_since_note_on */, global_frame_count, sample_rate_);
+                      }
                   }
               }
             region.play_seq++;
@@ -160,22 +128,24 @@ public:
   void
   note_off (int chan, int key)
   {
-    for (auto& voice : voices)
+    for (auto& voice : voices_)
       {
-        if (voice.used && voice.trigger == Trigger::ATTACK  && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
+        if (voice.used_ && voice.trigger_ == Trigger::ATTACK  && voice.channel_ == chan && voice.key_ == key && voice.region_->loop_mode != LoopMode::ONE_SHOT)
           {
-            voice.envelope.release();
+            voice.envelope_.release();
 
-            int vel = voice.velocity;
+            int vel = voice.velocity_;
             for (auto& region : sfz_loader.regions)
               {
                 if (region.lokey <= key && region.hikey >= key &&
                     region.lovel <= vel && region.hivel >= vel &&
                     region.trigger == Trigger::RELEASE)
                   {
-                    double time_since_note_on = (global_frame_count - voice.start_frame_count) / double (sample_rate_);
+                    double time_since_note_on = (global_frame_count - voice.start_frame_count_) / double (sample_rate_);
 
-                    add_voice (region, chan, key, vel, time_since_note_on);
+                    auto voice = alloc_voice();
+                    if (voice)
+                      voice->start (region, chan, key, vel, time_since_note_on, global_frame_count, sample_rate_);
                   }
               }
           }
@@ -220,9 +190,9 @@ public:
       }
     std::fill_n (outputs[0], nframes, 0.0);
     std::fill_n (outputs[1], nframes, 0.0);
-    for (auto& voice : voices)
+    for (auto& voice : voices_)
       {
-        if (voice.used)
+        if (voice.used_)
           voice.process (outputs, nframes);
       }
     midi_events.clear();
