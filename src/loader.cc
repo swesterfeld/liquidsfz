@@ -126,50 +126,104 @@ Loader::set_key_value (const string& key, const string& value)
 }
 
 bool
-Loader::parse (const string& filename)
+Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& lines)
 {
-  sample_path = fs::path (filename).remove_filename();
+  // strip comments
+  static const regex comment_re ("//.*$");
+  string line = regex_replace (input_line_info.line, comment_re, "");
 
+  // detect #include
+  static const regex include_re ("\\s*#\\s*include\\s+[\"<](.*)[\">]\\s*");
+  std::smatch sm;
+  if (regex_match (line, sm, include_re))
+    {
+      string include_filename = fs::absolute (sample_path / sm[1].str());
+
+      if (!preprocess_done.count (include_filename)) // prevent infinite recursion for buggy .sfz
+        {
+          bool inc_ok = preprocess_file (fs::absolute (sample_path / sm[1].str()), lines);
+          if (!inc_ok)
+            log_error ("%s unable to read #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
+
+          return inc_ok;
+        }
+      else
+        log_warning ("%s skipping duplicate #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
+    }
+  else
+    {
+      auto linfo = input_line_info;
+      linfo.line = line;
+      lines.push_back (linfo);
+    }
+  return true;
+}
+
+bool
+Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines)
+{
   FILE *file = fopen (filename.c_str(), "r");
-  assert (file);
+  if (!file)
+    return false;
 
-  // read file
-  vector<string> lines;
+  preprocess_done.insert (filename);
 
-  string input;
+  LineInfo line_info;
+  line_info.filename = filename;
+  line_info.number = 1;
+
   int ch = 0;
   while ((ch = fgetc (file)) >= 0)
     {
       if (ch != '\r' && ch != '\n')
         {
-          input += ch;
+          line_info.line += ch;
         }
       else
         {
           if (ch == '\n')
             {
-              lines.push_back (input);
-              input = "";
+              if (!preprocess_line (line_info, lines))
+                return false;
+
+              line_info.number++;
+              line_info.line = "";
             }
         }
     }
-  if (!input.empty())
-    lines.push_back (input);
+  if (!line_info.line.empty())
+    {
+      if (!preprocess_line (line_info, lines))
+        return false;
+    }
   fclose (file);
+  return true;
+}
+
+bool
+Loader::parse (const string& filename)
+{
+  sample_path = fs::path (filename).remove_filename();
+
+  // read file
+  vector<LineInfo> lines;
+
+  if (!preprocess_file (filename, lines))
+    {
+      log_error ("error reading file '%s'\n", filename.c_str());
+      return false;
+    }
 
   this->filename = filename;
-
-  // strip comments
-  static const regex comment_re ("//.*$");
-  for (auto& l : lines)
-    l = regex_replace (l, comment_re, "");
 
   static const regex space_re ("\\s+(.*)");
   static const regex tag_re ("<([^>]*)>(.*)");
   static const regex key_val_re ("([a-z0-9_]+)=(\\S+)(.*)");
-  for (auto l : lines)
+  for (auto line_info : lines)
     {
-      line_count++;
+      current_line_info = line_info; // for error location reporting
+
+      auto l = line_info.line;
       while (l.size())
         {
           std::smatch sm;

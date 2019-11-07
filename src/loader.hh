@@ -23,6 +23,7 @@
 
 #include <string>
 #include <filesystem>
+#include <set>
 
 #include "log.hh"
 #include "samplecache.hh"
@@ -84,10 +85,26 @@ struct Region
 
 namespace fs = std::filesystem; // FIXME
 
-struct Loader
+class Loader
 {
-  int line_count = 0;
+  struct LineInfo
+  {
+    std::string  filename;
+
+    int          number = 0;
+    std::string  line;
+
+    std::string
+    location() const
+    {
+      return string_printf ("%s: line %d:",filename.c_str(), number);
+    }
+  };
+  LineInfo current_line_info;
   std::string filename;
+  std::set<std::string> preprocess_done;
+
+public:
   enum class RegionType { NONE, GROUP, REGION };
   RegionType region_type = RegionType::NONE;
   Region active_group;
@@ -198,8 +215,10 @@ struct Loader
   std::string
   location()
   {
-    return string_printf ("%s: line %d:", filename.c_str(), line_count);
+    return string_printf ("%s: line %d:", current_line_info.filename.c_str(), current_line_info.number);
   }
+  bool preprocess_line (const LineInfo& input_line_info, std::vector<LineInfo>& lines);
+  bool preprocess_file (const std::string& filename, std::vector<LineInfo>& lines);
   bool parse (const std::string& filename);
 };
 
