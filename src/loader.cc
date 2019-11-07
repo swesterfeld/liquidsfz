@@ -121,6 +121,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.amp_veltrack = convert_float (value);
   else if (key == "pan")
     region.pan = convert_float (value);
+  else if (key == "rt_decay")
+    region.rt_decay = convert_float (value);
   else
     log_warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

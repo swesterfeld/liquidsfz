@@ -73,6 +73,7 @@ struct Region
   float volume = 0;
   float amp_veltrack = 100;
   float pan = 0;
+  float rt_decay = 0;
 
   bool empty()
   {

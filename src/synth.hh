@@ -38,6 +38,7 @@ class Synth
   std::minstd_rand random_gen;
   uint sample_rate_ = 44100; // default
   Loader sfz_loader;
+  uint64_t global_frame_count = 0;
 
 public:
   void
@@ -73,7 +74,7 @@ public:
   }
   std::vector<Voice> voices;
   void
-  add_voice (const Region& region, int channel, int key, int velocity)
+  add_voice (const Region& region, int channel, int key, int velocity, double time_since_note_on)
   {
     Voice *voice = nullptr;
     for (auto& v : voices)
@@ -87,15 +88,24 @@ public:
       {
         voice = &voices.emplace_back();
       }
+    voice->start_frame_count = global_frame_count;
     voice->sample_rate_ = sample_rate_;
     voice->region = &region;
     voice->channel = channel;
     voice->key = key;
+    voice->velocity = velocity;
     voice->ppos = 0;
+    voice->trigger = region.trigger;
     double volume_gain = db_to_factor (region.volume);
     double velocity_gain = velocity_track_factor (region, velocity);
-    voice->left_gain = velocity_gain * volume_gain * pan_stereo_factor (region, 0);
-    voice->right_gain = velocity_gain * volume_gain * pan_stereo_factor (region, 1);
+    double rt_decay_gain = 1.0;
+    if (region.trigger == Trigger::RELEASE)
+      {
+        rt_decay_gain = db_to_factor (-time_since_note_on * region.rt_decay);
+        log_debug ("rt_decay_gain %f\n", rt_decay_gain);
+      }
+    voice->left_gain = velocity_gain * volume_gain * rt_decay_gain * pan_stereo_factor (region, 0);
+    voice->right_gain = velocity_gain * volume_gain * rt_decay_gain * pan_stereo_factor (region, 1);
     voice->used = true;
     voice->envelope.start (region, sample_rate_);
     log_debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
@@ -138,7 +148,7 @@ public:
                 if (region.lorand <= random && region.hirand > random)
                   {
                     if (region.cached_sample)
-                      add_voice (region, chan, key, vel);
+                      add_voice (region, chan, key, vel, 0.0);
                   }
               }
             region.play_seq++;
@@ -152,9 +162,22 @@ public:
   {
     for (auto& voice : voices)
       {
-        if (voice.used && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
+        if (voice.used && voice.trigger == Trigger::ATTACK  && voice.channel == chan && voice.key == key && voice.region->loop_mode != LoopMode::ONE_SHOT)
           {
             voice.envelope.release();
+
+            int vel = voice.velocity;
+            for (auto& region : sfz_loader.regions)
+              {
+                if (region.lokey <= key && region.hikey >= key &&
+                    region.lovel <= vel && region.hivel >= vel &&
+                    region.trigger == Trigger::RELEASE)
+                  {
+                    double time_since_note_on = (global_frame_count - voice.start_frame_count) / double (sample_rate_);
+
+                    add_voice (region, chan, key, vel, time_since_note_on);
+                  }
+              }
           }
       }
   }
@@ -203,6 +226,7 @@ public:
           voice.process (outputs, nframes);
       }
     midi_events.clear();
+    global_frame_count += nframes;
     return 0;
   }
 };

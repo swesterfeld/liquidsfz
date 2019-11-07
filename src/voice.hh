@@ -31,11 +31,13 @@ struct Voice
   int sample_rate_ = 44100;
   int channel = 0;
   int key = 0;
+  int velocity = 0;
   bool used = false;
   double ppos = 0;
   float left_gain = 0;
   float right_gain = 0;
-
+  uint64_t start_frame_count = 0;
+  Trigger trigger = Trigger::ATTACK;
   Envelope envelope;
 
   const Region *region = nullptr;
