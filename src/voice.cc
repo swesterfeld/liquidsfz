@@ -73,7 +73,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
     }
   left_gain_ = velocity_gain * volume_gain * rt_decay_gain * pan_stereo_factor (region, 0);
   right_gain_ = velocity_gain * volume_gain * rt_decay_gain * pan_stereo_factor (region, 1);
-  used_ = true;
+  state_ = ACTIVE;
   envelope_.start (region, sample_rate_);
   log_debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
 }
@@ -159,7 +159,7 @@ Voice::process (float **outputs, uint nframes)
         }
       else
         {
-          used_ = false;
+          state_ = IDLE;
           break;
         }
       ppos_ += step;

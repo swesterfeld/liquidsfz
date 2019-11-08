@@ -66,10 +66,8 @@ public:
   {
     for (auto& v : voices_)
       {
-        if (!v.used_)
-          {
-            return &v;
-          }
+        if (v.state_ == Voice::IDLE)
+          return &v;
       }
     log_debug ("alloc_voice: no voices left\n");
     return nullptr;
@@ -130,8 +128,11 @@ public:
   {
     for (auto& voice : voices_)
       {
-        if (voice.used_ && voice.trigger_ == Trigger::ATTACK  && voice.channel_ == chan && voice.key_ == key && voice.region_->loop_mode != LoopMode::ONE_SHOT)
+        if (voice.state_ == Voice::ACTIVE &&
+            voice.trigger_ == Trigger::ATTACK &&
+            voice.channel_ == chan && voice.key_ == key && voice.region_->loop_mode != LoopMode::ONE_SHOT)
           {
+            voice.state_ = Voice::RELEASED;
             voice.envelope_.release();
 
             int vel = voice.velocity_;
@@ -192,7 +193,7 @@ public:
     std::fill_n (outputs[1], nframes, 0.0);
     for (auto& voice : voices_)
       {
-        if (voice.used_)
+        if (voice.state_ != Voice::IDLE)
           voice.process (outputs, nframes);
       }
     midi_events.clear();

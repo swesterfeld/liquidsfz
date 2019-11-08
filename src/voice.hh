@@ -33,7 +33,14 @@ public:
   int channel_ = 0;
   int key_ = 0;
   int velocity_ = 0;
-  bool used_ = false;
+
+  enum State {
+    ACTIVE,
+    RELEASED,
+    IDLE
+  };
+  State state_ = IDLE;
+
   double ppos_ = 0;
   float left_gain_ = 0;
   float right_gain_ = 0;
