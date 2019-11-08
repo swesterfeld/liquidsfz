@@ -33,6 +33,11 @@
 namespace LiquidSFZInternal
 {
 
+struct Channel
+{
+  std::vector<uint8_t> cc_values = std::vector<uint8_t> (128, 0);
+};
+
 class Synth
 {
   std::minstd_rand random_gen;
@@ -41,10 +46,14 @@ class Synth
   uint64_t global_frame_count = 0;
   std::vector<Voice> voices_;
 
+  static constexpr int CC_SUSTAIN = 0x40;
+
 public:
   Synth()
   {
-    set_max_voices (64); // default
+    // sane defaults:
+    set_max_voices (64);
+    set_channels (16);
   }
   void
   set_sample_rate (uint sample_rate)
@@ -55,6 +64,11 @@ public:
   set_max_voices (uint n_voices)
   {
     voices_.resize (n_voices);
+  }
+  void
+  set_channels (uint n_channels)
+  {
+    channels_.resize (n_channels);
   }
   bool
   load (const std::string& filename)
@@ -126,31 +140,98 @@ public:
   void
   note_off (int chan, int key)
   {
+    const bool sustain_pedal = get_cc (chan, CC_SUSTAIN) >= 0x40;
+
     for (auto& voice : voices_)
       {
         if (voice.state_ == Voice::ACTIVE &&
             voice.trigger_ == Trigger::ATTACK &&
             voice.channel_ == chan && voice.key_ == key && voice.region_->loop_mode != LoopMode::ONE_SHOT)
           {
-            voice.state_ = Voice::RELEASED;
-            voice.envelope_.release();
-
-            int vel = voice.velocity_;
-            for (auto& region : sfz_loader.regions)
+            if (sustain_pedal)
               {
-                if (region.lokey <= key && region.hikey >= key &&
-                    region.lovel <= vel && region.hivel >= vel &&
-                    region.trigger == Trigger::RELEASE)
-                  {
-                    double time_since_note_on = (global_frame_count - voice.start_frame_count_) / double (sample_rate_);
-
-                    auto voice = alloc_voice();
-                    if (voice)
-                      voice->start (region, chan, key, vel, time_since_note_on, global_frame_count, sample_rate_);
-                  }
+                voice.state_ = Voice::SUSTAIN;
+              }
+            else
+              {
+                release (voice);
               }
           }
       }
+  }
+  void
+  release (Voice& voice)
+  {
+    if (voice.state_ != Voice::ACTIVE && voice.state_ != Voice::SUSTAIN)
+      {
+        log_error ("release() state %d not active/sustain\n", voice.state_);
+        return;
+      }
+    /* FIXME: random, sequence */
+    voice.state_ = Voice::RELEASED;
+    voice.envelope_.release();
+
+    const int chan = voice.channel_;
+    const int key = voice.key_;
+    const int vel = voice.velocity_;
+    for (auto& region : sfz_loader.regions)
+      {
+        if (region.lokey <= key && region.hikey >= key &&
+            region.lovel <= vel && region.hivel >= vel &&
+            region.trigger == Trigger::RELEASE)
+          {
+            double time_since_note_on = (global_frame_count - voice.start_frame_count_) / double (sample_rate_);
+
+            auto voice = alloc_voice();
+            if (voice)
+              voice->start (region, chan, key, vel, time_since_note_on, global_frame_count, sample_rate_);
+          }
+      }
+  }
+  std::vector<Channel> channels_;
+  void
+  update_cc (int channel, int controller, int value)
+  {
+    if (channel < 0 || uint (channel) > channels_.size())
+      {
+        log_error ("update_cc: bad channel %d\n", channel);
+        return;
+      }
+    auto& ch = channels_[channel];
+    if (controller < 0 || uint (controller) > ch.cc_values.size())
+      {
+        log_error ("update_cc: bad channel controller %d\n", controller);
+        return;
+      }
+    ch.cc_values[controller] = value;
+
+    if (controller == CC_SUSTAIN)
+      {
+        if (value < 0x40)
+          {
+            for (auto& voice : voices_)
+              {
+                if (voice.state_ == Voice::SUSTAIN)
+                  release (voice);
+              }
+          }
+      }
+  }
+  int
+  get_cc (int channel, int controller)
+  {
+    if (channel < 0 || uint (channel) > channels_.size())
+      {
+        log_error ("get_cc: bad channel %d\n", channel);
+        return 0;
+      }
+    auto& ch = channels_[channel];
+    if (controller < 0 || uint (controller) > ch.cc_values.size())
+      {
+        log_error ("get_cc: bad channel controller %d\n", controller);
+        return 0;
+      }
+    return ch.cc_values[controller];
   }
   struct
   MidiEvent
@@ -163,7 +244,7 @@ public:
   add_midi_event (uint offset, const unsigned char *midi_data)
   {
     unsigned char status = midi_data[0] & 0xf0;
-    if (status == 0x80 || status == 0x90)
+    if (status == 0x80 || status == 0x90 || status == 0xb0)
       {
         MidiEvent event;
         event.offset = offset;
@@ -187,6 +268,10 @@ public:
           {
             // printf ("note on, ch = %d, note = %d, vel = %d\n", channel, in_event.buffer[1], in_event.buffer[2]);
             note_on (channel, midi_event.midi_data[1], midi_event.midi_data[2]);
+          }
+        else if (status == 0xb0)
+          {
+            update_cc (channel, midi_event.midi_data[1], midi_event.midi_data[2]);
           }
       }
     std::fill_n (outputs[0], nframes, 0.0);

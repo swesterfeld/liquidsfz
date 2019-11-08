@@ -36,6 +36,7 @@ public:
 
   enum State {
     ACTIVE,
+    SUSTAIN,
     RELEASED,
     IDLE
   };
