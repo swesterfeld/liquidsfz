@@ -161,6 +161,20 @@ Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& line
   return true;
 }
 
+static vector<char>
+load_file (FILE *file)
+{
+  /* read file into memory */
+  char buffer[1024];
+  std::vector<char> contents;
+
+  size_t l;
+  while (!feof (file) && (l = fread (buffer, 1, sizeof (buffer), file)) > 0)
+    contents.insert (contents.end(), buffer, buffer + l);
+
+  return std::move (contents);
+}
+
 bool
 Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines)
 {
@@ -168,14 +182,16 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines)
   if (!file)
     return false;
 
+  const vector<char> contents = load_file (file);
+  fclose (file);
+
   preprocess_done.insert (filename);
 
   LineInfo line_info;
   line_info.filename = filename;
   line_info.number = 1;
 
-  int ch = 0;
-  while ((ch = fgetc (file)) >= 0)
+  for (char ch : contents)
     {
       if (ch != '\r' && ch != '\n')
         {
@@ -198,7 +214,6 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines)
       if (!preprocess_line (line_info, lines))
         return false;
     }
-  fclose (file);
   return true;
 }
 
