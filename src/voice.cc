@@ -24,12 +24,6 @@
 
 using namespace LiquidSFZInternal;
 
-static double
-note_to_freq (int note)
-{
-  return 440 * exp (log (2) * (note - 69) / 12.0);
-}
-
 double
 Voice::pan_stereo_factor (const Region& r, int ch)
 {
@@ -48,6 +42,14 @@ Voice::velocity_track_factor (const Region& r, int midi_velocity)
   double v = (offset - veltrack_factor) + veltrack_factor * curve;
 
   return v;
+}
+
+double
+Voice::replay_speed()
+{
+  double semi_tones = (key_ - region_->pitch_keycenter) * (region_->pitch_keytrack * 0.01);
+
+  return exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_;
 }
 
 void
@@ -81,7 +83,7 @@ Voice::process (float **outputs, uint nframes)
 {
   const auto csample = region_->cached_sample;
   const auto channels = csample->channels;
-  const double step = double (csample->sample_rate) / sample_rate_ * note_to_freq (key_) / note_to_freq (region_->pitch_keycenter);
+  const double step = replay_speed();
 
   auto get_samples_mono = [csample, this] (uint x, auto& fsamples)
     {

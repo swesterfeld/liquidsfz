@@ -57,6 +57,7 @@ struct Region
   double lorand = 0;
   double hirand = 1;
   int pitch_keycenter = 60;
+  int pitch_keytrack = 100;
   int loop_start = 0;
   int loop_end = 0;
   LoopMode loop_mode = LoopMode::DEFAULT;

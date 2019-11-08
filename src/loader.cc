@@ -75,6 +75,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.hivel = convert_key (value);
   else if (key == "pitch_keycenter")
     region.pitch_keycenter = convert_key (value);
+  else if (key == "pitch_keytrack")
+    region.pitch_keytrack = convert_int (value);
   else if (key == "lorand")
     region.lorand = convert_float (value);
   else if (key == "hirand")

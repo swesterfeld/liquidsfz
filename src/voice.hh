@@ -45,6 +45,7 @@ public:
 
   double pan_stereo_factor (const Region& r, int ch);
   double velocity_track_factor (const Region& r, int midi_velocity);
+  double replay_speed();
 
   void start (const Region& region, int channel, int key, int velocity, double time_since_note_on, uint64_t global_frame_count, uint sample_rate);
   void process (float **outputs, uint nframes);
