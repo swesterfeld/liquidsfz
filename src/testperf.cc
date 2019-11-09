@@ -45,8 +45,7 @@ main (int argc, char **argv)
   std::vector<float> out_left (1024), out_right (1024);
 
   float *outputs[2] = { out_left.data(), out_right.data() };
-  unsigned char note_on[3] = { 0x90, 60, 127 };
-  synth.add_midi_event (0, note_on);
+  synth.add_event_note_on (0, 0, 60, 127);
   const double time_start = get_time();
   uint samples = 0;
   for (int pos = 0; pos < 1000; pos++)

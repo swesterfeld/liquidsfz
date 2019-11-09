@@ -54,9 +54,21 @@ Synth::load (const std::string& filename)
 }
 
 void
-Synth::add_midi_event (uint offset, const unsigned char *midi_data)
+Synth::add_event_note_on (uint offset, int channel, int key, int velocity)
 {
-  impl->synth.add_midi_event (offset, midi_data);
+  impl->synth.add_event_note_on (offset, channel, key, velocity);
+}
+
+void
+Synth::add_event_note_off (uint offset, int channel, int key)
+{
+  impl->synth.add_event_note_off (offset, channel, key);
+}
+
+void
+Synth::add_event_cc (uint offset, int channel, int cc, int value)
+{
+  impl->synth.add_event_cc (offset, channel, cc, value);
 }
 
 void

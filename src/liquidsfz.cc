@@ -74,7 +74,19 @@ public:
       {
         jack_midi_event_t    in_event;
         jack_midi_event_get (&in_event, port_buf, event_index);
-        synth.add_midi_event (in_event.time, in_event.buffer);
+        if (in_event.size == 3)
+          {
+            int channel = in_event.buffer[0] & 0x0f;
+            switch (in_event.buffer[0] & 0xf0)
+              {
+                case 0x90: synth.add_event_note_on (in_event.time, channel, in_event.buffer[1], in_event.buffer[2]);
+                           break;
+                case 0x80: synth.add_event_note_off (in_event.time, channel, in_event.buffer[1]);
+                           break;
+                case 0xb0: synth.add_event_cc (in_event.time, channel, in_event.buffer[1], in_event.buffer[2]);
+                           break;
+              }
+          }
       }
 
     float *outputs[2] = {

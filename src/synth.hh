@@ -229,45 +229,64 @@ public:
       }
     return ch.cc_values[controller];
   }
-  struct
-  MidiEvent
+  struct Event
   {
-    uint offset;
-    unsigned char midi_data[3];
+    enum class Type : uint16_t { NONE, NOTE_ON, NOTE_OFF, CC };
+
+    uint     offset = 0;
+    Type     type = Type::NONE;
+    uint16_t channel = 0;
+    uint16_t arg1 = 0;
+    uint16_t arg2 = 0;
   };
-  std::vector<MidiEvent> midi_events;
+  std::vector<Event> events;
   void
-  add_midi_event (uint offset, const unsigned char *midi_data)
+  add_event_note_on (uint offset, int channel, int key, int velocity)
   {
-    unsigned char status = midi_data[0] & 0xf0;
-    if (status == 0x80 || status == 0x90 || status == 0xb0)
-      {
-        MidiEvent event;
-        event.offset = offset;
-        std::copy_n (midi_data, 3, event.midi_data);
-        midi_events.push_back (event);
-      }
+    Event event;
+    event.offset = offset;
+    event.type = Event::Type::NOTE_ON;
+    event.channel = channel;
+    event.arg1 = key;
+    event.arg2 = velocity;
+    events.push_back (event);
+  }
+  void
+  add_event_note_off (uint offset, int channel, int key)
+  {
+    Event event;
+    event.offset = offset;
+    event.type = Event::Type::NOTE_OFF;
+    event.channel = channel;
+    event.arg1 = key;
+    event.arg2 = 0;
+    events.push_back (event);
+  }
+  void
+  add_event_cc (uint offset, int channel, int cc, int value)
+  {
+    Event event;
+    event.offset = offset;
+    event.type = Event::Type::CC;
+    event.channel = channel;
+    event.arg1 = cc;
+    event.arg2 = value;
+    events.push_back (event);
   }
   int
   process (float **outputs, uint nframes)
   {
-    for (const auto& midi_event : midi_events)
+    for (const auto& event : events)
       {
-        unsigned char status  = midi_event.midi_data[0] & 0xf0;
-        unsigned char channel = midi_event.midi_data[0] & 0x0f;
-        if (status == 0x80)
+        switch (event.type)
           {
-            // printf ("note off, ch = %d\n", channel);
-            note_off (channel, midi_event.midi_data[1]);
-          }
-        else if (status == 0x90)
-          {
-            // printf ("note on, ch = %d, note = %d, vel = %d\n", channel, in_event.buffer[1], in_event.buffer[2]);
-            note_on (channel, midi_event.midi_data[1], midi_event.midi_data[2]);
-          }
-        else if (status == 0xb0)
-          {
-            update_cc (channel, midi_event.midi_data[1], midi_event.midi_data[2]);
+            case Event::Type::NOTE_ON:  note_on (event.channel, event.arg1, event.arg2);
+                                        break;
+            case Event::Type::NOTE_OFF: note_off (event.channel, event.arg1);
+                                        break;
+            case Event::Type::CC:       update_cc (event.channel, event.arg1, event.arg2);
+                                        break;
+            default:                    log_error ("unsupported event type %d\n", int (event.type));
           }
       }
     std::fill_n (outputs[0], nframes, 0.0);
@@ -277,7 +296,7 @@ public:
         if (voice.state_ != Voice::IDLE)
           voice.process (outputs, nframes);
       }
-    midi_events.clear();
+    events.clear();
     global_frame_count += nframes;
     return 0;
   }
