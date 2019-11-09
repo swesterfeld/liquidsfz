@@ -5,6 +5,8 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
+dnl no shared libraries for now (no ABI compatibility)
+AC_DISABLE_SHARED
 AC_PROG_LIBTOOL
 
 dnl

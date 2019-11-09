@@ -1,5 +1,6 @@
 - set log function
 - fix public event api
+- off_by, group
 - <global>
 - key switches
 - xfade
