@@ -104,14 +104,10 @@ public:
               {
                 if (region.locc[cc] != 0 || region.hicc[cc] != 127)
                   {
-#if 0
-                    int val;
-                    if (fluid_synth_get_cc (synth, chan, cc, &val) == FLUID_OK)
-                      {
-                        if (val < region.locc[cc] || val > region.hicc[cc])
-                          cc_match = false;
-                      }
-#endif /* FIXME */
+                    //if (fluid_synth_get_cc (synth, chan, cc, &val) == FLUID_OK)
+                    const int val = get_cc (chan, cc);
+                    if (val < region.locc[cc] || val > region.hicc[cc])
+                      cc_match = false;
                   }
               }
             if (!cc_match)

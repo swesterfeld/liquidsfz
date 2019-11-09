@@ -1,6 +1,5 @@
-- ccs
 - set log function
-- #include
+- fix public event api
 - <global>
 - key switches
 - xfade
