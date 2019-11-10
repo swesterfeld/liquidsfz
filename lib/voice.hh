@@ -29,6 +29,7 @@ namespace LiquidSFZInternal
 class Voice
 {
 public:
+  Synth *synth_;
   int sample_rate_ = 44100;
   int channel_ = 0;
   int key_ = 0;
@@ -51,6 +52,10 @@ public:
 
   const Region *region_ = nullptr;
 
+  Voice (Synth *synth) :
+    synth_ (synth)
+  {
+  }
   double pan_stereo_factor (const Region& r, int ch);
   double velocity_track_factor (const Region& r, int midi_velocity);
   double replay_speed();

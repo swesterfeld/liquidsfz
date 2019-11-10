@@ -29,9 +29,12 @@
 #include "utils.hh"
 #include "envelope.hh"
 #include "voice.hh"
+#include "liquidsfz.hh"
 
 namespace LiquidSFZInternal
 {
+
+using LiquidSFZ::Log;
 
 struct Channel
 {
@@ -41,15 +44,18 @@ struct Channel
 class Synth
 {
   std::minstd_rand random_gen;
+  std::function<void (Log, std::string)> log_function_;
   uint sample_rate_ = 44100; // default
-  Loader sfz_loader;
+  Loader sfz_loader_;
   uint64_t global_frame_count = 0;
   std::vector<Voice> voices_;
+  Log log_level_ = Log::INFO;
 
   static constexpr int CC_SUSTAIN = 0x40;
 
 public:
-  Synth()
+  Synth() :
+    sfz_loader_ (this)
   {
     // sane defaults:
     set_max_voices (256);
@@ -63,7 +69,9 @@ public:
   void
   set_max_voices (uint n_voices)
   {
-    voices_.resize (n_voices);
+    voices_.clear();
+    for (uint i = 0; i < n_voices; i++)
+      voices_.emplace_back (this);
   }
   void
   set_channels (uint n_channels)
@@ -73,7 +81,7 @@ public:
   bool
   load (const std::string& filename)
   {
-    return sfz_loader.parse (filename);
+    return sfz_loader_.parse (filename);
   }
   Voice *
   alloc_voice()
@@ -83,7 +91,7 @@ public:
         if (v.state_ == Voice::IDLE)
           return &v;
       }
-    log_debug ("alloc_voice: no voices left\n");
+    debug ("alloc_voice: no voices left\n");
     return nullptr;
   }
   uint
@@ -114,7 +122,7 @@ public:
     // - random must be <  1.0  (and never 1.0)
     double random = random_gen() / double (random_gen.max() + 1);
 
-    for (auto& region : sfz_loader.regions)
+    for (auto& region : sfz_loader_.regions)
       {
         if (region.lokey <= key && region.hikey >= key &&
             region.lovel <= vel && region.hivel >= vel &&
@@ -182,7 +190,7 @@ public:
   {
     if (voice.state_ != Voice::ACTIVE && voice.state_ != Voice::SUSTAIN)
       {
-        log_error ("release() state %d not active/sustain\n", voice.state_);
+        error ("release() state %d not active/sustain\n", voice.state_);
         return;
       }
     /* FIXME: random, sequence */
@@ -192,7 +200,7 @@ public:
     const int chan = voice.channel_;
     const int key = voice.key_;
     const int vel = voice.velocity_;
-    for (auto& region : sfz_loader.regions)
+    for (auto& region : sfz_loader_.regions)
       {
         if (region.lokey <= key && region.hikey >= key &&
             region.lovel <= vel && region.hivel >= vel &&
@@ -212,13 +220,13 @@ public:
   {
     if (channel < 0 || uint (channel) > channels_.size())
       {
-        log_error ("update_cc: bad channel %d\n", channel);
+        error ("update_cc: bad channel %d\n", channel);
         return;
       }
     auto& ch = channels_[channel];
     if (controller < 0 || uint (controller) > ch.cc_values.size())
       {
-        log_error ("update_cc: bad channel controller %d\n", controller);
+        error ("update_cc: bad channel controller %d\n", controller);
         return;
       }
     ch.cc_values[controller] = value;
@@ -240,13 +248,13 @@ public:
   {
     if (channel < 0 || uint (channel) > channels_.size())
       {
-        log_error ("get_cc: bad channel %d\n", channel);
+        error ("get_cc: bad channel %d\n", channel);
         return 0;
       }
     auto& ch = channels_[channel];
     if (controller < 0 || uint (controller) > ch.cc_values.size())
       {
-        log_error ("get_cc: bad channel controller %d\n", controller);
+        error ("get_cc: bad channel controller %d\n", controller);
         return 0;
       }
     return ch.cc_values[controller];
@@ -308,7 +316,7 @@ public:
                                         break;
             case Event::Type::CC:       update_cc (event.channel, event.arg1, event.arg2);
                                         break;
-            default:                    log_error ("unsupported event type %d\n", int (event.type));
+            default:                    error ("unsupported event type %d\n", int (event.type));
           }
       }
     std::fill_n (outputs[0], nframes, 0.0);
@@ -322,6 +330,23 @@ public:
     global_frame_count += nframes;
     return 0;
   }
+  void
+  set_log_function (std::function<void(Log, std::string)> function)
+  {
+    log_function_ = function;
+  }
+  void
+  set_log_level (Log log_level)
+  {
+    log_level_ = log_level;
+  }
+
+  void logv (Log level, const char *format, va_list vargs);
+
+  void error (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
+  void warning (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
+  void info (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
+  void debug (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
 };
 
 }

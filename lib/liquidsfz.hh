@@ -22,9 +22,18 @@
 #define LIQUIDSFZ_LIQUIDSFZ_HH
 
 #include <memory>
+#include <functional>
 
 namespace LiquidSFZ
 {
+
+enum class Log {
+  DEBUG,
+  INFO,
+  WARNING,
+  ERROR,
+  DISABLE_ALL /// special log level which can be used to disable all logging
+};
 
 class Synth
 {
@@ -85,6 +94,27 @@ public:
    * @param n_frames   number of stereo frames to be written
    */
   void process (float **outputs, uint nframes);
+
+  /**
+   * \brief Set minimum log level
+   *
+   * This function can be used to set the minimum level of log messages that you
+   * are interested in. By default this is set to Log::INFO, which means that you
+   * will get errors, warnings and info messages, but not debug messages. Note
+   * that if you want to ignore some messages, it is better (more efficient) to
+   * do so by setting the log level than by setting a logging function with
+   * set_log_function() and ignoring some messages.
+   *
+   * @param log_level minimum log level
+   */
+  void set_log_level (Log log_level);
+
+  /**
+   * \brief Set custom logging function
+   *
+   * @param log_function function to be called for log entries
+   */
+  void set_log_function (std::function<void (Log, std::string)> log_function);
 };
 
 }

@@ -76,3 +76,15 @@ Synth::process (float **outputs, uint nframes)
 {
   impl->synth.process (outputs, nframes);
 }
+
+void
+Synth::set_log_level (Log log_level)
+{
+  impl->synth.set_log_level (log_level);
+}
+
+void
+Synth::set_log_function (std::function<void (Log, std::string)> function)
+{
+  impl->synth.set_log_function (function);
+}

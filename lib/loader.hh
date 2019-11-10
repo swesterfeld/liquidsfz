@@ -84,6 +84,8 @@ struct Region
   int play_seq = 1;
 };
 
+class Synth;
+
 class Loader
 {
   struct LineInfo
@@ -101,8 +103,13 @@ class Loader
   };
   LineInfo current_line_info;
   std::set<std::string> preprocess_done;
+  Synth *synth_ = nullptr;
 
 public:
+  Loader (Synth *synth)
+  {
+    synth_ = synth;
+  }
   enum class RegionType { NONE, GROUP, REGION };
   RegionType region_type = RegionType::NONE;
   Region active_group;
@@ -164,52 +171,14 @@ public:
       return Trigger::RELEASE;
     return Trigger::ATTACK;
   }
-  LoopMode
-  convert_loop_mode (const std::string& l)
-  {
-    if (l == "no_loop")
-      return LoopMode::NONE;
-    else if (l == "one_shot")
-      return LoopMode::ONE_SHOT;
-    else if (l == "loop_continuous")
-      return LoopMode::CONTINUOUS;
-    else if (l == "loop_sustain")
-      return LoopMode::SUSTAIN;
-    log_warning ("%s unknown loop mode: %s\n", location().c_str(), l.c_str());
-    return LoopMode::DEFAULT;
-  }
+  LoopMode convert_loop_mode (const std::string& l);
   bool
   starts_with (const std::string& key, const std::string& start)
   {
     return key.substr (0, start.size()) == start;
   }
   void set_key_value (const std::string& key, const std::string& value);
-  void
-  handle_tag (const std::string& tag)
-  {
-    log_debug ("+++ TAG %s\n", tag.c_str());
-
-    /* if we are done building a region, store it */
-    if (tag == "region" || tag == "group")
-      if (!active_region.empty())
-        {
-          regions.push_back (active_region);
-          active_region = Region();
-        }
-
-    if (tag == "region")
-      {
-        region_type   = RegionType::REGION;
-        active_region = active_group; /* inherit parameters from group */
-      }
-    else if (tag == "group")
-      {
-        region_type  = RegionType::GROUP;
-        active_group = Region();
-      }
-    else
-      log_warning ("%s unsupported tag '<%s>'\n", location().c_str(), tag.c_str());
-  }
+  void handle_tag (const std::string& tag);
   std::string
   location()
   {

@@ -19,6 +19,7 @@
  */
 
 #include "loader.hh"
+#include "synth.hh"
 
 #include <algorithm>
 #include <regex>
@@ -42,6 +43,21 @@ strip_spaces (const string& s)
   return regex_replace (r, lws_re, "");
 }
 
+LoopMode
+Loader::convert_loop_mode (const string& l)
+{
+  if (l == "no_loop")
+    return LoopMode::NONE;
+  else if (l == "one_shot")
+    return LoopMode::ONE_SHOT;
+  else if (l == "loop_continuous")
+    return LoopMode::CONTINUOUS;
+  else if (l == "loop_sustain")
+    return LoopMode::SUSTAIN;
+  synth_->warning ("%s unknown loop mode: %s\n", location().c_str(), l.c_str());
+  return LoopMode::DEFAULT;
+}
+
 void
 Loader::set_key_value (const string& key, const string& value)
 {
@@ -49,7 +65,7 @@ Loader::set_key_value (const string& key, const string& value)
     return;
 
   Region& region = (region_type == RegionType::REGION) ? active_region : active_group;
-  log_debug ("+++ '%s' = '%s'\n", key.c_str(), value.c_str());
+  synth_->debug ("+++ '%s' = '%s'\n", key.c_str(), value.c_str());
   if (key == "sample")
     {
       // on unix, convert \-seperated filename to /-separated filename
@@ -126,7 +142,34 @@ Loader::set_key_value (const string& key, const string& value)
   else if (key == "rt_decay")
     region.rt_decay = convert_float (value);
   else
-    log_warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
+    synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
+}
+
+void
+Loader::handle_tag (const std::string& tag)
+{
+  synth_->debug ("+++ TAG %s\n", tag.c_str());
+
+  /* if we are done building a region, store it */
+  if (tag == "region" || tag == "group")
+    if (!active_region.empty())
+      {
+        regions.push_back (active_region);
+        active_region = Region();
+      }
+
+  if (tag == "region")
+    {
+      region_type   = RegionType::REGION;
+      active_region = active_group; /* inherit parameters from group */
+    }
+  else if (tag == "group")
+    {
+      region_type  = RegionType::GROUP;
+      active_group = Region();
+    }
+  else
+    synth_->warning ("%s unsupported tag '<%s>'\n", location().c_str(), tag.c_str());
 }
 
 bool
@@ -147,12 +190,12 @@ Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& line
         {
           bool inc_ok = preprocess_file (path_absolute (path_join (sample_path, sm[1].str())), lines);
           if (!inc_ok)
-            log_error ("%s unable to read #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
+            synth_->error ("%s unable to read #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
 
           return inc_ok;
         }
       else
-        log_warning ("%s skipping duplicate #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
+        synth_->warning ("%s skipping duplicate #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
     }
   else
     {
@@ -229,7 +272,7 @@ Loader::parse (const string& filename)
 
   if (!preprocess_file (filename, lines))
     {
-      log_error ("error reading file '%s'\n", filename.c_str());
+      synth_->error ("error reading file '%s'\n", filename.c_str());
       return false;
     }
 
@@ -287,7 +330,7 @@ Loader::parse (const string& filename)
                     }
                   else
                     {
-                      log_error ("%s parse error in sample/sw_label opcode parsing\n", location().c_str());
+                      synth_->error ("%s parse error in sample/sw_label opcode parsing\n", location().c_str());
                       return false;
                     }
                 }
@@ -299,7 +342,7 @@ Loader::parse (const string& filename)
             }
           else
             {
-              log_error ("%s toplevel parsing failed\n", location().c_str());
+              synth_->error ("%s toplevel parsing failed\n", location().c_str());
               return false;
             }
         }
@@ -313,7 +356,7 @@ Loader::parse (const string& filename)
       regions[i].cached_sample = cached_sample;
 
       if (!cached_sample)
-        log_warning ("%s: missing sample: '%s'\n", filename.c_str(), regions[i].sample.c_str());
+        synth_->warning ("%s: missing sample: '%s'\n", filename.c_str(), regions[i].sample.c_str());
 
       if (regions[i].loop_mode == LoopMode::DEFAULT)
         {
@@ -332,6 +375,6 @@ Loader::parse (const string& filename)
       fflush (stdout);
     }
   printf ("\n");
-  log_debug ("*** regions: %zd\n", regions.size());
+  synth_->debug ("*** regions: %zd\n", regions.size());
   return true;
 }

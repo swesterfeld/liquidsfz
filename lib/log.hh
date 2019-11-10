@@ -25,11 +25,6 @@
 namespace LiquidSFZInternal
 {
 
-void log_error (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
-void log_warning (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
-void log_info (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
-void log_debug (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
-
 std::string string_printf (const char *fmt, ...) LIQUIDSFZ_PRINTF (1, 2);
 
 }
