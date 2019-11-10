@@ -54,9 +54,9 @@ Loader::set_key_value (const string& key, const string& value)
     {
       // on unix, convert \-seperated filename to /-separated filename
       string native_filename = value;
-      std::replace (native_filename.begin(), native_filename.end(), '\\', fs::path::preferred_separator);
+      std::replace (native_filename.begin(), native_filename.end(), '\\', PATH_SEPARATOR);
 
-      region.sample = fs::absolute (sample_path / native_filename);
+      region.sample = path_absolute (sample_path + PATH_SEPARATOR + native_filename);
     }
   else if (key == "lokey")
     region.lokey = convert_key (value);
@@ -141,11 +141,11 @@ Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& line
   std::smatch sm;
   if (regex_match (line, sm, include_re))
     {
-      string include_filename = fs::absolute (sample_path / sm[1].str());
+      string include_filename = path_absolute (sample_path + PATH_SEPARATOR + sm[1].str());
 
       if (!preprocess_done.count (include_filename)) // prevent infinite recursion for buggy .sfz
         {
-          bool inc_ok = preprocess_file (fs::absolute (sample_path / sm[1].str()), lines);
+          bool inc_ok = preprocess_file (path_absolute (sample_path + PATH_SEPARATOR + sm[1].str()), lines);
           if (!inc_ok)
             log_error ("%s unable to read #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
 
@@ -222,7 +222,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines)
 bool
 Loader::parse (const string& filename)
 {
-  sample_path = fs::path (filename).remove_filename();
+  sample_path = path_dirname (filename);
 
   // read file
   vector<LineInfo> lines;

@@ -22,7 +22,6 @@
 #define LIQUIDSFZ_LOADER_HH
 
 #include <string>
-#include <filesystem>
 #include <set>
 
 #include "log.hh"
@@ -85,8 +84,6 @@ struct Region
   int play_seq = 1;
 };
 
-namespace fs = std::filesystem; // FIXME
-
 class Loader
 {
   struct LineInfo
@@ -111,7 +108,7 @@ public:
   Region active_group;
   Region active_region;
   std::vector<Region> regions;
-  fs::path sample_path;
+  std::string sample_path;
   SampleCache sample_cache; // FIXME: should share sample cache between different instances
 
   int

@@ -39,6 +39,8 @@
 #include <sys/time.h>
 #include <math.h>
 
+#include <string>
+
 namespace LiquidSFZInternal
 {
 
@@ -66,6 +68,11 @@ get_time()
 
   return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
+
+static constexpr char PATH_SEPARATOR = '/';
+
+std::string path_absolute (const std::string& filename);
+std::string path_dirname (const std::string& filename);
 
 }
 
