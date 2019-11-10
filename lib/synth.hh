@@ -52,7 +52,7 @@ public:
   Synth()
   {
     // sane defaults:
-    set_max_voices (64);
+    set_max_voices (256);
     set_channels (16);
   }
   void
@@ -89,6 +89,17 @@ public:
   void
   note_on (int chan, int key, int vel)
   {
+    /* kill overlapping notes */
+    for (auto& voice : voices_)
+      {
+        if ((voice.state_ == Voice::ACTIVE || voice.state_== Voice::SUSTAIN) &&
+            voice.trigger_ == Trigger::ATTACK &&
+            voice.channel_ == chan && voice.key_ == key && voice.region_->loop_mode != LoopMode::ONE_SHOT)
+          {
+            release (voice); // FIXME: we may want to use a fast release here
+          }
+      }
+
     // - random must be >= 0.0
     // - random must be <  1.0  (and never 1.0)
     double random = random_gen() / double (random_gen.max() + 1);
