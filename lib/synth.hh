@@ -86,6 +86,16 @@ public:
     log_debug ("alloc_voice: no voices left\n");
     return nullptr;
   }
+  uint
+  active_voice_count()
+  {
+    uint c = 0;
+
+    for (auto& v : voices_)
+      if (v.state_ != Voice::IDLE)
+        c++;
+    return c;
+  }
   void
   note_on (int chan, int key, int vel)
   {
@@ -143,6 +153,7 @@ public:
               region.play_seq = 1;
           }
       }
+    // log_debug ("### active voice count: %d\n", active_voice_count());
   }
   void
   note_off (int chan, int key)
