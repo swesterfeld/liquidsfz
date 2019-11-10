@@ -39,5 +39,5 @@ AC_LANG_PUSH([C++])
 AX_CHECK_COMPILE_FLAG([-Wall],                                 [CXXFLAGS="$CXXFLAGS -Wall"])
 AC_LANG_POP([C++])
 
-AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile liquidsfz.pc])
 AC_OUTPUT
