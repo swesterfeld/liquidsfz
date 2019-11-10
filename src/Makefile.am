@@ -1,15 +1,11 @@
 bin_PROGRAMS = liquidsfz
 
-LIQUIDSFZ_LIBS = libliquidsfz.la $(SNDFILE_LIBS)
+AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
-lib_LTLIBRARIES = libliquidsfz.la
-libliquidsfz_la_SOURCES = api.cc api.hh loader.cc loader.hh log.hh log.cc \
-			  synth.hh voice.hh voice.cc utils.hh utils.cc
+LIQUIDSFZ_LIBS = $(top_srcdir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
 liquidsfz_SOURCES = liquidsfz.cc
 liquidsfz_LDADD = $(LIQUIDSFZ_LIBS) $(JACK_LIBS)
-
-AM_CXXFLAGS = $(SNDFILE_CFLAGS) $(JACK_CFLAGS)
 
 noinst_PROGRAMS = testliquid testperf
 
