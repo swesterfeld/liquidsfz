@@ -73,6 +73,7 @@ static constexpr char PATH_SEPARATOR = '/';
 
 std::string path_absolute (const std::string& filename);
 std::string path_dirname (const std::string& filename);
+std::string path_join (const std::string& path1, const std::string& path2);
 
 }
 

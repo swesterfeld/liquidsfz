@@ -59,4 +59,10 @@ path_dirname (const string& filename)
   return dirname (buffer.data());
 }
 
+string
+path_join (const string& path1, const string& path2)
+{
+  return path1 + PATH_SEPARATOR + path2;
+}
+
 }
