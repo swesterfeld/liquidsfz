@@ -114,7 +114,7 @@ public:
    *
    * @param log_function function to be called for log entries
    */
-  void set_log_function (std::function<void (Log, std::string)> log_function);
+  void set_log_function (std::function<void (Log, const char *)> log_function);
 };
 
 }

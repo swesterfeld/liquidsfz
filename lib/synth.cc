@@ -29,7 +29,7 @@ using std::string;
 
 namespace LiquidSFZInternal {
 
-static string
+static const char *
 log2str (Log level)
 {
   switch (level)
@@ -42,32 +42,17 @@ log2str (Log level)
     }
 }
 
-static string
-string_vprintf (const char *format, va_list vargs)
-{
-  string s;
-
-  char *str = NULL;
-  if (vasprintf (&str, format, vargs) >= 0 && str)
-    {
-      s = str;
-      free (str);
-    }
-  else
-    s = format;
-
-  return s;
-}
-
 void
 Synth::logv (Log level, const char *format, va_list vargs)
 {
-  string s = string_vprintf (format, vargs);
+  char buffer[1024];
+
+  vsnprintf (buffer, sizeof (buffer), format, vargs);
 
   if (log_function_)
-    log_function_ (level, s);
+    log_function_ (level, buffer);
   else
-    fprintf (stderr, "[%s] %s", log2str (level).c_str(), s.c_str());
+    fprintf (stderr, "[%s] %s", log2str (level), buffer);
 }
 
 void

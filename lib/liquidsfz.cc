@@ -84,7 +84,7 @@ Synth::set_log_level (Log log_level)
 }
 
 void
-Synth::set_log_function (std::function<void (Log, std::string)> function)
+Synth::set_log_function (std::function<void (Log, const char *)> function)
 {
   impl->synth.set_log_function (function);
 }

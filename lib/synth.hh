@@ -44,7 +44,7 @@ struct Channel
 class Synth
 {
   std::minstd_rand random_gen;
-  std::function<void (Log, std::string)> log_function_;
+  std::function<void (Log, const char *)> log_function_;
   uint sample_rate_ = 44100; // default
   Loader sfz_loader_;
   uint64_t global_frame_count = 0;
@@ -331,7 +331,7 @@ public:
     return 0;
   }
   void
-  set_log_function (std::function<void(Log, std::string)> function)
+  set_log_function (std::function<void(Log, const char *)> function)
   {
     log_function_ = function;
   }
