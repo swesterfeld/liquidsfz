@@ -19,7 +19,7 @@
  */
 
 #include "synth.hh"
-#include "api.hh"
+#include "liquidsfz.hh"
 
 using namespace LiquidSFZ;
 

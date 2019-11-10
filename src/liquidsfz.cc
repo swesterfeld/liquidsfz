@@ -31,7 +31,7 @@
 #include "loader.hh"
 #include "utils.hh"
 #include "synth.hh"
-#include "api.hh"
+#include "liquidsfz.hh"
 
 using std::vector;
 using std::string;
