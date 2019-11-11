@@ -5,7 +5,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = liquidsfz.pc
 $(pkgconfig_DATA): $(top_builddir)/config.status
 CLEANFILES = liquidsfz.pc
-EXTRA_DIST = liquidsfz.pc.in
+EXTRA_DIST = liquidsfz.pc.in TODO LICENSE README.md Doxyfile
 
 rebuild-api-docs:
 	doxygen Doxyfile
