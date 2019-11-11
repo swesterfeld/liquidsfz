@@ -297,47 +297,37 @@ Loader::parse (const string& filename)
               handle_tag (sm[1].str());
               l = sm[2];
             }
-          else if (regex_match (l, sm, key_val_re))
+          else if (regex_match (l, key_val_re))
             {
-              string key = sm[1];
-              string value = sm[2];
-              if (key == "sample" || key == "sw_label")
+              /* we need to handle three cases to deal with values that may contain spaces:
+               *
+               * - value extends until end of line
+               * - value is followed by <tag>
+               * - value is followed by another opcode (foo=bar)
+               */
+              static const regex key_val_space_re_eol ("([a-z0-9_]+)=([^=<]+)");
+              static const regex key_val_space_re_tag ("([a-z0-9_]+)=([^=<]+)(<.*)");
+              static const regex key_val_space_re_eq ("([a-z0-9_]+)=([^=<]+)(\\s[a-z0-9_]+=.*)");
+
+              if (regex_match (l, sm, key_val_space_re_eol))
                 {
-                  /* parsing sample=filename is problematic because filename can contain spaces
-                   * we need to handle three cases:
-                   *
-                   * - filename extends until end of line
-                   * - filename is followed by <tag>
-                   * - filename is followed by key=value
-                   */
-                  static const regex key_val_space_re_eol ("[a-z0-9_]+=([^=<]+)");
-                  static const regex key_val_space_re_tag ("[a-z0-9_]+=([^=<]+)(<.*)");
-                  static const regex key_val_space_re_eq ("[a-z0-9_]+=([^=<]+)(\\s[a-z0-9_]+=.*)");
-                  if (regex_match (l, sm, key_val_space_re_eol))
-                    {
-                      set_key_value (key, strip_spaces (sm[1].str()));
-                      l = "";
-                    }
-                  else if (regex_match (l, sm, key_val_space_re_tag))
-                    {
-                      set_key_value (key, strip_spaces (sm[1].str()));
-                      l = sm[2]; // parse rest
-                    }
-                  else if (regex_match (l, sm, key_val_space_re_eq))
-                    {
-                      set_key_value (key, strip_spaces (sm[1].str()));
-                      l = sm[2]; // parse rest
-                    }
-                  else
-                    {
-                      synth_->error ("%s parse error in sample/sw_label opcode parsing\n", location().c_str());
-                      return false;
-                    }
+                  set_key_value (sm[1].str(), strip_spaces (sm[2].str()));
+                  l = "";
+                }
+              else if (regex_match (l, sm, key_val_space_re_tag))
+                {
+                  set_key_value (sm[1].str(), strip_spaces (sm[2].str()));
+                  l = sm[3]; // parse rest
+                }
+              else if (regex_match (l, sm, key_val_space_re_eq))
+                {
+                  set_key_value (sm[1].str(), strip_spaces (sm[2].str()));
+                  l = sm[3]; // parse rest
                 }
               else
                 {
-                  set_key_value (key, value);
-                  l = sm[3];
+                  synth_->error ("%s parse error in opcode parsing\n", location().c_str());
+                  return false;
                 }
             }
           else
