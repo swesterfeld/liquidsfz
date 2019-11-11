@@ -24,15 +24,22 @@
 #include <memory>
 #include <functional>
 
+/** \file liquidsfz.hh
+ * \brief This header contains the public API for liquidsfz
+ */
+
 namespace LiquidSFZ
 {
 
+/**
+ * \brief Log levels for @ref LiquidSFZ::Synth
+ */
 enum class Log {
   DEBUG,
   INFO,
   WARNING,
   ERROR,
-  DISABLE_ALL /// special log level which can be used to disable all logging
+  DISABLE_ALL // special log level which can be used to disable all logging
 };
 
 class Synth
