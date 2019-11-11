@@ -26,8 +26,71 @@
 using LiquidSFZ::Log;
 
 using std::string;
+using std::min;
 
 namespace LiquidSFZInternal {
+
+void
+Synth::process_audio (float **outputs, uint n_frames, uint offset)
+{
+  float *outputs_offset[] = {
+    outputs[0] + offset,
+    outputs[1] + offset
+  };
+
+  for (auto& voice : voices_)
+    {
+      if (voice.state_ != Voice::IDLE)
+        voice.process (outputs_offset, n_frames);
+    }
+  global_frame_count += n_frames;
+}
+
+void
+Synth::process (float **outputs, uint n_frames)
+{
+  std::fill_n (outputs[0], n_frames, 0.0);
+  std::fill_n (outputs[1], n_frames, 0.0);
+
+  uint offset = 0;
+  for (const auto& event : events)
+    {
+      // ensure that new offset from event is not larger than n_frames
+      const uint new_offset = min <uint> (event.offset, n_frames);
+
+      // process any audio that is before the event
+      process_audio (outputs, new_offset - offset, offset);
+      offset = new_offset;
+
+      // process event at timestamp offset
+      switch (event.type)
+        {
+          case Event::Type::NOTE_ON:  note_on (event.channel, event.arg1, event.arg2);
+                                      break;
+          case Event::Type::NOTE_OFF: note_off (event.channel, event.arg1);
+                                      break;
+          case Event::Type::CC:       update_cc (event.channel, event.arg1, event.arg2);
+                                      break;
+          default:                    error ("unsupported event type %d\n", int (event.type));
+        }
+    }
+  events.clear();
+
+  // process frames after last event
+  process_audio (outputs, n_frames - offset, offset);
+}
+
+void
+Synth::set_log_function (std::function<void(Log, const char *)> function)
+{
+  log_function_ = function;
+}
+
+void
+Synth::set_log_level (Log log_level)
+{
+  log_level_ = log_level;
+}
 
 static const char *
 log2str (Log level)

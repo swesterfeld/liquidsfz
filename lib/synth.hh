@@ -76,6 +76,7 @@ public:
   void
   set_channels (uint n_channels)
   {
+    channels_.clear();
     channels_.resize (n_channels);
   }
   bool
@@ -303,44 +304,11 @@ public:
     event.arg2 = value;
     events.push_back (event);
   }
-  int
-  process (float **outputs, uint nframes)
-  {
-    for (const auto& event : events)
-      {
-        switch (event.type)
-          {
-            case Event::Type::NOTE_ON:  note_on (event.channel, event.arg1, event.arg2);
-                                        break;
-            case Event::Type::NOTE_OFF: note_off (event.channel, event.arg1);
-                                        break;
-            case Event::Type::CC:       update_cc (event.channel, event.arg1, event.arg2);
-                                        break;
-            default:                    error ("unsupported event type %d\n", int (event.type));
-          }
-      }
-    std::fill_n (outputs[0], nframes, 0.0);
-    std::fill_n (outputs[1], nframes, 0.0);
-    for (auto& voice : voices_)
-      {
-        if (voice.state_ != Voice::IDLE)
-          voice.process (outputs, nframes);
-      }
-    events.clear();
-    global_frame_count += nframes;
-    return 0;
-  }
-  void
-  set_log_function (std::function<void(Log, const char *)> function)
-  {
-    log_function_ = function;
-  }
-  void
-  set_log_level (Log log_level)
-  {
-    log_level_ = log_level;
-  }
+  void process_audio (float **outputs, uint n_frames, uint offset);
+  void process (float **outputs, uint n_frames);
 
+  void set_log_function (std::function<void(Log, const char *)> function);
+  void set_log_level (Log log_level);
   void logv (Log level, const char *format, va_list vargs);
 
   void error (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
