@@ -32,11 +32,114 @@
 #include "utils.hh"
 #include "synth.hh"
 #include "liquidsfz.hh"
+#include "config.h"
 
 using std::vector;
 using std::string;
 
 using namespace LiquidSFZ;
+
+namespace Options
+{
+  bool debug = false;
+}
+
+static void
+print_usage()
+{
+  printf ("usage: liquidsfz [options] <sfz_file>\n");
+  printf ("\n");
+  printf ("Options:\n");
+  printf ("  --debug      enable debugging output\n");
+}
+
+static bool
+check_arg (uint         argc,
+           char        *argv[],
+           uint        *nth,
+           const char  *opt,		    /* for example: --foo */
+           const char **opt_arg = nullptr)  /* if foo needs an argument, pass a pointer to get the argument */
+{
+  assert (opt != nullptr);
+  assert (*nth < argc);
+
+  const char *arg = argv[*nth];
+  if (!arg)
+    return false;
+
+  uint opt_len = strlen (opt);
+  if (strcmp (arg, opt) == 0)
+    {
+      if (opt_arg && *nth + 1 < argc)	  /* match foo option with argument: --foo bar */
+        {
+          argv[(*nth)++] = nullptr;
+          *opt_arg = argv[*nth];
+          argv[*nth] = nullptr;
+          return true;
+        }
+      else if (!opt_arg)		  /* match foo option without argument: --foo */
+        {
+          argv[*nth] = nullptr;
+          return true;
+        }
+      /* fall through to error message */
+    }
+  else if (strncmp (arg, opt, opt_len) == 0 && arg[opt_len] == '=')
+    {
+      if (opt_arg)			  /* match foo option with argument: --foo=bar */
+        {
+          *opt_arg = arg + opt_len + 1;
+          argv[*nth] = nullptr;
+          return true;
+        }
+      /* fall through to error message */
+    }
+  else
+    return false;
+
+  print_usage();
+  exit (1);
+}
+
+void
+parse_options (int   *argc_p,
+               char **argv_p[])
+{
+  uint argc = *argc_p;
+  char **argv = *argv_p;
+  unsigned int i, e;
+
+  for (i = 1; i < argc; i++)
+    {
+      //const char *opt_arg;
+      if (strcmp (argv[i], "--help") == 0 ||
+          strcmp (argv[i], "-h") == 0)
+	{
+	  print_usage();
+	  exit (0);
+	}
+      else if (strcmp (argv[i], "--version") == 0 || strcmp (argv[i], "-v") == 0)
+	{
+	  printf ("liquidsfz %s\n", VERSION);
+	  exit (0);
+	}
+      else if (check_arg (argc, argv, &i, "--debug"))
+	{
+          Options::debug = true;
+	}
+    }
+
+  /* resort argc/argv */
+  e = 1;
+  for (i = 1; i < argc; i++)
+    if (argv[i])
+      {
+        argv[e++] = argv[i];
+        if (i >= e)
+          argv[i] = nullptr;
+      }
+  *argc_p = e;
+}
 
 class JackStandalone
 {
@@ -51,6 +154,9 @@ public:
   JackStandalone (jack_client_t *client) :
     client (client)
   {
+    if (Options::debug)
+      synth.set_log_level (Log::DEBUG);
+
     synth.set_sample_rate (jack_get_sample_rate (client));
     midi_input_port = jack_port_register (client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
 
@@ -113,6 +219,7 @@ public:
 int
 main (int argc, char **argv)
 {
+  parse_options (&argc, &argv);
   if (argc != 2)
     {
       fprintf (stderr, "usage: liquidsfz <sfz_filename>\n");
