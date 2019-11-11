@@ -54,21 +54,21 @@ Synth::load (const std::string& filename)
 }
 
 void
-Synth::add_event_note_on (uint offset, int channel, int key, int velocity)
+Synth::add_event_note_on (uint time_frames, int channel, int key, int velocity)
 {
-  impl->synth.add_event_note_on (offset, channel, key, velocity);
+  impl->synth.add_event_note_on (time_frames, channel, key, velocity);
 }
 
 void
-Synth::add_event_note_off (uint offset, int channel, int key)
+Synth::add_event_note_off (uint time_frames, int channel, int key)
 {
-  impl->synth.add_event_note_off (offset, channel, key);
+  impl->synth.add_event_note_off (time_frames, channel, key);
 }
 
 void
-Synth::add_event_cc (uint offset, int channel, int cc, int value)
+Synth::add_event_cc (uint time_frames, int channel, int cc, int value)
 {
-  impl->synth.add_event_cc (offset, channel, cc, value);
+  impl->synth.add_event_cc (time_frames, channel, cc, value);
 }
 
 void

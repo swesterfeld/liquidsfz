@@ -264,7 +264,7 @@ public:
   {
     enum class Type : uint16_t { NONE, NOTE_ON, NOTE_OFF, CC };
 
-    uint     offset = 0;
+    uint     time_frames = 0;
     Type     type = Type::NONE;
     uint16_t channel = 0;
     uint16_t arg1 = 0;
@@ -272,10 +272,15 @@ public:
   };
   std::vector<Event> events;
   void
-  add_event_note_on (uint offset, int channel, int key, int velocity)
+  add_event_note_on (uint time_frames, int channel, int key, int velocity)
   {
+    if (velocity == 0)
+      {
+        add_event_note_off (time_frames, channel, key);
+        return;
+      }
     Event event;
-    event.offset = offset;
+    event.time_frames = time_frames;
     event.type = Event::Type::NOTE_ON;
     event.channel = channel;
     event.arg1 = key;
@@ -283,10 +288,10 @@ public:
     events.push_back (event);
   }
   void
-  add_event_note_off (uint offset, int channel, int key)
+  add_event_note_off (uint time_frames, int channel, int key)
   {
     Event event;
-    event.offset = offset;
+    event.time_frames = time_frames;
     event.type = Event::Type::NOTE_OFF;
     event.channel = channel;
     event.arg1 = key;
@@ -294,10 +299,10 @@ public:
     events.push_back (event);
   }
   void
-  add_event_cc (uint offset, int channel, int cc, int value)
+  add_event_cc (uint time_frames, int channel, int cc, int value)
   {
     Event event;
-    event.offset = offset;
+    event.time_frames = time_frames;
     event.type = Event::Type::CC;
     event.channel = channel;
     event.arg1 = cc;

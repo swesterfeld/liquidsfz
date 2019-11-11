@@ -56,7 +56,7 @@ Synth::process (float **outputs, uint n_frames)
   for (const auto& event : events)
     {
       // ensure that new offset from event is not larger than n_frames
-      const uint new_offset = min <uint> (event.offset, n_frames);
+      const uint new_offset = min <uint> (event.time_frames, n_frames);
 
       // process any audio that is before the event
       process_audio (outputs, new_offset - offset, offset);

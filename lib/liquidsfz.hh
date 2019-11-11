@@ -76,31 +76,70 @@ public:
 
   /**
    * \brief Add a note on event
+   *
+   * This function adds a note on event to the event list that will be rendered
+   * by the next process() call. A note on with velocity 0 will be treated as
+   * note off.
+   *
+   * Events must always be added sorted by event time (time_frames).
+   *
+   * @param time_frames the start time of the event (in frames)
+   * @param channel     midi channel
+   * @param key         note that was pressed
+   * @param velocity    velocity for note on
    */
-  void add_event_note_on (uint offset, int channel, int key, int velocity);
+  void add_event_note_on (uint time_frames, int channel, int key, int velocity);
 
   /**
    * \brief Add a note off event
+   *
+   * This function adds a note off event to the event list that will be rendered
+   * by the next process() call.
+   *
+   * Events must always be added sorted by event time (time_frames).
+   *
+   * @param time_frames the start time of the event (in frames)
+   * @param channel     midi channel
+   * @param key         note that was pressed
    */
-  void add_event_note_off (uint offset, int channel, int key);
+  void add_event_note_off (uint time_frames, int channel, int key);
 
   /**
    * \brief Add a cc event
+   *
+   * This function adds a cc event to the event list that will be rendered
+   * by the next process() call.
+   *
+   * Events must always be added sorted by event time (time_frames).
+   *
+   * @param time_frames the start time of the event (in frames)
+   * @param channel     midi channel
+   * @param cc          the controller
+   * @param value       the value
    */
-  void add_event_cc (uint offset, int channel, int cc, int value);
+  void add_event_cc (uint time_frames, int channel, int cc, int value);
 
   /**
    * \brief Synthesize audio
    *
    * This will render one stereo output stream, left output to outputs[0] and
    * right output to outputs[1]. The contents of the output buffers will be overwritten.
-   * The midi events added by add_midi_event() will be processed at the appropriate time
-   * offsets. After process() is done, the contents  of midi buffer will be discarded.
+   *
+   * Events that should be processed by this function can be added by calling some
+   * event functions before process():
+   *  - add_event_note_on()
+   *  - add_event_note_off()
+   *  - add_event_cc()
+   *
+   * These events will processed at the appropriate time positions (which means
+   * we provide sample accurate timing for all events). Events must always be
+   * added sorted by event time. After process() is done, the contents of event
+   * buffer will be discarded.
    *
    * @param outputs    buffers for the output of the synthesizer
    * @param n_frames   number of stereo frames to be written
    */
-  void process (float **outputs, uint nframes);
+  void process (float **outputs, uint n_frames);
 
   /**
    * \brief Set minimum log level
