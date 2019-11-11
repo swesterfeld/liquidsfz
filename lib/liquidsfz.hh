@@ -61,7 +61,7 @@ public:
   /**
    * \brief Set maximum number of voices
    *
-   * @param n_voices   maxmimum number of voices
+   * @param n_voices   maximum number of voices
    */
   void set_max_voices (uint n_voices);
 
