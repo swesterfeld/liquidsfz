@@ -9,4 +9,4 @@ EXTRA_DIST = liquidsfz.pc.in TODO LICENSE README.md Doxyfile
 
 rebuild-api-docs:
 	doxygen Doxyfile
-	rsync -av html/ stefan@space.twc.de:public_html/liquidsfz/api
+	rsync -av html/ stefan@space.twc.de:public_html/liquidsfz/api-$(VERSION)

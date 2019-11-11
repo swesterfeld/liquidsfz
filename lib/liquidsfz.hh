@@ -115,7 +115,7 @@ public:
    * @param time_frames the start time of the event (in frames)
    * @param channel     midi channel
    * @param cc          the controller
-   * @param value       the value
+   * @param value       new value for the controller
    */
   void add_event_cc (uint time_frames, int channel, int cc, int value);
 
@@ -150,6 +150,8 @@ public:
    * that if you want to ignore some messages, it is better (more efficient) to
    * do so by setting the log level than by setting a logging function with
    * set_log_function() and ignoring some messages.
+   *
+   * If you want to disable all messages, log_level can be set to Log::DISABLE_ALL.
    *
    * @param log_level minimum log level
    */
