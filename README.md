@@ -23,3 +23,10 @@ to liquidsfz to test the sfz loader.
 ## LICENSE
 
 The code is licensed under the LGPL 2.1 or later.
+
+## RELEASES
+
+The current version of liquidsfz is liquidsfz-0.1.0, and can be downloaded
+here:
+
+* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2
