@@ -118,7 +118,12 @@ public:
             release (voice); // FIXME: we may want to use a fast release here
           }
       }
+    trigger_regions (Trigger::ATTACK, chan, key, vel, /* time_since_note_on */ 0.0);
+  }
 
+  void
+  trigger_regions (Trigger trigger, int chan, int key, int vel, double time_since_note_on)
+  {
     // - random must be >= 0.0
     // - random must be <  1.0  (and never 1.0)
     double random = random_gen() / double (random_gen.max() + 1);
@@ -127,14 +132,13 @@ public:
       {
         if (region.lokey <= key && region.hikey >= key &&
             region.lovel <= vel && region.hivel >= vel &&
-            region.trigger == Trigger::ATTACK)
+            region.trigger == trigger)
           {
             bool cc_match = true;
             for (size_t cc = 0; cc < region.locc.size(); cc++)
               {
                 if (region.locc[cc] != 0 || region.hicc[cc] != 127)
                   {
-                    //if (fluid_synth_get_cc (synth, chan, cc, &val) == FLUID_OK)
                     const int val = get_cc (chan, cc);
                     if (val < region.locc[cc] || val > region.hicc[cc])
                       cc_match = false;
@@ -142,6 +146,7 @@ public:
               }
             if (!cc_match)
               continue;
+
             if (region.play_seq == region.seq_position)
               {
                 /* in order to make sequences and random play nice together
@@ -153,7 +158,7 @@ public:
                       {
                         auto voice = alloc_voice();
                         if (voice)
-                          voice->start (region, chan, key, vel, 0.0 /* time_since_note_on */, global_frame_count, sample_rate_);
+                          voice->start (region, chan, key, vel, time_since_note_on, global_frame_count, sample_rate_);
                       }
                   }
               }
@@ -198,22 +203,8 @@ public:
     voice.state_ = Voice::RELEASED;
     voice.envelope_.release();
 
-    const int chan = voice.channel_;
-    const int key = voice.key_;
-    const int vel = voice.velocity_;
-    for (auto& region : sfz_loader_.regions)
-      {
-        if (region.lokey <= key && region.hikey >= key &&
-            region.lovel <= vel && region.hivel >= vel &&
-            region.trigger == Trigger::RELEASE)
-          {
-            double time_since_note_on = (global_frame_count - voice.start_frame_count_) / double (sample_rate_);
-
-            auto voice = alloc_voice();
-            if (voice)
-              voice->start (region, chan, key, vel, time_since_note_on, global_frame_count, sample_rate_);
-          }
-      }
+    double time_since_note_on = (global_frame_count - voice.start_frame_count_) / double (sample_rate_);
+    trigger_regions (Trigger::RELEASE, voice.channel_, voice.key_, voice.velocity_, time_since_note_on);
   }
   std::vector<Channel> channels_;
   void
