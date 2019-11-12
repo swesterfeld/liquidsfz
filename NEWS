@@ -1,0 +1,5 @@
+Overview of Changes in liquidsfz-0.1.0:
+
+* Initial public release
+  - liquisfz: a commandline jack client
+  - libliquidsfz.a: a static library
