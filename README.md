@@ -9,6 +9,23 @@ long term goal is to provide a library API that is stable.
 
 API documentation is available here: http://space.twc.de/~stefan/liquidsfz/api-0.1.0
 
+## COMPILING
+
+To compile liquidsfz, use the usual
+
+    ./configure
+    make
+    make install
+
+You need the packages (on Debian/Ubuntu):
+
+* libjack-jackd2-dev
+* libsndfile1-dev
+
+If you are building from git, you also need the package (for autogen.sh to work):
+
+* autoconf-archive
+
 ## TESTING
 
 Right now, liquidsfz is only available as command line program. You can use it
