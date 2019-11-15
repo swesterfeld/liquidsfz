@@ -214,6 +214,17 @@ public:
     printf ("Synthesizer running - press \"Enter\" to quit.\n");
     getchar();
   }
+  bool
+  load (const string& filename)
+  {
+    synth.set_progress_function ([] (double percent)
+      {
+        printf ("Loading: %.1f %%\r", percent);
+        fflush (stdout);
+      });
+
+    return synth.load (filename);
+  }
 };
 
 int
@@ -235,7 +246,7 @@ main (int argc, char **argv)
 
   JackStandalone jack_standalone (client);
 
-  if (!jack_standalone.synth.load (argv[1]))
+  if (!jack_standalone.load (argv[1]))
     {
       fprintf (stderr, "parse error: exiting\n");
       return 1;
