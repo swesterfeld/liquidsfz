@@ -45,6 +45,7 @@ class Synth
 {
   std::minstd_rand random_gen;
   std::function<void (Log, const char *)> log_function_;
+  std::function<void (double)> progress_function_;
   uint sample_rate_ = 44100; // default
   Loader sfz_loader_;
   uint64_t global_frame_count = 0;
@@ -83,6 +84,12 @@ public:
   load (const std::string& filename)
   {
     return sfz_loader_.parse (filename);
+  }
+  void
+  progress (double percent)
+  {
+    if (progress_function_)
+      progress_function_ (percent);
   }
   Voice *
   alloc_voice()
@@ -303,7 +310,9 @@ public:
   void process_audio (float **outputs, uint n_frames, uint offset);
   void process (float **outputs, uint n_frames);
 
-  void set_log_function (std::function<void(Log, const char *)> function);
+  void set_progress_function (std::function<void (double)> function);
+
+  void set_log_function (std::function<void (Log, const char *)> function);
   void set_log_level (Log log_level);
   void logv (Log level, const char *format, va_list vargs);
 

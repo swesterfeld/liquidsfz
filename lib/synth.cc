@@ -81,7 +81,13 @@ Synth::process (float **outputs, uint n_frames)
 }
 
 void
-Synth::set_log_function (std::function<void(Log, const char *)> function)
+Synth::set_progress_function (std::function<void (double)> function)
+{
+  progress_function_ = function;
+}
+
+void
+Synth::set_log_function (std::function<void (Log, const char *)> function)
 {
   log_function_ = function;
 }

@@ -88,3 +88,9 @@ Synth::set_log_function (std::function<void (Log, const char *)> function)
 {
   impl->synth.set_log_function (function);
 }
+
+void
+Synth::set_progress_function (std::function<void (double)> progress_function)
+{
+  impl->synth.set_progress_function (progress_function);
+}

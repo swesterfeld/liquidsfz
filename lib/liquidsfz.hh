@@ -163,6 +163,19 @@ public:
    * @param log_function function to be called for log entries
    */
   void set_log_function (std::function<void (Log, const char *)> log_function);
+
+  /**
+   * \brief Set progress function
+   *
+   * Loading .sfz files can take a long time. In order to give feedback to the
+   * user, a progress function can be registered before calling load().  This
+   * progress function will be called during load() periodically with a
+   * percentage from 0%..100%. This can be used to display a progress bar at
+   * the ui.
+   *
+   * @param progress_function function to be called
+   */
+  void set_progress_function (std::function<void (double)> progress_function);
 };
 
 }
