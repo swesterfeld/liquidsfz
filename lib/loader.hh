@@ -110,8 +110,9 @@ public:
   {
     synth_ = synth;
   }
-  enum class RegionType { NONE, GROUP, REGION };
+  enum class RegionType { NONE, GLOBAL, GROUP, REGION };
   RegionType region_type = RegionType::NONE;
+  Region active_global;
   Region active_group;
   Region active_region;
   std::vector<Region> regions;

@@ -61,10 +61,20 @@ Loader::convert_loop_mode (const string& l)
 void
 Loader::set_key_value (const string& key, const string& value)
 {
-  if (region_type == RegionType::NONE)
-    return;
+  /* handle global, group and region levels */
+  Region *region_ptr = nullptr;
+  switch (region_type)
+    {
+      case RegionType::GLOBAL:  region_ptr = &active_global;
+                                break;
+      case RegionType::GROUP:   region_ptr = &active_group;
+                                break;
+      case RegionType::REGION:  region_ptr = &active_region;
+                                break;
+      default:                  return;
+    }
 
-  Region& region = (region_type == RegionType::REGION) ? active_region : active_group;
+  Region& region = *region_ptr;
   synth_->debug ("+++ '%s' = '%s'\n", key.c_str(), value.c_str());
   if (key == "sample")
     {
@@ -151,7 +161,7 @@ Loader::handle_tag (const std::string& tag)
   synth_->debug ("+++ TAG %s\n", tag.c_str());
 
   /* if we are done building a region, store it */
-  if (tag == "region" || tag == "group")
+  if (tag == "region" || tag == "group" || tag == "global")
     if (!active_region.empty())
       {
         regions.push_back (active_region);
@@ -160,13 +170,24 @@ Loader::handle_tag (const std::string& tag)
 
   if (tag == "region")
     {
+      /* handle the case that we have a <region> tag which is directly
+       * contained in a <global> (without <group>): act as if we had a group
+       */
+      if (region_type == RegionType::GLOBAL)
+        active_group = active_global;
+
       region_type   = RegionType::REGION;
-      active_region = active_group; /* inherit parameters from group */
+      active_region = active_group; /* inherit region parameters from group */
     }
   else if (tag == "group")
     {
       region_type  = RegionType::GROUP;
-      active_group = Region();
+      active_group = active_global; /* inherit group paramaters from global */
+    }
+  else if (tag == "global")
+    {
+      region_type = RegionType::GLOBAL;
+      active_global = Region();
     }
   else
     synth_->warning ("%s unsupported tag '<%s>'\n", location().c_str(), tag.c_str());
