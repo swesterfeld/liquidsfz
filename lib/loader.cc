@@ -61,6 +61,11 @@ Loader::convert_loop_mode (const string& l)
 void
 Loader::set_key_value (const string& key, const string& value)
 {
+  if (in_control)
+    {
+      set_key_value_control (key, value);
+      return;
+    }
   /* handle global, group and region levels */
   Region *region_ptr = nullptr;
   switch (region_type)
@@ -82,7 +87,12 @@ Loader::set_key_value (const string& key, const string& value)
       string native_filename = value;
       std::replace (native_filename.begin(), native_filename.end(), '\\', PATH_SEPARATOR);
 
-      region.sample = path_absolute (path_join (sample_path, native_filename));
+      string path = sample_path;
+      if (control.default_path != "")
+        path = path_join (path, control.default_path);
+
+      path = path_join (path, native_filename);
+      region.sample = path_absolute (path);
     }
   else if (key == "lokey")
     region.lokey = convert_key (value);
@@ -156,6 +166,20 @@ Loader::set_key_value (const string& key, const string& value)
 }
 
 void
+Loader::set_key_value_control (const string& key, const string& value)
+{
+  if (key == "default_path")
+    {
+      string native_path = value;
+      std::replace (native_path.begin(), native_path.end(), '\\', PATH_SEPARATOR);
+
+      control.default_path = native_path;
+    }
+  else
+    synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
+}
+
+void
 Loader::handle_tag (const std::string& tag)
 {
   synth_->debug ("+++ TAG %s\n", tag.c_str());
@@ -168,7 +192,13 @@ Loader::handle_tag (const std::string& tag)
         active_region = Region();
       }
 
-  if (tag == "region")
+  in_control = false;
+  if (tag == "control")
+    {
+      in_control = true;
+      control = Control();
+    }
+  else if (tag == "region")
     {
       /* handle the case that we have a <region> tag which is directly
        * contained in a <global> (without <group>): act as if we had a group

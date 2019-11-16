@@ -84,6 +84,11 @@ struct Region
   int play_seq = 1;
 };
 
+struct Control
+{
+  std::string default_path;
+};
+
 class Synth;
 
 class Loader
@@ -110,12 +115,14 @@ public:
   {
     synth_ = synth;
   }
+  bool in_control = false;
   enum class RegionType { NONE, GLOBAL, GROUP, REGION };
   RegionType region_type = RegionType::NONE;
   Region active_global;
   Region active_group;
   Region active_region;
   std::vector<Region> regions;
+  Control control;
   std::string sample_path;
   SampleCache sample_cache; // FIXME: should share sample cache between different instances
 
@@ -179,6 +186,7 @@ public:
     return key.substr (0, start.size()) == start;
   }
   void set_key_value (const std::string& key, const std::string& value);
+  void set_key_value_control (const std::string& key, const std::string& value);
   void handle_tag (const std::string& tag);
   std::string
   location()
