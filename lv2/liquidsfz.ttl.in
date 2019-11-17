@@ -1,0 +1,73 @@
+# The full description of the plugin is in this file, which is linked to from
+# `manifest.ttl`.  This is done so the host only needs to scan the relatively
+# small `manifest.ttl` files to quickly discover all plugins.
+
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix midi:  <http://lv2plug.in/ns/ext/midi#> .
+@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .
+@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
+@prefix ui:    <http://lv2plug.in/ns/extensions/ui#> .
+@prefix work:  <http://lv2plug.in/ns/ext/worker#> .
+@prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
+@prefix state: <http://lv2plug.in/ns/ext/state#> .
+
+<http://spectmorph.org/plugins/liquidsfz>
+  a lv2:Plugin,
+    lv2:InstrumentPlugin;
+  doap:name "liquidsfz";
+  doap:license <http://opensource.org/licenses/lgpl-2.1>;
+  doap:maintainer
+    [
+      foaf:name "Stefan Westerfeld";
+      foaf:mbox <mailto:stefan@space.twc.de>;
+      foaf:homepage <http://space.twc.de/~stefan>;
+    ];
+
+  lv2:microVersion @MICRO_VERSION@;
+  lv2:minorVersion @MINOR_VERSION@;
+
+  lv2:requiredFeature urid:map,
+                      work:schedule;
+  lv2:extensionData work:interface,
+	            state:interface;
+  lv2:port
+    [
+      a lv2:InputPort,
+        atom:AtomPort;
+      atom:bufferType atom:Sequence;
+      atom:supports midi:MidiEvent;
+      lv2:designation lv2:control;
+      lv2:index 0;
+      lv2:symbol "midi_in";
+      lv2:name "Midi Input";
+      rsz:minimumSize 65536;
+    ],
+    [
+      a lv2:AudioPort,
+        lv2:OutputPort;
+      lv2:index 1;
+      lv2:symbol "left_out";
+      lv2:name "Left Output"
+    ],
+    [
+      a lv2:AudioPort,
+        lv2:OutputPort;
+      lv2:index 2;
+      lv2:symbol "right_out";
+      lv2:name "Right Output"
+    ],
+    [
+      a lv2:OutputPort ,
+        atom:AtomPort ;
+      atom:bufferType atom:Sequence;
+      lv2:designation lv2:control;
+      lv2:index 3;
+      lv2:symbol "notify";
+      lv2:name "Notify";
+      rsz:minimumSize 65536;
+    ] .

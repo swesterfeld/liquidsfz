@@ -6,8 +6,17 @@ AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 dnl no shared libraries for now (no ABI compatibility)
-AC_DISABLE_SHARED
 AC_PROG_LIBTOOL
+
+dnl Version splitted
+
+[MAJOR_VERSION=`echo $PACKAGE_VERSION | sed 's/\([0-9]\+\)\.\([0-9]\+\)\.\([0-9]\+\)\(.*\)/\1/'`]
+[MINOR_VERSION=`echo $PACKAGE_VERSION | sed 's/\([0-9]\+\)\.\([0-9]\+\)\.\([0-9]\+\)\(.*\)/\2/'`]
+[MICRO_VERSION=`echo $PACKAGE_VERSION | sed 's/\([0-9]\+\)\.\([0-9]\+\)\.\([0-9]\+\)\(.*\)/\3/'`]
+
+AC_SUBST(MAJOR_VERSION)
+AC_SUBST(MINOR_VERSION)
+AC_SUBST(MICRO_VERSION)
 
 dnl
 dnl sndfile
@@ -39,5 +48,5 @@ AC_LANG_PUSH([C++])
 AX_CHECK_COMPILE_FLAG([-Wall],                                 [CXXFLAGS="$CXXFLAGS -Wall"])
 AC_LANG_POP([C++])
 
-AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile liquidsfz.pc])
+AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile lv2/Makefile lv2/liquidsfz.ttl liquidsfz.pc])
 AC_OUTPUT
