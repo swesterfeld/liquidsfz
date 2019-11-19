@@ -45,22 +45,30 @@ namespace
 
 class LV2Plugin
 {
-  enum PortIndex {
+  enum PortIndex
+  {
     MIDI_IN    = 0,
     LEFT_OUT   = 1,
     RIGHT_OUT  = 2,
-    NOTIFY     = 3
+    LEVEL      = 3,
+    NOTIFY     = 4,
   };
 
   // URIs
-  struct {
+  struct URIS
+  {
+    LV2_URID atom_Blank;
+    LV2_URID atom_Object;
     LV2_URID midi_MidiEvent;
+    LV2_URID patch_Get;
+    LV2_URID patch_Set;
   } uris;
 
   // Port buffers
   const LV2_Atom_Sequence *midi_in;
   float                   *left_out;
   float                   *right_out;
+  const float             *level;
   LV2_Atom_Sequence       *notify_port;
 
   FILE *out;
@@ -77,6 +85,10 @@ public:
   init_map (LV2_URID_Map *map)
   {
     uris.midi_MidiEvent = map->map (map->handle, LV2_MIDI__MidiEvent);
+    uris.atom_Blank     = map->map (map->handle, LV2_ATOM__Blank);
+    uris.atom_Object    = map->map (map->handle, LV2_ATOM__Object);
+    uris.patch_Get      = map->map (map->handle, LV2_PATCH__Get);
+    uris.patch_Set      = map->map (map->handle, LV2_PATCH__Set);
   }
 
   void
@@ -84,7 +96,22 @@ public:
   {
     LV2_ATOM_SEQUENCE_FOREACH (midi_in, ev)
       {
-        if (ev->body.type == uris.midi_MidiEvent)
+        if (ev->body.type == uris.atom_Blank || ev->body.type == uris.atom_Object)
+          {
+            const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
+
+            if (obj->body.otype == uris.patch_Get)
+              {
+                fprintf (out, "got patch get message\n");
+                fflush (out);
+              }
+            else if (obj->body.otype == uris.patch_Set)
+              {
+                fprintf (out, "got patch set message\n");
+                fflush (out);
+              }
+          }
+        else if (ev->body.type == uris.midi_MidiEvent)
           {
             const uint8_t *msg = (const uint8_t*)(ev + 1);
 
@@ -99,7 +126,7 @@ public:
                 case 0xb0: synth.add_event_cc (time, channel, msg[1], msg[2]);
                            break;
               }
-            fprintf (out, "got event\n");
+            fprintf (out, "got midi event\n");
             fflush (out);
           }
       }
@@ -118,10 +145,10 @@ public:
                          break;
         case RIGHT_OUT:  right_out = (float*)data;
                          break;
-#if 0
-        case SPECTMORPH_NOTIFY:     self->notify_port = (LV2_Atom_Sequence*)data;
-                                    break;
-#endif
+        case LEVEL:      level = (float *)data;
+                         break;
+        case NOTIFY:     notify_port = (LV2_Atom_Sequence*)data;
+                         break;
       }
   }
 

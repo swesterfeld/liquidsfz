@@ -15,6 +15,12 @@
 @prefix work:  <http://lv2plug.in/ns/ext/worker#> .
 @prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
 @prefix state: <http://lv2plug.in/ns/ext/state#> .
+@prefix patch: <http://lv2plug.in/ns/ext/patch#> .
+
+<http://spectmorph.org/plugins/liquidsfz#sfzfile>
+  a lv2:Parameter;
+  rdfs:label "SFZ File";
+  rdfs:range atom:Path .
 
 <http://spectmorph.org/plugins/liquidsfz>
   a lv2:Plugin,
@@ -35,12 +41,15 @@
                       work:schedule;
   lv2:extensionData work:interface,
 	            state:interface;
+
+  patch:writable <http://spectmorph.org/plugins/liquidsfz#sfzfile>;
+
   lv2:port
     [
       a lv2:InputPort,
         atom:AtomPort;
       atom:bufferType atom:Sequence;
-      atom:supports midi:MidiEvent;
+      atom:supports patch:Message, midi:MidiEvent;
       lv2:designation lv2:control;
       lv2:index 0;
       lv2:symbol "midi_in";
@@ -62,12 +71,24 @@
       lv2:name "Right Output"
     ],
     [
-      a lv2:OutputPort ,
-        atom:AtomPort ;
-      atom:bufferType atom:Sequence;
-      lv2:designation lv2:control;
+      a lv2:InputPort, lv2:ControlPort;
       lv2:index 3;
+      lv2:symbol "level";
+      lv2:name "Output Level";
+      lv2:default 0.0;
+      lv2:minimum -80.0;
+      lv2:maximum 20.0;
+      units:unit units:db;
+    ],
+    [
+      a lv2:OutputPort ,
+        atom:AtomPort;
+      atom:bufferType atom:Sequence;
+      atom:supports patch:Message;
+      lv2:designation lv2:control;
+      lv2:index 4;
       lv2:symbol "notify";
       lv2:name "Notify";
       rsz:minimumSize 65536;
-    ] .
+    ]
+ .
