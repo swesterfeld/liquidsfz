@@ -59,9 +59,14 @@ class LV2Plugin
   {
     LV2_URID atom_Blank;
     LV2_URID atom_Object;
+    LV2_URID atom_URID;
+    LV2_URID atom_Path;
     LV2_URID midi_MidiEvent;
     LV2_URID patch_Get;
     LV2_URID patch_Set;
+    LV2_URID patch_property;
+    LV2_URID patch_value;
+    LV2_URID liquidsfz_sfzfile;
   } uris;
 
   // Port buffers
@@ -84,11 +89,39 @@ public:
   void
   init_map (LV2_URID_Map *map)
   {
-    uris.midi_MidiEvent = map->map (map->handle, LV2_MIDI__MidiEvent);
-    uris.atom_Blank     = map->map (map->handle, LV2_ATOM__Blank);
-    uris.atom_Object    = map->map (map->handle, LV2_ATOM__Object);
-    uris.patch_Get      = map->map (map->handle, LV2_PATCH__Get);
-    uris.patch_Set      = map->map (map->handle, LV2_PATCH__Set);
+    uris.midi_MidiEvent     = map->map (map->handle, LV2_MIDI__MidiEvent);
+    uris.atom_Blank         = map->map (map->handle, LV2_ATOM__Blank);
+    uris.atom_Object        = map->map (map->handle, LV2_ATOM__Object);
+    uris.atom_URID          = map->map (map->handle, LV2_ATOM__URID);
+    uris.atom_Path          = map->map (map->handle, LV2_ATOM__Path);
+    uris.patch_Get          = map->map (map->handle, LV2_PATCH__Get);
+    uris.patch_Set          = map->map (map->handle, LV2_PATCH__Set);
+    uris.patch_property     = map->map (map->handle, LV2_PATCH__property);
+    uris.patch_value        = map->map (map->handle, LV2_PATCH__value);
+    uris.liquidsfz_sfzfile  = map->map (map->handle, LIQUIDSFZ_URI "#sfzfile"); // FIXME: maybe use :something like afs
+  }
+
+  const char *
+  read_set_filename (const LV2_Atom_Object *obj)
+  {
+    if (obj->body.otype != uris.patch_Set)
+      return nullptr;
+
+    const LV2_Atom *property = nullptr;
+    lv2_atom_object_get (obj, uris.patch_property, &property, 0);
+    if (!property || property->type != uris.atom_URID)
+      return nullptr;
+
+    if (((const LV2_Atom_URID *)property)->body != uris.liquidsfz_sfzfile)
+      return nullptr;
+
+    const LV2_Atom *file_path = nullptr;
+    lv2_atom_object_get (obj, uris.patch_value, &file_path, 0);
+    if (!file_path || file_path->type != uris.atom_Path)
+      return nullptr;
+
+    const char *filename = (const char *) (file_path + 1);
+    return filename;
   }
 
   void
@@ -107,8 +140,12 @@ public:
               }
             else if (obj->body.otype == uris.patch_Set)
               {
-                fprintf (out, "got patch set message\n");
-                fflush (out);
+                if (const char *filename = read_set_filename (obj))
+                  {
+                    fprintf (out, "got patch set message %s\n", filename);
+                    fflush (out);
+                    synth.load (filename);
+                  }
               }
           }
         else if (ev->body.type == uris.midi_MidiEvent)
