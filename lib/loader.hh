@@ -124,7 +124,6 @@ public:
   std::vector<Region> regions;
   Control control;
   std::string sample_path;
-  SampleCache sample_cache; // FIXME: should share sample cache between different instances
 
   int
   convert_key (const std::string& k)
@@ -195,7 +194,7 @@ public:
   }
   bool preprocess_line (const LineInfo& input_line_info, std::vector<LineInfo>& lines);
   bool preprocess_file (const std::string& filename, std::vector<LineInfo>& lines);
-  bool parse (const std::string& filename);
+  bool parse (const std::string& filename, SampleCache& sample_cache);
 };
 
 }

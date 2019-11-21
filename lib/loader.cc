@@ -314,7 +314,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines)
 }
 
 bool
-Loader::parse (const string& filename)
+Loader::parse (const string& filename, SampleCache& sample_cache)
 {
   sample_path = path_dirname (filename);
 

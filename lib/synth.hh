@@ -47,16 +47,16 @@ class Synth
   std::function<void (Log, const char *)> log_function_;
   std::function<void (double)> progress_function_;
   uint sample_rate_ = 44100; // default
-  Loader sfz_loader_;
   uint64_t global_frame_count = 0;
   std::vector<Voice> voices_;
+  std::vector<Region> regions_;
   Log log_level_ = Log::INFO;
+  SampleCache sample_cache_; // FIXME: should share sample cache between different instances
 
   static constexpr int CC_SUSTAIN = 0x40;
 
 public:
-  Synth() :
-    sfz_loader_ (this)
+  Synth()
   {
     // sane defaults:
     set_max_voices (256);
@@ -83,7 +83,16 @@ public:
   bool
   load (const std::string& filename)
   {
-    return sfz_loader_.parse (filename);
+    for (auto& v : voices_) // kill all voices to avoid dangling region pointers
+      v = Voice (this);
+
+    Loader loader (this);
+    if (loader.parse (filename, sample_cache_))
+      {
+        regions_ = loader.regions;
+        return true;
+      }
+    return false;
   }
   void
   progress (double percent)
@@ -135,7 +144,7 @@ public:
     // - random must be <  1.0  (and never 1.0)
     double random = random_gen() / double (random_gen.max() + 1);
 
-    for (auto& region : sfz_loader_.regions)
+    for (auto& region : regions_)
       {
         if (region.lokey <= key && region.hikey >= key &&
             region.lovel <= vel && region.hivel >= vel &&
