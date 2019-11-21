@@ -29,8 +29,10 @@
 #include "lv2/lv2plug.in/ns/ext/patch/patch.h"
 #include "lv2/lv2plug.in/ns/ext/state/state.h"
 #include "lv2/lv2plug.in/ns/extensions/ui/ui.h"
+#include "lv2/lv2plug.in/ns/ext/worker/worker.h"
 
 #include <string>
+#include <atomic>
 
 #define LIQUIDSFZ_URI      "http://spectmorph.org/plugins/liquidsfz"
 
@@ -39,6 +41,8 @@
 #endif
 
 using namespace LiquidSFZ;
+
+using std::string;
 
 namespace
 {
@@ -70,17 +74,26 @@ class LV2Plugin
   } uris;
 
   // Port buffers
-  const LV2_Atom_Sequence *midi_in;
-  float                   *left_out;
-  float                   *right_out;
-  const float             *level;
-  LV2_Atom_Sequence       *notify_port;
+  const LV2_Atom_Sequence *midi_in = nullptr;
+  float                   *left_out = nullptr;
+  float                   *right_out = nullptr;
+  const float             *level = nullptr;
+  LV2_Atom_Sequence       *notify_port = nullptr;
 
-  FILE *out;
-  Synth synth;
+  string                   load_filename;
+  std::atomic<int>         atomic_load_in_progress = 0;
+  static constexpr int     command_load = 0x10001234; // just some random number
+
+  LV2_Worker_Schedule     *schedule = nullptr;
+
+  FILE                    *out = nullptr;
+  Synth                    synth;
 public:
-  LV2Plugin (int rate)
+  LV2Plugin (int rate, LV2_Worker_Schedule *schedule) :
+    schedule (schedule)
   {
+    load_filename.reserve (1024); // avoid allocations in RT thread
+
     out = fopen ("/tmp/liquidsfz.log", "w");
     synth.set_sample_rate (rate);
     synth.load ("/home/stefan/sfz/Church Organ/Church Organ.sfz");
@@ -125,6 +138,19 @@ public:
   }
 
   void
+  work (uint32_t size, const void *data)
+  {
+    if (size == sizeof (int) && *(int *) data == command_load)
+      {
+        fprintf (out, "got patch set message %s\n", load_filename.c_str());
+        fflush (out);
+
+        synth.load (load_filename);
+        atomic_load_in_progress = 0;
+      }
+  }
+
+  void
   run (uint32_t n_samples)
   {
     LV2_ATOM_SEQUENCE_FOREACH (midi_in, ev)
@@ -138,17 +164,22 @@ public:
                 fprintf (out, "got patch get message\n");
                 fflush (out);
               }
-            else if (obj->body.otype == uris.patch_Set)
+            else if (obj->body.otype == uris.patch_Set && !atomic_load_in_progress)
               {
                 if (const char *filename = read_set_filename (obj))
                   {
-                    fprintf (out, "got patch set message %s\n", filename);
-                    fflush (out);
-                    synth.load (filename);
+                    size_t len = strlen (filename);
+                    if (len < load_filename.capacity()) // avoid allocations in RT context
+                      {
+                        load_filename           = filename;
+                        atomic_load_in_progress = 1;
+
+                        schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
+                      }
                   }
               }
           }
-        else if (ev->body.type == uris.midi_MidiEvent)
+        else if (ev->body.type == uris.midi_MidiEvent && !atomic_load_in_progress)
           {
             const uint8_t *msg = (const uint8_t*)(ev + 1);
 
@@ -168,7 +199,15 @@ public:
           }
       }
     float *outputs[2] = { left_out, right_out };
-    synth.process (outputs, n_samples);
+    if (!atomic_load_in_progress)
+      {
+        synth.process (outputs, n_samples);
+      }
+    else
+      {
+        for (uint i = 0; i < n_samples; i++)
+          left_out[i] = right_out[i] = 0;
+      }
   }
   void
   connect_port (uint32_t   port,
@@ -199,7 +238,7 @@ instantiate (const LV2_Descriptor*     descriptor,
              const char*               bundle_path,
              const LV2_Feature* const* features)
 {
-
+  LV2_Worker_Schedule *schedule = nullptr;
   LV2_URID_Map *map = nullptr;
   for (int i = 0; features[i]; i++)
     {
@@ -207,11 +246,15 @@ instantiate (const LV2_Descriptor*     descriptor,
         {
           map = (LV2_URID_Map*)features[i]->data;
         }
+      else if (!strcmp (features[i]->URI, LV2_WORKER__schedule))
+        {
+          schedule = (LV2_Worker_Schedule*)features[i]->data;
+        }
     }
-  if (!map)
+  if (!map || !schedule)
     return nullptr; // host bug, we need this feature
 
-  auto self = new LV2Plugin (rate);
+  auto self = new LV2Plugin (rate, schedule);
 
   self->init_map (map);
 
@@ -269,6 +312,28 @@ restore(LV2_Handle                  instance,
   return LV2_STATE_SUCCESS;
 }
 
+static LV2_Worker_Status
+work (LV2_Handle                  instance,
+      LV2_Worker_Respond_Function respond,
+      LV2_Worker_Respond_Handle   handle,
+      uint32_t                    size,
+      const void*                 data)
+{
+  LV2Plugin* self = (LV2Plugin*) instance;
+
+  self->work (size, data);
+
+  return LV2_WORKER_SUCCESS;
+}
+
+static LV2_Worker_Status
+work_response (LV2_Handle  instance,
+               uint32_t    size,
+               const void* data)
+{
+  return LV2_WORKER_SUCCESS;
+}
+
 static const void*
 extension_data (const char* uri)
 {
@@ -278,7 +343,12 @@ extension_data (const char* uri)
     {
       return &state;
     }
-  return NULL;
+  if (!strcmp (uri, LV2_WORKER__interface))
+    {
+      static const LV2_Worker_Interface worker = { work, work_response, nullptr };
+      return &worker;
+    }
+  return nullptr;
 }
 
 static const LV2_Descriptor descriptor = {
