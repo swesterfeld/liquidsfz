@@ -7,7 +7,7 @@ liquidsfz_lv2dir = $(libdir)/lv2/liquidsfz.lv2
 plugindir = $(liquidsfz_lv2dir)
 plugin_LTLIBRARIES = liquidsfz_lv2.la
 
-liquidsfz_lv2_la_SOURCES = liquidsfz_lv2.cc
+liquidsfz_lv2_la_SOURCES = lv2plugin.cc
 liquidsfz_lv2_la_LIBADD  = $(LIQUIDSFZ_LIBS)
 liquidsfz_lv2_la_LDFLAGS = -module -avoid-version -shared
 
