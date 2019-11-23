@@ -80,8 +80,10 @@ class LV2Plugin
   const float             *level = nullptr;
   LV2_Atom_Sequence       *notify_port = nullptr;
 
+  string                   queue_filename;
+  string                   current_filename;
   string                   load_filename;
-  std::atomic<int>         atomic_load_in_progress = 0;
+  bool                     load_in_progress = false;
   static constexpr int     command_load = 0x10001234; // just some random number
 
   LV2_Worker_Schedule     *schedule = nullptr;
@@ -92,7 +94,10 @@ public:
   LV2Plugin (int rate, LV2_Worker_Schedule *schedule) :
     schedule (schedule)
   {
-    load_filename.reserve (1024); // avoid allocations in RT thread
+    /* avoid allocations in RT thread */
+    load_filename.reserve (1024);
+    queue_filename.reserve (1024);
+    current_filename.reserve (1024);
 
     out = fopen ("/tmp/liquidsfz.log", "w");
     synth.set_sample_rate (rate);
@@ -138,7 +143,10 @@ public:
   }
 
   void
-  work (uint32_t size, const void *data)
+  work (LV2_Worker_Respond_Function respond,
+        LV2_Worker_Respond_Handle   handle,
+        uint32_t                    size,
+        const void                 *data)
   {
     if (size == sizeof (int) && *(int *) data == command_load)
       {
@@ -146,8 +154,16 @@ public:
         fflush (out);
 
         synth.load (load_filename);
-        atomic_load_in_progress = 0;
+
+        respond (handle, 1, "");
       }
+  }
+
+  void
+  work_response (uint32_t size, const void *data)
+  {
+    load_in_progress = false;
+    current_filename = load_filename;
   }
 
   void
@@ -164,22 +180,19 @@ public:
                 fprintf (out, "got patch get message\n");
                 fflush (out);
               }
-            else if (obj->body.otype == uris.patch_Set && !atomic_load_in_progress)
+            else if (obj->body.otype == uris.patch_Set && !load_in_progress)
               {
                 if (const char *filename = read_set_filename (obj))
                   {
                     size_t len = strlen (filename);
-                    if (len < load_filename.capacity()) // avoid allocations in RT context
+                    if (len < queue_filename.capacity()) // avoid allocations in RT context
                       {
-                        load_filename           = filename;
-                        atomic_load_in_progress = 1;
-
-                        schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
+                        queue_filename = filename;
                       }
                   }
               }
           }
-        else if (ev->body.type == uris.midi_MidiEvent && !atomic_load_in_progress)
+        else if (ev->body.type == uris.midi_MidiEvent && !load_in_progress)
           {
             const uint8_t *msg = (const uint8_t*)(ev + 1);
 
@@ -199,7 +212,7 @@ public:
           }
       }
     float *outputs[2] = { left_out, right_out };
-    if (!atomic_load_in_progress)
+    if (!load_in_progress)
       {
         synth.process (outputs, n_samples);
       }
@@ -207,6 +220,15 @@ public:
       {
         for (uint i = 0; i < n_samples; i++)
           left_out[i] = right_out[i] = 0;
+      }
+
+    if (!load_in_progress && !queue_filename.empty())
+      {
+        load_in_progress = true;
+        load_filename    = queue_filename;
+        queue_filename   = "";
+
+        schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
       }
   }
   void
@@ -228,6 +250,71 @@ public:
       }
   }
 
+  LV2_State_Status
+  save (LV2_State_Store_Function store,
+        LV2_State_Handle         handle,
+        const LV2_Feature* const* features)
+  {
+    LV2_State_Map_Path *map_path = nullptr;
+    for (int i = 0; features[i]; i++)
+      {
+        if (!strcmp (features[i]->URI, LV2_STATE__mapPath))
+          {
+            map_path = (LV2_State_Map_Path *)features[i]->data;
+          }
+      }
+
+    string path = current_filename;
+    if (map_path)
+      {
+        char *abstract_path = map_path->abstract_path (map_path->handle, path.c_str());
+        path = abstract_path;
+        free (abstract_path);
+      }
+
+    store (handle, uris.liquidsfz_sfzfile,
+           path.c_str(), path.size() + 1,
+           uris.atom_Path,
+           LV2_STATE_IS_POD);
+
+    return LV2_STATE_SUCCESS;
+  }
+
+  LV2_State_Status
+  restore (LV2_State_Retrieve_Function retrieve,
+           LV2_State_Handle            handle,
+           const LV2_Feature* const*   features)
+  {
+    LV2_State_Map_Path *map_path = nullptr;
+    for (int i = 0; features[i]; i++)
+      {
+        if (!strcmp (features[i]->URI, LV2_STATE__mapPath))
+          {
+            map_path = (LV2_State_Map_Path *)features[i]->data;
+          }
+      }
+    if (!map_path)
+      return LV2_STATE_ERR_NO_FEATURE;
+
+    size_t      size;
+    uint32_t    type;
+    uint32_t    valflags;
+    const void *value = retrieve (handle, uris.liquidsfz_sfzfile, &size, &type, &valflags);
+    if (value)
+      {
+        char *absolute_path = map_path->absolute_path (map_path->handle, (const char *)value);
+
+        /* resolve symlinks so that sample paths relative to the .sfz file can be loaded */
+        char *real_path = realpath (absolute_path, nullptr);
+        if (real_path)
+          queue_filename = real_path;
+
+        free (real_path);
+        free (absolute_path);
+      }
+
+    return LV2_STATE_SUCCESS;
+  }
 };
 
 }
@@ -293,23 +380,27 @@ cleanup (LV2_Handle instance)
 }
 
 static LV2_State_Status
-save(LV2_Handle                instance,
-     LV2_State_Store_Function  store,
-     LV2_State_Handle          handle,
-     uint32_t                  flags,
-     const LV2_Feature* const* features)
+save (LV2_Handle                instance,
+      LV2_State_Store_Function  store,
+      LV2_State_Handle          handle,
+      uint32_t                  flags,
+      const LV2_Feature* const* features)
 {
-  return LV2_STATE_SUCCESS;
+  LV2Plugin *self = (LV2Plugin *) instance;
+
+  return self->save (store, handle, features);
 }
 
 static LV2_State_Status
-restore(LV2_Handle                  instance,
-        LV2_State_Retrieve_Function retrieve,
-        LV2_State_Handle            handle,
-        uint32_t                    flags,
-        const LV2_Feature* const*   features)
+restore (LV2_Handle                  instance,
+         LV2_State_Retrieve_Function retrieve,
+         LV2_State_Handle            handle,
+         uint32_t                    flags,
+         const LV2_Feature* const*   features)
 {
-  return LV2_STATE_SUCCESS;
+  LV2Plugin *self = (LV2Plugin *) instance;
+
+  return self->restore (retrieve, handle, features);
 }
 
 static LV2_Worker_Status
@@ -321,7 +412,7 @@ work (LV2_Handle                  instance,
 {
   LV2Plugin* self = (LV2Plugin*) instance;
 
-  self->work (size, data);
+  self->work (respond, handle, size, data);
 
   return LV2_WORKER_SUCCESS;
 }
@@ -331,6 +422,10 @@ work_response (LV2_Handle  instance,
                uint32_t    size,
                const void* data)
 {
+  LV2Plugin* self = (LV2Plugin*) instance;
+
+  self->work_response (size, data);
+
   return LV2_WORKER_SUCCESS;
 }
 
