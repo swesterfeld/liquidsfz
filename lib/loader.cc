@@ -230,9 +230,27 @@ Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& line
   static const regex comment_re ("//.*$");
   string line = regex_replace (input_line_info.line, comment_re, "");
 
+  std::smatch sm;
+
+  // handle #define
+  static const regex define_re ("\\s*#\\s*define\\s+(\\$\\S+*)\\s([^$]*)");
+  if (regex_match (line, sm, define_re))
+    {
+      // by our regex, values cannot contain $, to prevent problems in replace_defines() later on
+
+      Control::Define define;
+      define.variable = sm[1];
+      define.value    = strip_spaces (sm[2]);
+      control.defines.push_back (define);
+
+      line = "";
+    }
+
+  // perform variable substitution as required by #define
+  replace_defines (line);
+
   // detect #include
   static const regex include_re ("\\s*#\\s*include\\s+[\"<](.*)[\">]\\s*");
-  std::smatch sm;
   if (regex_match (line, sm, include_re))
     {
       string include_filename = path_absolute (path_join (sample_path, sm[1].str()));
@@ -255,6 +273,27 @@ Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& line
       lines.push_back (linfo);
     }
   return true;
+}
+
+void
+Loader::replace_defines (string& line)
+{
+  size_t start_pos = 0;
+
+  while ((start_pos = line.find ('$', start_pos)) != string::npos)
+    {
+      const string test_var = line.substr (start_pos);
+
+      for (const auto& define : control.defines)
+        {
+          if (starts_with (test_var, define.variable))
+            {
+              line.replace (start_pos, define.variable.length(), define.value);
+              break;
+            }
+        }
+      start_pos++;
+    }
 }
 
 static vector<char>

@@ -87,6 +87,12 @@ struct Region
 struct Control
 {
   std::string default_path;
+  struct Define
+  {
+    std::string variable;
+    std::string value;
+  };
+  std::vector<Define> defines;
 };
 
 class Synth;
@@ -192,6 +198,7 @@ public:
   {
     return string_printf ("%s: line %d:", current_line_info.filename.c_str(), current_line_info.number);
   }
+  void replace_defines (std::string& line);
   bool preprocess_line (const LineInfo& input_line_info, std::vector<LineInfo>& lines);
   bool preprocess_file (const std::string& filename, std::vector<LineInfo>& lines);
   bool parse (const std::string& filename, SampleCache& sample_cache);
