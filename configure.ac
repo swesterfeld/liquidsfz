@@ -45,7 +45,8 @@ AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 
 # use -Wall
 AC_LANG_PUSH([C++])
-AX_CHECK_COMPILE_FLAG([-Wall],                                 [CXXFLAGS="$CXXFLAGS -Wall"])
+AX_CHECK_COMPILE_FLAG([-Wall],       [CXXFLAGS="$CXXFLAGS -Wall"])
+AX_CHECK_COMPILE_FLAG([-fPIC -DPIC], [CXXFLAGS="$CXXFLAGS -fPIC -DPIC"])
 AC_LANG_POP([C++])
 
 AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile lv2/Makefile lv2/liquidsfz.ttl liquidsfz.pc])
