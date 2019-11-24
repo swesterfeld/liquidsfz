@@ -87,11 +87,11 @@ class LV2Plugin
   static constexpr int     command_load = 0x10001234; // just some random number
 
   LV2_Worker_Schedule     *schedule = nullptr;
-
+  LV2_Atom_Forge           forge;
   FILE                    *out = nullptr;
   Synth                    synth;
 public:
-  LV2Plugin (int rate, LV2_Worker_Schedule *schedule) :
+  LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule) :
     schedule (schedule)
   {
     /* avoid allocations in RT thread */
@@ -102,11 +102,9 @@ public:
     out = fopen ("/tmp/liquidsfz.log", "w");
     synth.set_sample_rate (rate);
     synth.load ("/home/stefan/sfz/Church Organ/Church Organ.sfz");
-  }
 
-  void
-  init_map (LV2_URID_Map *map)
-  {
+    lv2_atom_forge_init (&forge, map);
+
     uris.midi_MidiEvent     = map->map (map->handle, LV2_MIDI__MidiEvent);
     uris.atom_Blank         = map->map (map->handle, LV2_ATOM__Blank);
     uris.atom_Object        = map->map (map->handle, LV2_ATOM__Object);
@@ -169,6 +167,12 @@ public:
   void
   run (uint32_t n_samples)
   {
+    LV2_Atom_Forge_Frame notify_frame;
+
+    const uint32_t capacity = notify_port->atom.size;
+    lv2_atom_forge_set_buffer (&forge, (uint8_t *) notify_port, capacity);
+    lv2_atom_forge_sequence_head (&forge, &notify_frame, 0);
+
     LV2_ATOM_SEQUENCE_FOREACH (midi_in, ev)
       {
         if (ev->body.type == uris.atom_Blank || ev->body.type == uris.atom_Object)
@@ -179,6 +183,16 @@ public:
               {
                 fprintf (out, "got patch get message\n");
                 fflush (out);
+
+                LV2_Atom_Forge_Frame frame;
+
+                lv2_atom_forge_frame_time (&forge, 0);
+                lv2_atom_forge_object (&forge, &frame, 0, uris.patch_Set);
+                lv2_atom_forge_property_head (&forge, uris.patch_property, 0);
+                lv2_atom_forge_urid (&forge, uris.liquidsfz_sfzfile);
+                lv2_atom_forge_property_head (&forge, uris.patch_value, 0);
+                lv2_atom_forge_path (&forge, current_filename.c_str(), current_filename.length());
+                lv2_atom_forge_pop (&forge, &frame);
               }
             else if (obj->body.otype == uris.patch_Set && !load_in_progress)
               {
@@ -230,6 +244,9 @@ public:
 
         schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
       }
+
+    // Close off sequence
+    lv2_atom_forge_pop (&forge, &notify_frame);
   }
   void
   connect_port (uint32_t   port,
@@ -341,11 +358,7 @@ instantiate (const LV2_Descriptor*     descriptor,
   if (!map || !schedule)
     return nullptr; // host bug, we need this feature
 
-  auto self = new LV2Plugin (rate, schedule);
-
-  self->init_map (map);
-
-  return self;
+  return new LV2Plugin (rate, map, schedule);
 }
 
 static void
@@ -377,6 +390,8 @@ deactivate (LV2_Handle instance)
 static void
 cleanup (LV2_Handle instance)
 {
+  LV2Plugin *self = static_cast<LV2Plugin *> (instance);
+  delete self;
 }
 
 static LV2_State_Status
