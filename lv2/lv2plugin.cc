@@ -33,6 +33,7 @@
 
 #include <string>
 #include <atomic>
+#include <mutex>
 
 #define LIQUIDSFZ_URI      "http://spectmorph.org/plugins/liquidsfz"
 
@@ -46,6 +47,38 @@ using std::string;
 
 namespace
 {
+
+#define LIQUIDSFZ_LV2_DEBUG
+
+#ifdef LIQUIDSFZ_LV2_DEBUG
+void debug (const char *format, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
+
+void
+debug (const char *format, ...)
+{
+  static std::mutex debug_mutex;
+  static FILE *out = nullptr;
+
+  std::lock_guard lg (debug_mutex);
+
+  if (!out)
+    out = fopen ("/tmp/liquidsfz.log", "w");
+
+  if (out)
+    {
+      va_list ap;
+
+      va_start (ap, format);
+      vfprintf (out, format, ap);
+      va_end (ap);
+    }
+}
+#else
+void
+debug (const char *format, ...)
+{
+}
+#endif
 
 class LV2Plugin
 {
@@ -88,7 +121,6 @@ class LV2Plugin
 
   LV2_Worker_Schedule     *schedule = nullptr;
   LV2_Atom_Forge           forge;
-  FILE                    *out = nullptr;
   Synth                    synth;
 public:
   LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule) :
@@ -99,9 +131,7 @@ public:
     queue_filename.reserve (1024);
     current_filename.reserve (1024);
 
-    out = fopen ("/tmp/liquidsfz.log", "w");
     synth.set_sample_rate (rate);
-    synth.load ("/home/stefan/sfz/Church Organ/Church Organ.sfz");
 
     lv2_atom_forge_init (&forge, map);
 
@@ -148,8 +178,7 @@ public:
   {
     if (size == sizeof (int) && *(int *) data == command_load)
       {
-        fprintf (out, "got patch set message %s\n", load_filename.c_str());
-        fflush (out);
+        debug ("got patch set message %s\n", load_filename.c_str());
 
         synth.load (load_filename);
 
@@ -181,8 +210,7 @@ public:
 
             if (obj->body.otype == uris.patch_Get)
               {
-                fprintf (out, "got patch get message\n");
-                fflush (out);
+                debug ("got patch get message\n");
 
                 LV2_Atom_Forge_Frame frame;
 
@@ -221,8 +249,7 @@ public:
                 case 0xb0: synth.add_event_cc (time, channel, msg[1], msg[2]);
                            break;
               }
-            fprintf (out, "got midi event\n");
-            fflush (out);
+            debug ("got midi event\n");
           }
       }
     float *outputs[2] = { left_out, right_out };
