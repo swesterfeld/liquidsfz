@@ -48,7 +48,7 @@ using std::string;
 namespace
 {
 
-#define LIQUIDSFZ_LV2_DEBUG
+#undef LIQUIDSFZ_LV2_DEBUG
 
 #ifdef LIQUIDSFZ_LV2_DEBUG
 void debug (const char *format, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
@@ -103,6 +103,8 @@ class LV2Plugin
     LV2_URID patch_Set;
     LV2_URID patch_property;
     LV2_URID patch_value;
+    LV2_URID state_StateChanged;
+
     LV2_URID liquidsfz_sfzfile;
   } uris;
 
@@ -117,6 +119,7 @@ class LV2Plugin
   string                   current_filename;
   string                   load_filename;
   bool                     load_in_progress = false;
+  bool                     inform_ui = false;
   static constexpr int     command_load = 0x10001234; // just some random number
 
   LV2_Worker_Schedule     *schedule = nullptr;
@@ -144,6 +147,8 @@ public:
     uris.patch_Set          = map->map (map->handle, LV2_PATCH__Set);
     uris.patch_property     = map->map (map->handle, LV2_PATCH__property);
     uris.patch_value        = map->map (map->handle, LV2_PATCH__value);
+    uris.state_StateChanged = map->map (map->handle, LV2_STATE__StateChanged);
+
     uris.liquidsfz_sfzfile  = map->map (map->handle, LIQUIDSFZ_URI "#sfzfile"); // FIXME: maybe use :something like afs
   }
 
@@ -171,6 +176,30 @@ public:
   }
 
   void
+  write_set_filename()
+  {
+    LV2_Atom_Forge_Frame frame;
+
+    lv2_atom_forge_frame_time (&forge, 0);
+    lv2_atom_forge_object (&forge, &frame, 0, uris.patch_Set);
+    lv2_atom_forge_property_head (&forge, uris.patch_property, 0);
+    lv2_atom_forge_urid (&forge, uris.liquidsfz_sfzfile);
+    lv2_atom_forge_property_head (&forge, uris.patch_value, 0);
+    lv2_atom_forge_path (&forge, current_filename.c_str(), current_filename.length());
+    lv2_atom_forge_pop (&forge, &frame);
+  }
+
+  void
+  write_state_changed()
+  {
+    LV2_Atom_Forge_Frame frame;
+
+    lv2_atom_forge_frame_time (&forge, 0);
+    lv2_atom_forge_object (&forge, &frame, 0, uris.state_StateChanged);
+    lv2_atom_forge_pop (&forge, &frame);
+  }
+
+  void
   work (LV2_Worker_Respond_Function respond,
         LV2_Worker_Respond_Handle   handle,
         uint32_t                    size,
@@ -178,7 +207,7 @@ public:
   {
     if (size == sizeof (int) && *(int *) data == command_load)
       {
-        debug ("got patch set message %s\n", load_filename.c_str());
+        debug ("loading file %s\n", load_filename.c_str());
 
         synth.load (load_filename);
 
@@ -191,6 +220,7 @@ public:
   {
     load_in_progress = false;
     current_filename = load_filename;
+    inform_ui        = true; // send notification to UI that current filename has changed
   }
 
   void
@@ -212,15 +242,7 @@ public:
               {
                 debug ("got patch get message\n");
 
-                LV2_Atom_Forge_Frame frame;
-
-                lv2_atom_forge_frame_time (&forge, 0);
-                lv2_atom_forge_object (&forge, &frame, 0, uris.patch_Set);
-                lv2_atom_forge_property_head (&forge, uris.patch_property, 0);
-                lv2_atom_forge_urid (&forge, uris.liquidsfz_sfzfile);
-                lv2_atom_forge_property_head (&forge, uris.patch_value, 0);
-                lv2_atom_forge_path (&forge, current_filename.c_str(), current_filename.length());
-                lv2_atom_forge_pop (&forge, &frame);
+                write_set_filename();
               }
             else if (obj->body.otype == uris.patch_Set && !load_in_progress)
               {
@@ -270,6 +292,13 @@ public:
         queue_filename   = "";
 
         schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
+      }
+    if (inform_ui)
+      {
+        inform_ui = false;
+
+        write_state_changed();
+        write_set_filename();
       }
 
     // Close off sequence
