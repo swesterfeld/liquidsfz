@@ -13,7 +13,7 @@ ADD . /liquidsfz
 WORKDIR /liquidsfz
 
 ENV PKG_CONFIG_PATH=/liquidsfz/static/prefix/lib/pkgconfig
-RUN echo $PKG_CONFIG_PATH
+ENV PKG_CONFIG="pkg-config --static"
 RUN cd static && ./build-deps.sh
 RUN ./autogen.sh
 RUN make

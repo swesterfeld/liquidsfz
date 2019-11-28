@@ -47,5 +47,14 @@ MAKEFLAGS="-j16"
 PATH=$PWD/prefix/bin:$PATH
 export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH
 
+src libogg-1.3.3 tar.xz http://downloads.xiph.org/releases/ogg/libogg-1.3.3.tar.xz
+autoconfbuild --disable-shared
+
+src libvorbis-1.3.6 tar.xz http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.6.tar.xz
+autoconfbuild --disable-shared
+
+src flac-1.3.2 tar.xz https://ftp.osuosl.org/pub/xiph/releases/flac/flac-1.3.2.tar.xz
+autoconfbuild --disable-shared
+
 src libsndfile-1.0.28 tar.gz http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.28.tar.gz
 autoconfbuild --disable-shared
