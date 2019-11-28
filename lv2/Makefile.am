@@ -1,4 +1,4 @@
-AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib $(CFLAG_VISIBILITY)
+AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
 LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
@@ -9,7 +9,7 @@ plugin_LTLIBRARIES = liquidsfz_lv2.la
 
 liquidsfz_lv2_la_SOURCES = lv2plugin.cc
 liquidsfz_lv2_la_LIBADD  = $(LIQUIDSFZ_LIBS)
-liquidsfz_lv2_la_LDFLAGS = -module -avoid-version -shared
+liquidsfz_lv2_la_LDFLAGS = -module -avoid-version -shared -Wl,--version-script=$(srcdir)/ldscript.map
 
 liquidsfz_lv2_DATA = manifest.ttl liquidsfz.ttl
 
