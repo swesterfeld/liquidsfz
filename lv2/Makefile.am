@@ -10,6 +10,7 @@ plugin_LTLIBRARIES = liquidsfz_lv2.la
 liquidsfz_lv2_la_SOURCES = lv2plugin.cc
 liquidsfz_lv2_la_LIBADD  = $(LIQUIDSFZ_LIBS)
 liquidsfz_lv2_la_LDFLAGS = -module -avoid-version -shared -Wl,--version-script=$(srcdir)/ldscript.map
+liquidsfz_lv2_la_LIBTOOLFLAGS = --tag=disable-static
 
 liquidsfz_lv2_DATA = manifest.ttl liquidsfz.ttl
 
