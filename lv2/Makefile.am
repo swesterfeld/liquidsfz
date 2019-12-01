@@ -25,3 +25,7 @@ install-data-hook:
 
 uninstall-hook:
 	rm -f $(DESTDIR)$(liquidsfz_lv2dir)/liquidsfz_lv2.so
+
+liquidsfz_lv2_static.so: $(plugin_LTLIBRARIES)
+	$(CXX) -shared -o liquidsfz_lv2_static.so .libs/lv2plugin.o $(AM_CXXFLAGS) \
+	$(top_builddir)/lib/.libs/libliquidsfz.a -static-libstdc++ -static-libgcc $(SNDFILE_LIBS) -Wl,--version-script=$(srcdir)/ldscript.map

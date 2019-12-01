@@ -24,7 +24,9 @@ ENV PKG_CONFIG="pkg-config --static"
 RUN cd static && ./build-deps.sh
 RUN ./autogen.sh --prefix=/usr/local/liquidsfz
 RUN make -j16
+RUN cd lv2 && make liquidsfz_lv2_static.so
 RUN make install
+RUN cp lv2/liquidsfz_lv2_static.so /usr/local/liquidsfz/lib/lv2/liquidsfz.lv2/liquidsfz_lv2.so
 
 # docker build -t liquidsfz .
 # docker run -v /tmp:/data -t liquidsfz tar Cczfv /usr/local /data/liquidsfz-static.tar.gz liquidsfz
