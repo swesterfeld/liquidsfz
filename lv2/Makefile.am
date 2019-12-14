@@ -20,4 +20,4 @@ uninstall-hook:
 
 liquidsfz_lv2.so: $(srcdir)/lv2plugin.cc
 	$(CXX) -fPIC -DPIC -shared -o liquidsfz_lv2.so $(srcdir)/lv2plugin.cc $(CXXFLAGS) $(AM_CXXFLAGS) \
-	$(top_builddir)/lib/.libs/libliquidsfz.a -static-libstdc++ -static-libgcc $(SNDFILE_LIBS) -Wl,--version-script=$(srcdir)/ldscript.map
+	$(top_builddir)/lib/.libs/libliquidsfz.a $(STATIC_CXX_LDFLAGS) $(SNDFILE_LIBS) -Wl,--version-script=$(srcdir)/ldscript.map
