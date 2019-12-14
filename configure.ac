@@ -39,6 +39,16 @@ AC_DEFUN([AC_JACK_REQUIREMENTS],
 AC_SNDFILE_REQUIREMENTS
 AC_JACK_REQUIREMENTS
 
+dnl link c++ libs statically if requested
+AC_ARG_WITH([static-cxx], AS_HELP_STRING([--with-static-cxx], [link libstdc++ statically]))
+
+if test "x$with_static_cxx" = "xyes"; then
+  STATIC_CXX_LDFLAGS="-static-libstdc++ -static-libgcc"
+else
+  STATIC_CXX_LDFLAGS=""
+fi
+AC_SUBST(STATIC_CXX_LDFLAGS)
+
 # need c++17 mode
 AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 
