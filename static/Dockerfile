@@ -22,7 +22,7 @@ WORKDIR /liquidsfz
 ENV PKG_CONFIG_PATH=/liquidsfz/static/prefix/lib/pkgconfig
 ENV PKG_CONFIG="pkg-config --static"
 RUN cd static && ./build-deps.sh
-RUN ./autogen.sh --prefix=/usr/local/liquidsfz
+RUN ./autogen.sh --prefix=/usr/local/liquidsfz --with-static-cxx
 RUN make -j16
 RUN make install
 
