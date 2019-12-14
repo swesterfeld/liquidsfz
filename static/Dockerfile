@@ -2,7 +2,10 @@
 
 FROM ubuntu:16.04
 
+RUN sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+
 RUN apt-get update && apt-get install -y build-essential
+RUN apt-get install -y dpkg-dev
 RUN apt-get install -y autoconf-archive
 RUN apt-get install -y libtool
 RUN apt-get install -y libjack-jackd2-dev
@@ -12,6 +15,8 @@ RUN apt-get install -y software-properties-common
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update
 RUN apt-get install -y g++-9
+RUN apt-get install -y libtool-bin
+RUN apt-get install -y gettext
 
 ENV CC gcc-9
 ENV CXX g++-9

@@ -1,10 +1,5 @@
 #!/bin/bash
 
-### EXPERIMENTAL helper script to build statically linked LV2
-
-# build all dependency libs, based on a script written by Robin Gareus
-# https://github.com/zynaddsubfx/zyn-build-osx/blob/master/01_compile.sh
-
 set -e
 
 function autoconfconf {
@@ -22,19 +17,6 @@ function autoconfbuild {
   make install
 }
 
-function download {
-  echo "--- Downloading.. $2"
-  test -f ${SRCDIR}/$1 || curl -L -o ${SRCDIR}/$1 $2
-}
-
-function src {
-  download ${1}.${2} $3
-  cd ${BUILDD}
-  rm -rf $1
-  tar xf ${SRCDIR}/${1}.${2}
-  cd $1
-}
-
 SRCDIR=$PWD/src
 BUILDD=$PWD/build
 
@@ -47,14 +29,21 @@ MAKEFLAGS="-j16"
 PATH=$PWD/prefix/bin:$PATH
 export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH
 
-src libogg-1.3.3 tar.xz http://downloads.xiph.org/releases/ogg/libogg-1.3.3.tar.xz
+cd $SRCDIR
+apt-get source libogg
+apt-get source libvorbis
+apt-get source flac
+apt-get source libsndfile
+
+cd $SRCDIR/libogg-1.3.2
 autoconfbuild --disable-shared
 
-src libvorbis-1.3.6 tar.xz http://downloads.xiph.org/releases/vorbis/libvorbis-1.3.6.tar.xz
+cd $SRCDIR/libvorbis-1.3.5
 autoconfbuild --disable-shared
 
-src flac-1.3.2 tar.xz https://ftp.osuosl.org/pub/xiph/releases/flac/flac-1.3.2.tar.xz
+cd $SRCDIR/flac-1.3.1
+./autogen.sh
 autoconfbuild --disable-shared
 
-src libsndfile-1.0.28 tar.gz http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.28.tar.gz
+cd $SRCDIR/libsndfile-1.0.25
 autoconfbuild --disable-shared
