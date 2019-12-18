@@ -52,6 +52,7 @@ class Synth
   std::vector<Region> regions_;
   Log log_level_ = Log::INFO;
   SampleCache sample_cache_; // FIXME: should share sample cache between different instances
+  float gain_ = 1.0;
 
   static constexpr int CC_SUSTAIN = 0x40;
 
@@ -79,6 +80,16 @@ public:
   {
     channels_.clear();
     channels_.resize (n_channels);
+  }
+  void
+  set_gain (float gain)
+  {
+    gain_ = gain;
+  }
+  float
+  gain() const
+  {
+    return gain_;
   }
   bool
   load (const std::string& filename)

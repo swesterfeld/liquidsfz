@@ -47,6 +47,12 @@ Synth::set_max_voices (uint n_voices)
   impl->synth.set_max_voices (n_voices);
 }
 
+void
+Synth::set_gain (float gain)
+{
+  impl->synth.set_gain (gain);
+}
+
 bool
 Synth::load (const std::string& filename)
 {

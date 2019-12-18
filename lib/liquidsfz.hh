@@ -66,6 +66,13 @@ public:
   void set_max_voices (uint n_voices);
 
   /**
+   * \brief Set global gain
+   *
+   * @param gain  gain (as a factor)
+   */
+  void set_gain (float gain);
+
+  /**
    * \brief Load .sfz file including all samples
    *
    * @param filename   name of the .sfz file

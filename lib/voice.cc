@@ -128,6 +128,7 @@ Voice::process (float **outputs, uint nframes)
         }
     };
 
+  const float global_gain = (1 / 32768.) * synth_->gain();
   for (uint i = 0; i < nframes; i++)
     {
       const uint ii = ppos_;
@@ -135,7 +136,7 @@ Voice::process (float **outputs, uint nframes)
       const float frac = ppos_ - ii;
       if (x < csample->samples.size() && !envelope_.done())
         {
-          const float amp_gain = envelope_.get_next() * (1 / 32768.);
+          const float amp_gain = envelope_.get_next() * global_gain;
           if (channels == 1)
             {
               std::array<float, 2> fsamples;
