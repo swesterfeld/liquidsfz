@@ -161,6 +161,10 @@ Loader::set_key_value (const string& key, const string& value)
     region.pan = convert_float (value);
   else if (key == "rt_decay")
     region.rt_decay = convert_float (value);
+  else if (key == "group")
+    region.group = convert_uint (value);
+  else if (key == "off_by")
+    region.off_by = convert_uint (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

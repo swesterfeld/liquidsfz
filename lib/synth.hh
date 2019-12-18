@@ -183,6 +183,22 @@ public:
                   {
                     if (region.cached_sample)
                       {
+                        /* handle off_by */
+                        if (region.group)
+                          {
+                            for (auto& voice : voices_)
+                              {
+                                if (voice.state_ == Voice::ACTIVE)
+                                  {
+                                    if (voice.off_by() == region.group)
+                                      {
+                                        release (voice); // FIXME: support fast release
+                                      }
+                                  }
+                              }
+                          }
+
+                        /* start new voice */
                         auto voice = alloc_voice();
                         if (voice)
                           voice->start (region, chan, key, vel, time_since_note_on, global_frame_count, sample_rate_);

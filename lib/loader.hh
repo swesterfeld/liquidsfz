@@ -74,6 +74,8 @@ struct Region
   float amp_veltrack = 100;
   float pan = 0;
   float rt_decay = 0;
+  uint group = 0;
+  uint off_by = 0;
 
   bool empty()
   {
@@ -171,6 +173,11 @@ public:
   convert_int (const std::string& s)
   {
     return atoi (s.c_str());
+  }
+  unsigned int
+  convert_uint (const std::string& s)
+  {
+    return stoul (s);
   }
   float
   convert_float (const std::string& s)

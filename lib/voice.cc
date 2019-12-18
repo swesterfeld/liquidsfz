@@ -53,6 +53,12 @@ Voice::replay_speed()
   return exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_;
 }
 
+uint
+Voice::off_by()
+{
+  return region_->off_by;
+}
+
 void
 Voice::start (const Region& region, int channel, int key, int velocity, double time_since_note_on, uint64_t global_frame_count, uint sample_rate)
 {
