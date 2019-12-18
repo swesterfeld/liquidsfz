@@ -35,6 +35,8 @@
 #include <atomic>
 #include <mutex>
 
+#include <math.h>
+
 #define LIQUIDSFZ_URI      "http://spectmorph.org/plugins/liquidsfz"
 
 #ifndef LV2_STATE__StateChanged
@@ -121,6 +123,7 @@ class LV2Plugin
   bool                     load_in_progress = false;
   bool                     inform_ui = false;
   static constexpr int     command_load = 0x10001234; // just some random number
+  float                    old_level = 1000;          // outside range [-80:20]
 
   LV2_Worker_Schedule     *schedule = nullptr;
   LV2_Atom_Forge           forge;
@@ -223,10 +226,25 @@ public:
     inform_ui        = true; // send notification to UI that current filename has changed
   }
 
+  float
+  db_to_factor (float db)
+  {
+    if (db <= -80)
+      return 0;
+    else
+      return powf (10, db * 0.05f);
+  }
+
   void
   run (uint32_t n_samples)
   {
     LV2_Atom_Forge_Frame notify_frame;
+
+    if (old_level != *level)
+      {
+        synth.set_gain (db_to_factor (*level));
+        old_level = *level;
+      }
 
     const uint32_t capacity = notify_port->atom.size;
     lv2_atom_forge_set_buffer (&forge, (uint8_t *) notify_port, capacity);
