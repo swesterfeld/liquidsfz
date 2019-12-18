@@ -35,6 +35,7 @@ class Envelope
   int attack_len_ = 0;
   int decay_len_ = 0;
   int release_len_ = 0;
+  int stop_len_ = 0;
   float sustain_level_ = 0;
 
   enum class State { ATTACK, DECAY, SUSTAIN, RELEASE, DONE };
@@ -59,6 +60,7 @@ public:
     decay_len_ = std::max (int (sample_rate * r.ampeg_decay), 1);
     sustain_level_ = std::clamp<float> (r.ampeg_sustain * 0.01, 0, 1); // percent->level
     release_len_ = std::max (int (sample_rate * r.ampeg_release), 1);
+    stop_len_ = std::max (int (sample_rate * 0.030), 1);
 
     level_ = 0;
     state_ = State::ATTACK;
@@ -71,6 +73,14 @@ public:
     state_ = State::RELEASE;
 
     compute_slope_params (release_len_, level_, 0, State::RELEASE);
+  }
+  void
+  stop()
+  {
+    /* stop is like release, but uses a fixed (short) release time */
+    state_ = State::RELEASE;
+
+    compute_slope_params (stop_len_, level_, 0, State::RELEASE);
   }
   bool
   done()

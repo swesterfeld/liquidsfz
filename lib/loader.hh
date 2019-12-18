@@ -44,6 +44,12 @@ enum class LoopMode {
   DEFAULT /* automatically use NONE or CONTINUOUS (from sample) */
 };
 
+enum class OffMode {
+  FAST,
+  NORMAL,
+  TIME
+};
+
 struct Region
 {
   std::string sample;
@@ -76,6 +82,7 @@ struct Region
   float rt_decay = 0;
   uint group = 0;
   uint off_by = 0;
+  OffMode off_mode = OffMode::FAST;
 
   bool empty()
   {
@@ -192,6 +199,7 @@ public:
     return Trigger::ATTACK;
   }
   LoopMode convert_loop_mode (const std::string& l);
+  OffMode convert_off_mode (const std::string& s);
   bool
   starts_with (const std::string& key, const std::string& start)
   {

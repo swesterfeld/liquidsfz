@@ -192,7 +192,12 @@ public:
                                   {
                                     if (voice.off_by() == region.group)
                                       {
-                                        release (voice); // FIXME: support fast release
+                                        voice.state_ = Voice::RELEASED;
+
+                                        if (voice.region_->off_mode == OffMode::FAST)
+                                          voice.envelope_.stop();
+                                        else
+                                          voice.envelope_.release();
                                       }
                                   }
                               }

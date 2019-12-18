@@ -58,6 +58,19 @@ Loader::convert_loop_mode (const string& l)
   return LoopMode::DEFAULT;
 }
 
+OffMode
+Loader::convert_off_mode (const string& m)
+{
+  if (m == "fast")
+    return OffMode::FAST;
+  else if (m == "normal")
+    return OffMode::NORMAL;
+  else if (m == "time")
+    return OffMode::TIME;
+  synth_->warning ("%s unknown loop mode: %s\n", location().c_str(), m.c_str());
+  return OffMode::FAST;
+}
+
 void
 Loader::set_key_value (const string& key, const string& value)
 {
@@ -165,6 +178,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.group = convert_uint (value);
   else if (key == "off_by")
     region.off_by = convert_uint (value);
+  else if (key == "off_mode")
+    region.off_mode = convert_off_mode (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }
