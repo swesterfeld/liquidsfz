@@ -180,6 +180,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.off_by = convert_uint (value);
   else if (key == "off_mode")
     region.off_mode = convert_off_mode (value);
+  else if (key == "off_time")
+    region.off_time = convert_float (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

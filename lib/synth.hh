@@ -192,12 +192,7 @@ public:
                                   {
                                     if (voice.off_by() == region.group)
                                       {
-                                        voice.state_ = Voice::RELEASED;
-
-                                        if (voice.region_->off_mode == OffMode::FAST)
-                                          voice.envelope_.stop();
-                                        else
-                                          voice.envelope_.release();
+                                        voice.stop (voice.region_->off_mode);
                                       }
                                   }
                               }
@@ -247,9 +242,7 @@ public:
         error ("release() state %d not active/sustain\n", voice.state_);
         return;
       }
-    /* FIXME: random, sequence */
-    voice.state_ = Voice::RELEASED;
-    voice.envelope_.release();
+    voice.stop (OffMode::NORMAL);
 
     double time_since_note_on = (global_frame_count - voice.start_frame_count_) / double (sample_rate_);
     trigger_regions (Trigger::RELEASE, voice.channel_, voice.key_, voice.velocity_, time_since_note_on);

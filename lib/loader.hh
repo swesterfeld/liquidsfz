@@ -83,6 +83,7 @@ struct Region
   uint group = 0;
   uint off_by = 0;
   OffMode off_mode = OffMode::FAST;
+  float off_time = 0;
 
   bool empty()
   {

@@ -61,6 +61,7 @@ public:
   double replay_speed();
 
   void start (const Region& region, int channel, int key, int velocity, double time_since_note_on, uint64_t global_frame_count, uint sample_rate);
+  void stop (OffMode off_mode);
   void process (float **outputs, uint nframes);
   uint off_by();
 };

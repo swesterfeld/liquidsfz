@@ -86,6 +86,13 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 }
 
 void
+Voice::stop (OffMode off_mode)
+{
+  state_ = Voice::RELEASED;
+  envelope_.stop (off_mode);
+}
+
+void
 Voice::process (float **outputs, uint nframes)
 {
   const auto csample = region_->cached_sample;
