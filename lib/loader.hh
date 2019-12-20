@@ -139,11 +139,14 @@ public:
     synth_ = synth;
   }
   bool in_control = false;
-  enum class RegionType { NONE, GLOBAL, GROUP, REGION };
+  enum class RegionType { NONE, GLOBAL, MASTER, GROUP, REGION };
   RegionType region_type = RegionType::NONE;
   Region active_global;
+  Region active_master;
   Region active_group;
   Region active_region;
+  bool   have_master = false;
+  bool   have_group = false;
   std::vector<Region> regions;
   Control control;
   std::string sample_path;

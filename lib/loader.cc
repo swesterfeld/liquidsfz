@@ -85,6 +85,8 @@ Loader::set_key_value (const string& key, const string& value)
     {
       case RegionType::GLOBAL:  region_ptr = &active_global;
                                 break;
+      case RegionType::MASTER:  region_ptr = &active_master;
+                                break;
       case RegionType::GROUP:   region_ptr = &active_group;
                                 break;
       case RegionType::REGION:  region_ptr = &active_region;
@@ -218,7 +220,7 @@ Loader::handle_tag (const std::string& tag)
   synth_->debug ("+++ TAG %s\n", tag.c_str());
 
   /* if we are done building a region, store it */
-  if (tag == "region" || tag == "group" || tag == "global")
+  if (tag == "region" || tag == "group" || tag == "master" || tag == "global")
     if (!active_region.empty())
       {
         regions.push_back (active_region);
@@ -233,24 +235,43 @@ Loader::handle_tag (const std::string& tag)
     }
   else if (tag == "region")
     {
-      /* handle the case that we have a <region> tag which is directly
-       * contained in a <global> (without <group>): act as if we had a group
-       */
-      if (region_type == RegionType::GLOBAL)
-        active_group = active_global;
+      /* inherit region parameters from parent region */
+      if (have_group)
+        active_region = active_group;
+      else if (have_master)
+        active_region = active_master;
+      else
+        active_region = active_global;
 
-      region_type   = RegionType::REGION;
-      active_region = active_group; /* inherit region parameters from group */
+      region_type = RegionType::REGION;
     }
   else if (tag == "group")
     {
-      region_type  = RegionType::GROUP;
-      active_group = active_global; /* inherit group paramaters from global */
+      /* inherit region parameters from parent region */
+      if (have_master)
+        active_group = active_master;
+      else
+        active_group = active_global;
+
+      region_type = RegionType::GROUP;
+      have_group  = true;
+    }
+  else if (tag == "master")
+    {
+      /* inherit region parameters from parent region */
+      active_master = active_global;
+
+      region_type = RegionType::MASTER;
+      have_group  = false;
+      have_master = true;
     }
   else if (tag == "global")
     {
-      region_type = RegionType::GLOBAL;
       active_global = Region();
+
+      region_type = RegionType::GLOBAL;
+      have_group  = false;
+      have_master = false;
     }
   else
     synth_->warning ("%s unsupported tag '<%s>'\n", location().c_str(), tag.c_str());
