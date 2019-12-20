@@ -54,6 +54,7 @@ struct Region
 {
   std::string sample;
   SampleCache::Entry *cached_sample = nullptr;
+  bool switch_match = true;
 
   int lokey = 0;
   int hikey = 127;
@@ -84,6 +85,12 @@ struct Region
   uint off_by = 0;
   OffMode off_mode = OffMode::FAST;
   float off_time = 0;
+
+  int sw_lokey = -1;
+  int sw_hikey = -1;
+  int sw_lolast = -1;
+  int sw_hilast = -1;
+  int sw_default = -1;
 
   bool empty()
   {

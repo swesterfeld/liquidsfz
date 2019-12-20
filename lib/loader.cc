@@ -182,6 +182,18 @@ Loader::set_key_value (const string& key, const string& value)
     region.off_mode = convert_off_mode (value);
   else if (key == "off_time")
     region.off_time = convert_float (value);
+  else if (key == "sw_lokey")
+    region.sw_lokey = convert_key (value);
+  else if (key == "sw_hikey")
+    region.sw_hikey = convert_key (value);
+  else if (key == "sw_last")
+    region.sw_lolast = region.sw_hilast = convert_key (value);
+  else if (key == "sw_lolast")
+    region.sw_lolast = convert_key (value);
+  else if (key == "sw_hilast")
+    region.sw_hilast = convert_key (value);
+  else if (key == "sw_default")
+    region.sw_default = convert_key (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }
@@ -473,6 +485,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
               regions[i].loop_mode = LoopMode::NONE;
             }
         }
+      if (regions[i].sw_lolast >= 0)
+        regions[i].switch_match = (regions[i].sw_lolast <= regions[i].sw_default && regions[i].sw_hilast >= regions[i].sw_default);
+
       synth_->progress ((i + 1) * 100.0 / regions.size());
     }
   synth_->debug ("*** regions: %zd\n", regions.size());

@@ -157,6 +157,9 @@ public:
 
     for (auto& region : regions_)
       {
+        if (region.sw_lolast >= 0 && region.sw_lokey <= key && region.sw_hikey >= key && trigger == Trigger::ATTACK)
+          region.switch_match = region.sw_lolast <= key && region.sw_hilast >= key;
+
         if (region.lokey <= key && region.hikey >= key &&
             region.lovel <= vel && region.hivel >= vel &&
             region.trigger == trigger)
@@ -172,6 +175,8 @@ public:
                   }
               }
             if (!cc_match)
+              continue;
+            if (!region.switch_match)
               continue;
 
             if (region.play_seq == region.seq_position)
