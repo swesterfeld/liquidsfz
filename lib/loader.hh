@@ -92,6 +92,9 @@ struct Region
   int sw_hilast = -1;
   int sw_default = -1;
 
+  int tune = 0;
+  int transpose = 0;
+
   bool empty()
   {
     return sample == "";

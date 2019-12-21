@@ -196,6 +196,10 @@ Loader::set_key_value (const string& key, const string& value)
     region.sw_hilast = convert_key (value);
   else if (key == "sw_default")
     region.sw_default = convert_key (value);
+  else if (key == "tune")
+    region.tune = convert_int (value);
+  else if (key == "transpose")
+    region.transpose = convert_int (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

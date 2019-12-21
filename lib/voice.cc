@@ -49,6 +49,8 @@ double
 Voice::replay_speed()
 {
   double semi_tones = (key_ - region_->pitch_keycenter) * (region_->pitch_keytrack * 0.01);
+  semi_tones += region_->tune * 0.01;
+  semi_tones += region_->transpose;
 
   return exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_;
 }
