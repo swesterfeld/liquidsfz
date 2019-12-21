@@ -361,7 +361,7 @@ load_file (FILE *file)
   while (!feof (file) && (l = fread (buffer, 1, sizeof (buffer), file)) > 0)
     contents.insert (contents.end(), buffer, buffer + l);
 
-  return std::move (contents);
+  return contents;
 }
 
 bool
