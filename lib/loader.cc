@@ -225,12 +225,21 @@ Loader::set_key_value (const string& key, const string& value)
 void
 Loader::set_key_value_control (const string& key, const string& value)
 {
+  int sub_key;
+
   if (key == "default_path")
     {
       string native_path = value;
       std::replace (native_path.begin(), native_path.end(), '\\', PATH_SEPARATOR);
 
       control.default_path = native_path;
+    }
+  else if (split_sub_key (key, "set_cc", sub_key))
+    {
+      SetCC set_cc;
+      set_cc.cc = sub_key;
+      set_cc.value = convert_int (value);
+      control.set_cc.push_back (set_cc);
     }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());

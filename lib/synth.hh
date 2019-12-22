@@ -39,6 +39,15 @@ using LiquidSFZ::Log;
 struct Channel
 {
   std::vector<uint8_t> cc_values = std::vector<uint8_t> (128, 0);
+
+  void
+  init (const Control& control)
+  {
+    std::fill (cc_values.begin(), cc_values.end(), 0);
+    for (auto set_cc : control.set_cc)
+      if (set_cc.cc >= 0 && set_cc.cc <= 127)
+        cc_values[set_cc.cc] = std::clamp (set_cc.value, 0, 127);
+  }
 };
 
 class Synth
@@ -50,12 +59,19 @@ class Synth
   uint64_t global_frame_count = 0;
   std::vector<Voice> voices_;
   std::vector<Region> regions_;
+  Control control_;
   Log log_level_ = Log::INFO;
   SampleCache sample_cache_; // FIXME: should share sample cache between different instances
   float gain_ = 1.0;
 
   static constexpr int CC_SUSTAIN = 0x40;
 
+  void
+  init_channels()
+  {
+    for (auto& channel : channels_)
+      channel.init (control_);
+  }
 public:
   Synth()
   {
@@ -78,8 +94,8 @@ public:
   void
   set_channels (uint n_channels)
   {
-    channels_.clear();
     channels_.resize (n_channels);
+    init_channels();
   }
   void
   set_gain (float gain)
@@ -101,6 +117,8 @@ public:
     if (loader.parse (filename, sample_cache_))
       {
         regions_ = loader.regions;
+        control_ = loader.control;
+        init_channels();
         return true;
       }
     return false;

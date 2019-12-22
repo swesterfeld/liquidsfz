@@ -112,6 +112,12 @@ struct Region
   int play_seq = 1;
 };
 
+struct SetCC
+{
+  int cc;
+  int value;
+};
+
 struct Control
 {
   std::string default_path;
@@ -121,6 +127,7 @@ struct Control
     std::string value;
   };
   std::vector<Define> defines;
+  std::vector<SetCC> set_cc;
 };
 
 class Synth;
