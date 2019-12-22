@@ -50,6 +50,12 @@ enum class OffMode {
   TIME
 };
 
+struct CCParam
+{
+  int cc = -1;
+  float value = 0;
+};
+
 struct Region
 {
   std::string sample;
@@ -94,6 +100,8 @@ struct Region
 
   int tune = 0;
   int transpose = 0;
+
+  CCParam pan_cc;
 
   bool empty()
   {
@@ -219,6 +227,7 @@ public:
   {
     return key.substr (0, start.size()) == start;
   }
+  bool split_sub_key (const std::string& key, const std::string& start, int& sub_key);
   void set_key_value (const std::string& key, const std::string& value);
   void set_key_value_control (const std::string& key, const std::string& value);
   void handle_tag (const std::string& tag);

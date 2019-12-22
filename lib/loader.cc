@@ -71,6 +71,18 @@ Loader::convert_off_mode (const string& m)
   return OffMode::FAST;
 }
 
+bool
+Loader::split_sub_key (const string& key, const string& start, int& sub_key)
+{
+  if (!starts_with (key, start))
+    return false;
+  if (key.length() <= start.length())
+    return false;
+
+  sub_key = convert_int (key.substr (start.length()));
+  return true;
+}
+
 void
 Loader::set_key_value (const string& key, const string& value)
 {
@@ -95,6 +107,7 @@ Loader::set_key_value (const string& key, const string& value)
     }
 
   Region& region = *region_ptr;
+  int sub_key;
   synth_->debug ("+++ '%s' = '%s'\n", key.c_str(), value.c_str());
   if (key == "sample")
     {
@@ -138,15 +151,15 @@ Loader::set_key_value (const string& key, const string& value)
     region.loop_start = convert_int (value);
   else if (key == "loop_end")
     region.loop_end = convert_int (value);
-  else if (starts_with (key, "locc"))
+  else if (split_sub_key (key, "locc", sub_key))
     {
-      int cc = convert_int (key.substr (4));
+      int cc = sub_key;
       if (cc >= 0 && cc <= 127)
         region.locc[cc] = convert_int (value);
     }
-  else if (starts_with (key, "hicc"))
+  else if (split_sub_key (key, "hicc", sub_key))
     {
-      int cc = convert_int (key.substr (4));
+      int cc = sub_key;
       if (cc >= 0 && cc <= 127)
         region.hicc[cc] = convert_int (value);
     }
@@ -200,6 +213,11 @@ Loader::set_key_value (const string& key, const string& value)
     region.tune = convert_int (value);
   else if (key == "transpose")
     region.transpose = convert_int (value);
+  else if (split_sub_key (key, "pan_oncc", sub_key))
+    {
+      region.pan_cc.cc = sub_key;
+      region.pan_cc.value = convert_float (value);
+    }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

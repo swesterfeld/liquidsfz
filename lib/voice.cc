@@ -26,10 +26,10 @@
 using namespace LiquidSFZInternal;
 
 double
-Voice::pan_stereo_factor (const Region& r, int ch)
+Voice::pan_stereo_factor (double region_pan, int ch)
 {
   /* sine panning law (constant power panning) */
-  const double pan = ch == 0 ? -r.pan : r.pan;
+  const double pan = ch == 0 ? -region_pan : region_pan;
   return sin ((pan + 100) / 400 * M_PI);
 }
 
@@ -80,11 +80,24 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
       rt_decay_gain = db_to_factor (-time_since_note_on * region.rt_decay);
       synth_->debug ("rt_decay_gain %f\n", rt_decay_gain);
     }
-  left_gain_ = velocity_gain * volume_gain * rt_decay_gain * pan_stereo_factor (region, 0);
-  right_gain_ = velocity_gain * volume_gain * rt_decay_gain * pan_stereo_factor (region, 1);
+
+  float pan = region.pan;
+  if (region.pan_cc.cc >= 0)
+    pan += synth_->get_cc (channel, region.pan_cc.cc) * (1 / 127.f) * region.pan_cc.value;
+  update_pan_gain (pan);
+
+  left_gain_ = velocity_gain * volume_gain * rt_decay_gain;
+  right_gain_ = velocity_gain * volume_gain * rt_decay_gain;
   state_ = ACTIVE;
   envelope_.start (region, sample_rate_);
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
+}
+
+void
+Voice::update_pan_gain (float pan)
+{
+  pan_left_gain_ = pan_stereo_factor (pan, 0);
+  pan_right_gain_ = pan_stereo_factor (pan, 1);
 }
 
 void
@@ -92,6 +105,16 @@ Voice::stop (OffMode off_mode)
 {
   state_ = Voice::RELEASED;
   envelope_.stop (off_mode);
+}
+
+void
+Voice::update_cc (int controller, int value)
+{
+  if (region_->pan_cc.cc == controller)
+    {
+      float pan = region_->pan + value * (1 / 127.f) * region_->pan_cc.value;
+      update_pan_gain (pan);
+    }
 }
 
 void
@@ -158,16 +181,16 @@ Voice::process (float **outputs, uint nframes)
               get_samples_mono (x, fsamples);
 
               const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
-              outputs[0][i] += interp * left_gain_ * amp_gain;
-              outputs[1][i] += interp * right_gain_ * amp_gain;
+              outputs[0][i] += interp * left_gain_ * amp_gain * pan_left_gain_;
+              outputs[1][i] += interp * right_gain_ * amp_gain * pan_right_gain_;
             }
           else if (channels == 2)
             {
               std::array<float, 4> fsamples;
               get_samples_stereo (x, fsamples);
 
-              outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * left_gain_ * amp_gain;
-              outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * right_gain_ * amp_gain;
+              outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * left_gain_ * amp_gain * pan_left_gain_;
+              outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * right_gain_ * amp_gain * pan_right_gain_;
             }
           else
             {

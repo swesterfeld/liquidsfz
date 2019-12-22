@@ -28,6 +28,9 @@ namespace LiquidSFZInternal
 
 class Voice
 {
+  void update_pan_gain (float pan);
+  float pan_left_gain_ = 1;
+  float pan_right_gain_ = 1;
 public:
   Synth *synth_;
   int sample_rate_ = 44100;
@@ -56,7 +59,7 @@ public:
     synth_ (synth)
   {
   }
-  double pan_stereo_factor (const Region& r, int ch);
+  double pan_stereo_factor (double region_pan, int ch);
   double velocity_track_factor (const Region& r, int midi_velocity);
   double replay_speed();
 
@@ -64,6 +67,7 @@ public:
   void stop (OffMode off_mode);
   void process (float **outputs, uint nframes);
   uint off_by();
+  void update_cc (int controller, int value);
 };
 
 }

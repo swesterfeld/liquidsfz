@@ -269,6 +269,11 @@ public:
       }
     ch.cc_values[controller] = value;
 
+    for (auto& voice : voices_)
+      {
+        if (voice.state_ != Voice::IDLE && voice.channel_ == channel)
+          voice.update_cc (controller, value);
+      }
     if (controller == CC_SUSTAIN)
       {
         if (value < 0x40)
