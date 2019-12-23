@@ -84,6 +84,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
     }
 
   update_volume_gain();
+  update_amplitude_gain();
   update_pan_gain();
   update_lr_gain (true);
 
@@ -106,7 +107,7 @@ Voice::update_pan_gain()
 void
 Voice::update_lr_gain (bool now)
 {
-  const float global_gain = (1 / 32768.) * synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_;
+  const float global_gain = (1 / 32768.) * synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_ * amplitude_gain_;
 
   left_gain_.set (pan_left_gain_ * global_gain, now);
   right_gain_.set (pan_right_gain_ * global_gain, now);
@@ -120,6 +121,16 @@ Voice::update_volume_gain()
     volume += synth_->get_cc (channel_, region_->gain_cc.cc) * (1 / 127.f) * region_->gain_cc.value;
 
   volume_gain_ = db_to_factor (volume);
+}
+
+void
+Voice::update_amplitude_gain()
+{
+  float gain = region_->amplitude * 0.01f;
+  if (region_->amplitude_cc.cc >= 0)
+    gain *= synth_->get_cc (channel_, region_->amplitude_cc.cc) * (1 / 127.f) * region_->amplitude_cc.value * 0.01f;
+
+  amplitude_gain_ = gain;
 }
 
 void
@@ -137,9 +148,14 @@ Voice::update_cc (int controller)
       update_pan_gain();
       update_lr_gain (false);
     }
-  if (controller == region_->gain_cc.cc)
+  else if (controller == region_->gain_cc.cc)
     {
       update_volume_gain();
+      update_lr_gain (false);
+    }
+  else if (controller == region_->amplitude_cc.cc)
+    {
+      update_amplitude_gain();
       update_lr_gain (false);
     }
 }

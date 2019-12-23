@@ -84,6 +84,7 @@ struct Region
   float ampeg_sustain = 100;
   float ampeg_release = 0;
   float volume = 0;
+  float amplitude = 100;
   float amp_veltrack = 100;
   float pan = 0;
   float rt_decay = 0;
@@ -103,6 +104,7 @@ struct Region
 
   CCParam pan_cc;
   CCParam gain_cc;
+  CCParam amplitude_cc;
 
   bool empty()
   {

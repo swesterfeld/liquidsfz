@@ -32,12 +32,14 @@ class Voice
   LinearSmooth right_gain_;
 
   float volume_gain_ = 0;
+  float amplitude_gain_ = 0;
   float velocity_gain_ = 0;
   float rt_decay_gain_ = 0;
   float pan_left_gain_ = 0;
   float pan_right_gain_ = 0;
 
   void update_volume_gain();
+  void update_amplitude_gain();
   void update_pan_gain();
   void update_lr_gain (bool now);
 public:

@@ -183,6 +183,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.ampeg_release = convert_float (value);
   else if (key == "volume")
     region.volume = convert_float (value);
+  else if (key == "amplitude")
+    region.amplitude = convert_float (value);
   else if (key == "amp_veltrack")
     region.amp_veltrack = convert_float (value);
   else if (key == "pan")
@@ -222,6 +224,11 @@ Loader::set_key_value (const string& key, const string& value)
     {
       region.gain_cc.cc = sub_key;
       region.gain_cc.value = convert_float (value);
+    }
+  else if (split_sub_key (key, "amplitude_oncc", sub_key))
+    {
+      region.amplitude_cc.cc = sub_key;
+      region.amplitude_cc.value = convert_float (value);
     }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
