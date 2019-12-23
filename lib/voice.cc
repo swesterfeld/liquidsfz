@@ -72,8 +72,8 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   velocity_ = velocity;
   ppos_ = 0;
   trigger_ = region.trigger;
-  pan_left_gain_.reset (sample_rate, 0.020);
-  pan_right_gain_.reset (sample_rate, 0.020);
+  left_gain_.reset (sample_rate, 0.020);
+  right_gain_.reset (sample_rate, 0.020);
 
   velocity_gain_ = velocity_track_factor (region, velocity);
   rt_decay_gain_ = 1.0;
@@ -84,7 +84,8 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
     }
 
   update_volume_gain();
-  update_pan_gain (/* now */ true);
+  update_pan_gain();
+  update_lr_gain (true);
 
   state_ = ACTIVE;
   envelope_.start (region, sample_rate_);
@@ -92,16 +93,23 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 }
 
 void
-Voice::update_pan_gain (bool now)
+Voice::update_pan_gain()
 {
   float pan = region_->pan;
   if (region_->pan_cc.cc >= 0)
     pan += synth_->get_cc (channel_, region_->pan_cc.cc) * (1 / 127.f) * region_->pan_cc.value;
 
+  pan_left_gain_ = pan_stereo_factor (pan, 0);
+  pan_right_gain_ = pan_stereo_factor (pan, 1);
+}
+
+void
+Voice::update_lr_gain (bool now)
+{
   const float global_gain = (1 / 32768.) * synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_;
 
-  pan_left_gain_.set (pan_stereo_factor (pan, 0) * global_gain, now);
-  pan_right_gain_.set (pan_stereo_factor (pan, 1) * global_gain, now);
+  left_gain_.set (pan_left_gain_ * global_gain, now);
+  right_gain_.set (pan_right_gain_ * global_gain, now);
 }
 
 void
@@ -110,7 +118,7 @@ Voice::update_volume_gain()
   float volume = region_->volume;
   if (region_->gain_cc.cc >= 0)
     volume += synth_->get_cc (channel_, region_->gain_cc.cc) * (1 / 127.f) * region_->gain_cc.value;
-  synth_->info ("volume=%f\n", volume);
+
   volume_gain_ = db_to_factor (volume);
 }
 
@@ -125,18 +133,21 @@ void
 Voice::update_cc (int controller)
 {
   if (controller == region_->pan_cc.cc)
-    update_pan_gain (false);
+    {
+      update_pan_gain();
+      update_lr_gain (false);
+    }
   if (controller == region_->gain_cc.cc)
     {
       update_volume_gain();
-      update_pan_gain (false);
+      update_lr_gain (false);
     }
 }
 
 void
 Voice::update_gain()
 {
-  update_pan_gain (false);
+  update_lr_gain (false);
 }
 
 void
@@ -202,16 +213,16 @@ Voice::process (float **outputs, uint nframes)
               get_samples_mono (x, fsamples);
 
               const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
-              outputs[0][i] += interp * amp_gain * pan_left_gain_.next_value();
-              outputs[1][i] += interp * amp_gain * pan_right_gain_.next_value();
+              outputs[0][i] += interp * amp_gain * left_gain_.next_value();
+              outputs[1][i] += interp * amp_gain * right_gain_.next_value();
             }
           else if (channels == 2)
             {
               std::array<float, 4> fsamples;
               get_samples_stereo (x, fsamples);
 
-              outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain * pan_left_gain_.next_value();
-              outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain * pan_right_gain_.next_value();
+              outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain * left_gain_.next_value();
+              outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain * right_gain_.next_value();
             }
           else
             {

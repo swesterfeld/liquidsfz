@@ -28,14 +28,18 @@ namespace LiquidSFZInternal
 
 class Voice
 {
-  void update_pan_gain (bool now);
-  LinearSmooth pan_left_gain_;
-  LinearSmooth pan_right_gain_;
+  LinearSmooth left_gain_;
+  LinearSmooth right_gain_;
+
   float volume_gain_ = 0;
   float velocity_gain_ = 0;
   float rt_decay_gain_ = 0;
+  float pan_left_gain_ = 0;
+  float pan_right_gain_ = 0;
 
   void update_volume_gain();
+  void update_pan_gain();
+  void update_lr_gain (bool now);
 public:
   Synth *synth_;
   int sample_rate_ = 44100;
