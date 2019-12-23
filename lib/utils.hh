@@ -107,7 +107,7 @@ public:
       }
   }
   float
-  next_value()
+  get_next()
   {
     if (!steps_)
       return value_;

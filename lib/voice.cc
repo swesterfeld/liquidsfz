@@ -213,16 +213,16 @@ Voice::process (float **outputs, uint nframes)
               get_samples_mono (x, fsamples);
 
               const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
-              outputs[0][i] += interp * amp_gain * left_gain_.next_value();
-              outputs[1][i] += interp * amp_gain * right_gain_.next_value();
+              outputs[0][i] += interp * amp_gain * left_gain_.get_next();
+              outputs[1][i] += interp * amp_gain * right_gain_.get_next();
             }
           else if (channels == 2)
             {
               std::array<float, 4> fsamples;
               get_samples_stereo (x, fsamples);
 
-              outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain * left_gain_.next_value();
-              outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain * right_gain_.next_value();
+              outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain * left_gain_.get_next();
+              outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain * right_gain_.get_next();
             }
           else
             {
