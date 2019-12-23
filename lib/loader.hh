@@ -102,6 +102,7 @@ struct Region
   int transpose = 0;
 
   CCParam pan_cc;
+  CCParam gain_cc;
 
   bool empty()
   {

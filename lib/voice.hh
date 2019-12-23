@@ -31,6 +31,9 @@ class Voice
   void update_pan_gain (bool now);
   LinearSmooth pan_left_gain_;
   LinearSmooth pan_right_gain_;
+  float volume_gain_ = 0;
+
+  void update_volume_gain();
 public:
   Synth *synth_;
   int sample_rate_ = 44100;

@@ -75,7 +75,6 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   pan_left_gain_.reset (sample_rate, 0.020);
   pan_right_gain_.reset (sample_rate, 0.020);
 
-  double volume_gain = db_to_factor (region.volume);
   double velocity_gain = velocity_track_factor (region, velocity);
   double rt_decay_gain = 1.0;
   if (region.trigger == Trigger::RELEASE)
@@ -84,10 +83,11 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
       synth_->debug ("rt_decay_gain %f\n", rt_decay_gain);
     }
 
+  update_volume_gain();
   update_pan_gain (/* now */ true);
 
-  left_gain_ = velocity_gain * volume_gain * rt_decay_gain;
-  right_gain_ = velocity_gain * volume_gain * rt_decay_gain;
+  left_gain_ = velocity_gain * rt_decay_gain;
+  right_gain_ = velocity_gain * rt_decay_gain;
   state_ = ACTIVE;
   envelope_.start (region, sample_rate_);
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
@@ -102,8 +102,18 @@ Voice::update_pan_gain (bool now)
 
   const float global_gain = (1 / 32768.) * synth_->gain();
 
-  pan_left_gain_.set (pan_stereo_factor (pan, 0) * global_gain, now);
-  pan_right_gain_.set (pan_stereo_factor (pan, 1) * global_gain, now);
+  pan_left_gain_.set (pan_stereo_factor (pan, 0) * volume_gain_ * global_gain, now);
+  pan_right_gain_.set (pan_stereo_factor (pan, 1) * volume_gain_ * global_gain, now);
+}
+
+void
+Voice::update_volume_gain()
+{
+  float volume = region_->volume;
+  if (region_->gain_cc.cc >= 0)
+    volume += synth_->get_cc (channel_, region_->gain_cc.cc) * (1 / 127.f) * region_->gain_cc.value;
+  synth_->info ("volume=%f\n", volume);
+  volume_gain_ = db_to_factor (volume);
 }
 
 void
@@ -118,6 +128,11 @@ Voice::update_cc (int controller)
 {
   if (controller == region_->pan_cc.cc)
     update_pan_gain (false);
+  if (controller == region_->gain_cc.cc)
+    {
+      update_volume_gain();
+      update_pan_gain (false);
+    }
 }
 
 void

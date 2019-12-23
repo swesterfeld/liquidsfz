@@ -218,6 +218,11 @@ Loader::set_key_value (const string& key, const string& value)
       region.pan_cc.cc = sub_key;
       region.pan_cc.value = convert_float (value);
     }
+  else if (split_sub_key (key, "gain_cc", sub_key))
+    {
+      region.gain_cc.cc = sub_key;
+      region.gain_cc.value = convert_float (value);
+    }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }
