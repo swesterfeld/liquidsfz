@@ -101,6 +101,11 @@ public:
   set_gain (float gain)
   {
     gain_ = gain;
+    for (auto& voice : voices_)
+      {
+        if (voice.state_ != Voice::IDLE)
+          voice.update_gain();
+      }
   }
   float
   gain() const
@@ -290,7 +295,7 @@ public:
     for (auto& voice : voices_)
       {
         if (voice.state_ != Voice::IDLE && voice.channel_ == channel)
-          voice.update_cc (controller, value);
+          voice.update_cc (controller);
       }
     if (controller == CC_SUSTAIN)
       {

@@ -84,10 +84,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
       synth_->debug ("rt_decay_gain %f\n", rt_decay_gain);
     }
 
-  float pan = region.pan;
-  if (region.pan_cc.cc >= 0)
-    pan += synth_->get_cc (channel, region.pan_cc.cc) * (1 / 127.f) * region.pan_cc.value;
-  update_pan_gain (pan, /* now */ true);
+  update_pan_gain (/* now */ true);
 
   left_gain_ = velocity_gain * volume_gain * rt_decay_gain;
   right_gain_ = velocity_gain * volume_gain * rt_decay_gain;
@@ -97,10 +94,16 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 }
 
 void
-Voice::update_pan_gain (float pan, bool now)
+Voice::update_pan_gain (bool now)
 {
-  pan_left_gain_.set (pan_stereo_factor (pan, 0), now);
-  pan_right_gain_.set (pan_stereo_factor (pan, 1), now);
+  float pan = region_->pan;
+  if (region_->pan_cc.cc >= 0)
+    pan += synth_->get_cc (channel_, region_->pan_cc.cc) * (1 / 127.f) * region_->pan_cc.value;
+
+  const float global_gain = (1 / 32768.) * synth_->gain();
+
+  pan_left_gain_.set (pan_stereo_factor (pan, 0) * global_gain, now);
+  pan_right_gain_.set (pan_stereo_factor (pan, 1) * global_gain, now);
 }
 
 void
@@ -111,13 +114,16 @@ Voice::stop (OffMode off_mode)
 }
 
 void
-Voice::update_cc (int controller, int value)
+Voice::update_cc (int controller)
 {
-  if (region_->pan_cc.cc == controller)
-    {
-      float pan = region_->pan + value * (1 / 127.f) * region_->pan_cc.value;
-      update_pan_gain (pan, /* now */ false);
-    }
+  if (controller == region_->pan_cc.cc)
+    update_pan_gain (false);
+}
+
+void
+Voice::update_gain()
+{
+  update_pan_gain (false);
 }
 
 void
@@ -169,7 +175,6 @@ Voice::process (float **outputs, uint nframes)
         }
     };
 
-  const float global_gain = (1 / 32768.) * synth_->gain();
   for (uint i = 0; i < nframes; i++)
     {
       const uint ii = ppos_;
@@ -177,7 +182,7 @@ Voice::process (float **outputs, uint nframes)
       const float frac = ppos_ - ii;
       if (x < csample->samples.size() && !envelope_.done())
         {
-          const float amp_gain = envelope_.get_next() * global_gain;
+          const float amp_gain = envelope_.get_next();
           if (channels == 1)
             {
               std::array<float, 2> fsamples;

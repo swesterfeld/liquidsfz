@@ -28,7 +28,7 @@ namespace LiquidSFZInternal
 
 class Voice
 {
-  void update_pan_gain (float pan, bool now);
+  void update_pan_gain (bool now);
   LinearSmooth pan_left_gain_;
   LinearSmooth pan_right_gain_;
 public:
@@ -67,7 +67,8 @@ public:
   void stop (OffMode off_mode);
   void process (float **outputs, uint nframes);
   uint off_by();
-  void update_cc (int controller, int value);
+  void update_cc (int controller);
+  void update_gain();
 };
 
 }
