@@ -75,19 +75,17 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   pan_left_gain_.reset (sample_rate, 0.020);
   pan_right_gain_.reset (sample_rate, 0.020);
 
-  double velocity_gain = velocity_track_factor (region, velocity);
-  double rt_decay_gain = 1.0;
+  velocity_gain_ = velocity_track_factor (region, velocity);
+  rt_decay_gain_ = 1.0;
   if (region.trigger == Trigger::RELEASE)
     {
-      rt_decay_gain = db_to_factor (-time_since_note_on * region.rt_decay);
-      synth_->debug ("rt_decay_gain %f\n", rt_decay_gain);
+      rt_decay_gain_ = db_to_factor (-time_since_note_on * region.rt_decay);
+      synth_->debug ("rt_decay_gain %f\n", rt_decay_gain_);
     }
 
   update_volume_gain();
   update_pan_gain (/* now */ true);
 
-  left_gain_ = velocity_gain * rt_decay_gain;
-  right_gain_ = velocity_gain * rt_decay_gain;
   state_ = ACTIVE;
   envelope_.start (region, sample_rate_);
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
@@ -100,10 +98,10 @@ Voice::update_pan_gain (bool now)
   if (region_->pan_cc.cc >= 0)
     pan += synth_->get_cc (channel_, region_->pan_cc.cc) * (1 / 127.f) * region_->pan_cc.value;
 
-  const float global_gain = (1 / 32768.) * synth_->gain();
+  const float global_gain = (1 / 32768.) * synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_;
 
-  pan_left_gain_.set (pan_stereo_factor (pan, 0) * volume_gain_ * global_gain, now);
-  pan_right_gain_.set (pan_stereo_factor (pan, 1) * volume_gain_ * global_gain, now);
+  pan_left_gain_.set (pan_stereo_factor (pan, 0) * global_gain, now);
+  pan_right_gain_.set (pan_stereo_factor (pan, 1) * global_gain, now);
 }
 
 void
@@ -204,16 +202,16 @@ Voice::process (float **outputs, uint nframes)
               get_samples_mono (x, fsamples);
 
               const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
-              outputs[0][i] += interp * left_gain_ * amp_gain * pan_left_gain_.next_value();
-              outputs[1][i] += interp * right_gain_ * amp_gain * pan_right_gain_.next_value();
+              outputs[0][i] += interp * amp_gain * pan_left_gain_.next_value();
+              outputs[1][i] += interp * amp_gain * pan_right_gain_.next_value();
             }
           else if (channels == 2)
             {
               std::array<float, 4> fsamples;
               get_samples_stereo (x, fsamples);
 
-              outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * left_gain_ * amp_gain * pan_left_gain_.next_value();
-              outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * right_gain_ * amp_gain * pan_right_gain_.next_value();
+              outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain * pan_left_gain_.next_value();
+              outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain * pan_right_gain_.next_value();
             }
           else
             {

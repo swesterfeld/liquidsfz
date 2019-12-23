@@ -32,6 +32,8 @@ class Voice
   LinearSmooth pan_left_gain_;
   LinearSmooth pan_right_gain_;
   float volume_gain_ = 0;
+  float velocity_gain_ = 0;
+  float rt_decay_gain_ = 0;
 
   void update_volume_gain();
 public:
@@ -50,8 +52,6 @@ public:
   State state_ = IDLE;
 
   double ppos_ = 0;
-  float left_gain_ = 0;
-  float right_gain_ = 0;
   uint64_t start_frame_count_ = 0;
   Trigger trigger_ = Trigger::ATTACK;
   Envelope envelope_;
