@@ -56,6 +56,13 @@ struct CCParam
   float value = 0;
 };
 
+struct XFCC
+{
+  int cc = -1;
+  int lo = -1;
+  int hi = -1;
+};
+
 struct Region
 {
   std::string sample;
@@ -110,6 +117,8 @@ struct Region
   int xfin_hikey = 0;
   int xfout_lokey = 127;
   int xfout_hikey = 127;
+  std::vector<XFCC> xfin_ccs;
+  std::vector<XFCC> xfout_ccs;
 
   CCParam pan_cc;
   CCParam gain_cc;
@@ -247,6 +256,7 @@ public:
     return key.substr (0, start.size()) == start;
   }
   bool split_sub_key (const std::string& key, const std::string& start, int& sub_key);
+  XFCC& search_xfcc (std::vector<XFCC>& xfcc_vec, int cc, int def);
   void set_key_value (const std::string& key, const std::string& value);
   void set_key_value_control (const std::string& key, const std::string& value);
   void handle_tag (const std::string& tag);

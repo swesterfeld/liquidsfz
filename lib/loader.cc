@@ -83,6 +83,21 @@ Loader::split_sub_key (const string& key, const string& start, int& sub_key)
   return true;
 }
 
+XFCC&
+Loader::search_xfcc (vector<XFCC>& xfcc_vec, int cc, int def)
+{
+  for (auto& xfcc : xfcc_vec)
+    {
+      if (xfcc.cc == cc)
+        return xfcc;
+    }
+  XFCC xfcc;
+  xfcc.cc = cc;
+  xfcc.lo = def;
+  xfcc.hi = def;
+  return xfcc_vec.emplace_back (xfcc);
+}
+
 void
 Loader::set_key_value (const string& key, const string& value)
 {
@@ -246,6 +261,26 @@ Loader::set_key_value (const string& key, const string& value)
     region.xfout_lokey = convert_key (value);
   else if (key == "xfout_hikey")
     region.xfout_hikey = convert_key (value);
+  else if (split_sub_key (key, "xfin_locc", sub_key))
+    {
+      XFCC& xfcc = search_xfcc (region.xfin_ccs, sub_key, 0);
+      xfcc.lo = convert_int (value);
+    }
+  else if (split_sub_key (key, "xfin_hicc", sub_key))
+    {
+      XFCC& xfcc = search_xfcc (region.xfin_ccs, sub_key, 0);
+      xfcc.hi = convert_int (value);
+    }
+  else if (split_sub_key (key, "xfout_locc", sub_key))
+    {
+      XFCC& xfcc = search_xfcc (region.xfout_ccs, sub_key, 127);
+      xfcc.lo = convert_int (value);
+    }
+  else if (split_sub_key (key, "xfout_hicc", sub_key))
+    {
+      XFCC& xfcc = search_xfcc (region.xfout_ccs, sub_key, 127);
+      xfcc.hi = convert_int (value);
+    }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

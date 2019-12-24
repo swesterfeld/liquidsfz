@@ -150,6 +150,14 @@ Voice::update_volume_gain()
 
   volume_gain_ *= xfin_gain (key_, region_->xfin_lokey, region_->xfin_hikey);
   volume_gain_ *= xfout_gain (key_, region_->xfout_lokey, region_->xfout_hikey);
+
+  // xfin_locc / xfin_hicc
+  for (auto xfcc : region_->xfin_ccs)
+    volume_gain_ *= xfin_gain (synth_->get_cc (channel_, xfcc.cc), xfcc.lo, xfcc.hi);
+
+  // xfout_locc / xfout_hicc
+  for (auto xfcc : region_->xfout_ccs)
+    volume_gain_ *= xfout_gain (synth_->get_cc (channel_, xfcc.cc), xfcc.lo, xfcc.hi);
 }
 
 void
@@ -172,6 +180,11 @@ Voice::stop (OffMode off_mode)
 void
 Voice::update_cc (int controller)
 {
+  if (region_->xfin_ccs.size() || region_->xfout_ccs.size())
+    {
+      update_volume_gain();
+      update_lr_gain (false);
+    }
   if (controller == region_->pan_cc.cc)
     {
       update_pan_gain();
