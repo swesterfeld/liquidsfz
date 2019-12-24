@@ -230,6 +230,14 @@ Loader::set_key_value (const string& key, const string& value)
       region.amplitude_cc.cc = sub_key;
       region.amplitude_cc.value = convert_float (value);
     }
+  else if (key == "xfin_lovel")
+    region.xfin_lovel = convert_int (value);
+  else if (key == "xfin_hivel")
+    region.xfin_hivel = convert_int (value);
+  else if (key == "xfout_lovel")
+    region.xfout_lovel = convert_int (value);
+  else if (key == "xfout_hivel")
+    region.xfout_hivel = convert_int (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

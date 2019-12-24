@@ -102,6 +102,11 @@ struct Region
   int tune = 0;
   int transpose = 0;
 
+  int xfin_lovel = 0;
+  int xfin_hivel = 0;
+  int xfout_lovel = 127;
+  int xfout_hivel = 127;
+
   CCParam pan_cc;
   CCParam gain_cc;
   CCParam amplitude_cc;

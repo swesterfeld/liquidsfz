@@ -109,6 +109,7 @@ Voice::update_lr_gain (bool now)
 {
   const float global_gain = (1 / 32768.) * synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_ * amplitude_gain_;
 
+  synth_->debug (" - gain l=%.2f r=%.2f\n", 32768 * pan_left_gain_ * global_gain, 32768 * pan_right_gain_ * global_gain);
   left_gain_.set (pan_left_gain_ * global_gain, now);
   right_gain_.set (pan_right_gain_ * global_gain, now);
 }
@@ -121,6 +122,33 @@ Voice::update_volume_gain()
     volume += synth_->get_cc (channel_, region_->gain_cc.cc) * (1 / 127.f) * region_->gain_cc.value;
 
   volume_gain_ = db_to_factor (volume);
+
+  if (region_->xfin_hivel > 0)
+    {
+      float f;
+      if (velocity_ < region_->xfin_lovel)
+        f = 0;
+      else if (velocity_ < region_->xfin_hivel && region_->xfin_hivel > region_->xfin_lovel)
+        f = float (velocity_ - region_->xfin_lovel) / (region_->xfin_hivel - region_->xfin_lovel);
+      else
+        f = 1;
+
+      volume_gain_ *= f;
+      synth_->debug ("xfin: %d -> %f\n", velocity_, f);
+    }
+  if (region_->xfout_lovel < 127)
+    {
+      float f;
+      if (velocity_ < region_->xfout_lovel)
+        f = 1;
+      else if (velocity_ < region_->xfout_hivel && region_->xfout_hivel > region_->xfout_lovel)
+        f = 1.f - float (velocity_ - region_->xfout_lovel) / (region_->xfout_hivel - region_->xfout_lovel);
+      else
+        f = 0;
+
+      volume_gain_ *= f;
+      synth_->debug ("xfout: %d -> %f\n", velocity_, f);
+    }
 }
 
 void
