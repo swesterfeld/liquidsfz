@@ -106,6 +106,10 @@ struct Region
   int xfin_hivel = 0;
   int xfout_lovel = 127;
   int xfout_hivel = 127;
+  int xfin_lokey = 0;
+  int xfin_hikey = 0;
+  int xfout_lokey = 127;
+  int xfout_hikey = 127;
 
   CCParam pan_cc;
   CCParam gain_cc;

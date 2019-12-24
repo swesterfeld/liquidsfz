@@ -114,6 +114,28 @@ Voice::update_lr_gain (bool now)
   right_gain_.set (pan_right_gain_ * global_gain, now);
 }
 
+float
+Voice::xfin_gain (int value, int lo, int hi)
+{
+  if (value <= lo)
+    return 0;
+  if (value < hi && hi > lo)
+    return float (value - lo) / (hi - lo);
+  else
+    return 1;
+}
+
+float
+Voice::xfout_gain (int value, int lo, int hi)
+{
+  if (value >= hi)
+    return 0;
+  if (value > lo && hi > lo)
+    return 1 - float (value - lo) / (hi - lo);
+  else
+    return 1;
+}
+
 void
 Voice::update_volume_gain()
 {
@@ -123,32 +145,11 @@ Voice::update_volume_gain()
 
   volume_gain_ = db_to_factor (volume);
 
-  if (region_->xfin_hivel > 0)
-    {
-      float f;
-      if (velocity_ < region_->xfin_lovel)
-        f = 0;
-      else if (velocity_ < region_->xfin_hivel && region_->xfin_hivel > region_->xfin_lovel)
-        f = float (velocity_ - region_->xfin_lovel) / (region_->xfin_hivel - region_->xfin_lovel);
-      else
-        f = 1;
+  volume_gain_ *= xfin_gain (velocity_, region_->xfin_lovel, region_->xfin_hivel);
+  volume_gain_ *= xfout_gain (velocity_, region_->xfout_lovel, region_->xfout_hivel);
 
-      volume_gain_ *= f;
-      synth_->debug ("xfin: %d -> %f\n", velocity_, f);
-    }
-  if (region_->xfout_lovel < 127)
-    {
-      float f;
-      if (velocity_ < region_->xfout_lovel)
-        f = 1;
-      else if (velocity_ < region_->xfout_hivel && region_->xfout_hivel > region_->xfout_lovel)
-        f = 1.f - float (velocity_ - region_->xfout_lovel) / (region_->xfout_hivel - region_->xfout_lovel);
-      else
-        f = 0;
-
-      volume_gain_ *= f;
-      synth_->debug ("xfout: %d -> %f\n", velocity_, f);
-    }
+  volume_gain_ *= xfin_gain (key_, region_->xfin_lokey, region_->xfin_hikey);
+  volume_gain_ *= xfout_gain (key_, region_->xfout_lokey, region_->xfout_hikey);
 }
 
 void

@@ -42,6 +42,9 @@ class Voice
   void update_amplitude_gain();
   void update_pan_gain();
   void update_lr_gain (bool now);
+
+  float xfin_gain (int value, int lo, int hi);
+  float xfout_gain (int value, int lo, int hi);
 public:
   Synth *synth_;
   int sample_rate_ = 44100;

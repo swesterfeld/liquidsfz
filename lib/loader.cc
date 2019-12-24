@@ -238,6 +238,14 @@ Loader::set_key_value (const string& key, const string& value)
     region.xfout_lovel = convert_int (value);
   else if (key == "xfout_hivel")
     region.xfout_hivel = convert_int (value);
+  else if (key == "xfin_lokey")
+    region.xfin_lokey = convert_key (value);
+  else if (key == "xfin_hikey")
+    region.xfin_hikey = convert_key (value);
+  else if (key == "xfout_lokey")
+    region.xfout_lokey = convert_key (value);
+  else if (key == "xfout_hikey")
+    region.xfout_hikey = convert_key (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }
