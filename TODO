@@ -1,4 +1,5 @@
 - key switches
 - xfade
 - envelope hold, delay
+- group off is buggy if multiple voices are triggered
 - envelope minimum times (prevent clicks)
