@@ -128,7 +128,7 @@ Voice::xfin_gain (int value, int lo, int hi)
 float
 Voice::xfout_gain (int value, int lo, int hi)
 {
-  if (value >= hi)
+  if (value > hi)
     return 0;
   if (value > lo && hi > lo)
     return 1 - float (value - lo) / (hi - lo);
