@@ -218,7 +218,10 @@ public:
                               {
                                 if (voice.state_ == Voice::ACTIVE)
                                   {
-                                    if (voice.off_by() == region.group)
+                                    /* off_by should not affect voices started by this trigger_regions call */
+                                    const bool voice_is_new = (voice.start_frame_count_ == global_frame_count);
+
+                                    if (voice.off_by() == region.group && !voice_is_new)
                                       {
                                         voice.stop (voice.region_->off_mode);
                                       }
