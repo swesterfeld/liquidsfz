@@ -117,7 +117,7 @@ Voice::update_lr_gain (bool now)
 float
 Voice::xfin_gain (int value, int lo, int hi)
 {
-  if (value <= lo)
+  if (value < lo)
     return 0;
   if (value < hi && hi > lo)
     return float (value - lo) / (hi - lo);
