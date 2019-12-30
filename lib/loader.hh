@@ -63,6 +63,14 @@ struct XFCC
   int hi = -1;
 };
 
+struct CCInfo
+{
+  int cc = -1;
+  bool has_label = false;
+  std::string label;
+  int default_value = 0;
+};
+
 struct Region
 {
   std::string sample;
@@ -188,6 +196,7 @@ public:
   bool   have_group = false;
   std::vector<Region> regions;
   Control control;
+  std::vector<CCInfo> cc_list;
   std::string sample_path;
 
   int
@@ -257,6 +266,7 @@ public:
   }
   bool split_sub_key (const std::string& key, const std::string& start, int& sub_key);
   XFCC& search_xfcc (std::vector<XFCC>& xfcc_vec, int cc, int def);
+  CCInfo& update_cc_info (int cc);
   void set_key_value (const std::string& key, const std::string& value);
   void set_key_value_control (const std::string& key, const std::string& value);
   void handle_tag (const std::string& tag);

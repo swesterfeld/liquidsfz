@@ -60,6 +60,7 @@ class Synth
   std::vector<Voice> voices_;
   std::vector<Region> regions_;
   Control control_;
+  std::vector<CCInfo> cc_list_;
   Log log_level_ = Log::INFO;
   SampleCache sample_cache_; // FIXME: should share sample cache between different instances
   float gain_ = 1.0;
@@ -123,10 +124,17 @@ public:
       {
         regions_ = loader.regions;
         control_ = loader.control;
+        cc_list_ = loader.cc_list;
+
         init_channels();
         return true;
       }
     return false;
+  }
+  std::vector<CCInfo>
+  list_ccs()
+  {
+    return cc_list_;
   }
   void
   progress (double percent)

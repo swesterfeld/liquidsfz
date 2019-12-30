@@ -91,11 +91,25 @@ Loader::search_xfcc (vector<XFCC>& xfcc_vec, int cc, int def)
       if (xfcc.cc == cc)
         return xfcc;
     }
+  update_cc_info (cc);
   XFCC xfcc;
   xfcc.cc = cc;
   xfcc.lo = def;
   xfcc.hi = def;
   return xfcc_vec.emplace_back (xfcc);
+}
+
+CCInfo&
+Loader::update_cc_info (int cc)
+{
+  for (auto& cc_info : cc_list)
+    {
+      if (cc_info.cc == cc)
+        return cc_info;
+    }
+  CCInfo cc_info;
+  cc_info.cc = cc;
+  return cc_list.emplace_back (cc_info);
 }
 
 void
@@ -170,13 +184,19 @@ Loader::set_key_value (const string& key, const string& value)
     {
       int cc = sub_key;
       if (cc >= 0 && cc <= 127)
-        region.locc[cc] = convert_int (value);
+        {
+          region.locc[cc] = convert_int (value);
+          update_cc_info (cc);
+        }
     }
   else if (split_sub_key (key, "hicc", sub_key))
     {
       int cc = sub_key;
       if (cc >= 0 && cc <= 127)
-        region.hicc[cc] = convert_int (value);
+        {
+          region.hicc[cc] = convert_int (value);
+          update_cc_info (cc);
+        }
     }
   else if (starts_with (key, "on_locc") || starts_with (key, "on_hicc"))
     region.trigger = Trigger::CC;
@@ -234,16 +254,19 @@ Loader::set_key_value (const string& key, const string& value)
     {
       region.pan_cc.cc = sub_key;
       region.pan_cc.value = convert_float (value);
+      update_cc_info (sub_key);
     }
   else if (split_sub_key (key, "gain_cc", sub_key))
     {
       region.gain_cc.cc = sub_key;
       region.gain_cc.value = convert_float (value);
+      update_cc_info (sub_key);
     }
   else if (split_sub_key (key, "amplitude_oncc", sub_key))
     {
       region.amplitude_cc.cc = sub_key;
       region.amplitude_cc.value = convert_float (value);
+      update_cc_info (sub_key);
     }
   else if (key == "xfin_lovel")
     region.xfin_lovel = convert_int (value);
@@ -303,6 +326,15 @@ Loader::set_key_value_control (const string& key, const string& value)
       set_cc.cc = sub_key;
       set_cc.value = convert_int (value);
       control.set_cc.push_back (set_cc);
+
+      CCInfo& cc_info = update_cc_info (set_cc.cc);
+      cc_info.default_value = set_cc.value;
+    }
+  else if (split_sub_key (key, "label_cc", sub_key))
+    {
+      CCInfo& cc_info = update_cc_info (sub_key);
+      cc_info.has_label = true;
+      cc_info.label = value;
     }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
@@ -605,6 +637,11 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
 
       synth_->progress ((i + 1) * 100.0 / regions.size());
     }
+
+  std::sort (cc_list.begin(), cc_list.end(),
+    [] (const CCInfo& a, const CCInfo& b) {
+      return a.cc < b.cc;
+    });
   synth_->debug ("*** regions: %zd\n", regions.size());
   return true;
 }
