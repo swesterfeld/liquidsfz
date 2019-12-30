@@ -42,6 +42,23 @@ enum class Log {
   DISABLE_ALL // special log level which can be used to disable all logging
 };
 
+class CCInfo
+{
+  friend class Synth;
+
+  struct Impl;
+  std::unique_ptr<Impl> impl;
+public:
+  CCInfo();
+  CCInfo (CCInfo&&) = default;
+  ~CCInfo();
+
+  int cc() const;
+  std::string label() const;
+  bool has_label() const;
+  int default_value() const;
+};
+
 class Synth
 {
   struct Impl;
@@ -80,6 +97,8 @@ public:
    * @returns true if the .sfz could be loaded successfully
    */
   bool load (const std::string& filename);
+
+  std::vector<CCInfo> list_ccs();
 
   /**
    * \brief Add a note on event

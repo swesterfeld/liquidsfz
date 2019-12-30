@@ -23,6 +23,9 @@
 
 using namespace LiquidSFZ;
 
+using std::vector;
+using std::string;
+
 struct Synth::Impl {
   LiquidSFZInternal::Synth synth;
 };
@@ -99,4 +102,55 @@ void
 Synth::set_progress_function (std::function<void (double)> progress_function)
 {
   impl->synth.set_progress_function (progress_function);
+}
+
+/*----------------- CCInfo --------------*/
+
+struct CCInfo::Impl {
+  LiquidSFZInternal::CCInfo cc_info;
+};
+
+CCInfo::CCInfo() : impl (new CCInfo::Impl())
+{
+}
+
+CCInfo::~CCInfo()
+{
+}
+
+int
+CCInfo::cc() const
+{
+  return impl->cc_info.cc;
+}
+
+string
+CCInfo::label() const
+{
+  return impl->cc_info.label;
+}
+
+bool
+CCInfo::has_label() const
+{
+  return impl->cc_info.has_label;
+}
+
+int
+CCInfo::default_value() const
+{
+  return impl->cc_info.default_value;
+}
+
+vector<CCInfo>
+Synth::list_ccs()
+{
+  vector<CCInfo> result;
+
+  for (const auto& cc_info : impl->synth.list_ccs())
+    {
+      auto& cc_result = result.emplace_back();
+      cc_result.impl->cc_info = cc_info;
+    }
+  return result;
 }
