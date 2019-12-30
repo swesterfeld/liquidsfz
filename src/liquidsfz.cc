@@ -205,6 +205,19 @@ public:
   void
   run()
   {
+    auto ccs = synth.list_ccs();
+    if (ccs.size())
+      {
+        printf ("Supported Controls:\n");
+        for (const auto& cc_info : ccs)
+          {
+            printf (" - CC #%d", cc_info.cc());
+            if (cc_info.has_label())
+              printf (" - %s", cc_info.label().c_str());
+            printf (" [ default %d ]\n", cc_info.default_value());
+          }
+        printf ("\n");
+      }
     if (jack_activate (client))
       {
         fprintf (stderr, "cannot activate client");
