@@ -98,7 +98,7 @@ public:
    */
   bool load (const std::string& filename);
 
-  std::vector<CCInfo> list_ccs();
+  std::vector<CCInfo> list_ccs() const;
 
   /**
    * \brief Add a note on event

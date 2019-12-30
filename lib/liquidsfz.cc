@@ -143,7 +143,7 @@ CCInfo::default_value() const
 }
 
 vector<CCInfo>
-Synth::list_ccs()
+Synth::list_ccs() const
 {
   vector<CCInfo> result;
 
