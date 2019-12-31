@@ -100,6 +100,7 @@ struct Region
   std::vector<int> hicc = std::vector<int> (128, 127);
   float ampeg_delay = 0;
   float ampeg_attack = 0;
+  float ampeg_hold = 0;
   float ampeg_decay = 0;
   float ampeg_sustain = 100;
   float ampeg_release = 0;

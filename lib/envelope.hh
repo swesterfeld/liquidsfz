@@ -32,14 +32,16 @@ namespace LiquidSFZInternal
 
 class Envelope
 {
+  int delay_len_ = 0;
   int attack_len_ = 0;
+  int hold_len_ = 0;
   int decay_len_ = 0;
   int release_len_ = 0;
   int stop_len_ = 0;
   int off_time_len_ = 0;
   float sustain_level_ = 0;
 
-  enum class State { ATTACK, DECAY, SUSTAIN, RELEASE, DONE };
+  enum class State { DELAY, ATTACK, HOLD, DECAY, SUSTAIN, RELEASE, DONE };
 
   State state_ = State::DONE;
 
@@ -57,7 +59,9 @@ public:
   void
   start (const Region& r, int sample_rate)
   {
+    delay_len_ = std::max (int (sample_rate * r.ampeg_delay), 1);
     attack_len_ = std::max (int (sample_rate * r.ampeg_attack), 1);
+    hold_len_ = std::max (int (sample_rate * r.ampeg_hold), 1);
     decay_len_ = std::max (int (sample_rate * r.ampeg_decay), 1);
     sustain_level_ = std::clamp<float> (r.ampeg_sustain * 0.01, 0, 1); // percent->level
     release_len_ = std::max (int (sample_rate * r.ampeg_release), 1);
@@ -65,9 +69,9 @@ public:
     off_time_len_ = std::max (int (sample_rate * r.off_time), 1);
 
     level_ = 0;
-    state_ = State::ATTACK;
+    state_ = State::DELAY;
 
-    compute_slope_params (attack_len_, 0, 1, State::ATTACK);
+    compute_slope_params (delay_len_, 0, 0, State::DELAY);
   }
   void
   stop (OffMode off_mode)
@@ -96,7 +100,7 @@ public:
   {
     params_.end = end_x;
 
-    if (param_state == State::ATTACK)
+    if (param_state == State::ATTACK || param_state == State::DELAY || param_state == State::HOLD)
       {
         // linear
         params_.len    = len;
@@ -147,7 +151,17 @@ public:
       {
         level_ = params_.end;
 
-        if (state_ == State::ATTACK)
+        if (state_ == State::DELAY)
+          {
+            compute_slope_params (attack_len_, 0, 1, State::ATTACK);
+            state_ = State::ATTACK;
+          }
+        else if (state_ == State::ATTACK)
+          {
+            compute_slope_params (hold_len_, 1, 1, State::HOLD);
+            state_ = State::HOLD;
+          }
+        else if (state_ == State::HOLD)
           {
             compute_slope_params (decay_len_, 1, sustain_level_, State::DECAY);
             state_ = State::DECAY;

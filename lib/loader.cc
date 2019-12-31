@@ -221,6 +221,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.ampeg_delay = convert_float (value);
   else if (key == "ampeg_attack")
     region.ampeg_attack = convert_float (value);
+  else if (key == "ampeg_hold")
+    region.ampeg_hold = convert_float (value);
   else if (key == "ampeg_decay")
     region.ampeg_decay = convert_float (value);
   else if (key == "ampeg_sustain")
