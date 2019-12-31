@@ -71,6 +71,17 @@ Loader::convert_off_mode (const string& m)
   return OffMode::FAST;
 }
 
+XFCurve
+Loader::convert_xfcurve (const string& c)
+{
+  if (c == "power")
+    return XFCurve::POWER;
+  else if (c == "gain")
+    return XFCurve::GAIN;
+  synth_->warning ("%s unknown crossfade curve: %s\n", location().c_str(), c.c_str());
+  return XFCurve::POWER;
+}
+
 bool
 Loader::split_sub_key (const string& key, const string& start, int& sub_key)
 {
@@ -304,6 +315,12 @@ Loader::set_key_value (const string& key, const string& value)
       XFCC& xfcc = search_xfcc (region.xfout_ccs, sub_key, 127);
       xfcc.hi = convert_int (value);
     }
+  else if (key == "xf_velcurve")
+    region.xf_velcurve = convert_xfcurve (value);
+  else if (key == "xf_keycurve")
+    region.xf_keycurve = convert_xfcurve (value);
+  else if (key == "xf_cccurve")
+    region.xf_cccurve = convert_xfcurve (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

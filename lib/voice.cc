@@ -115,23 +115,32 @@ Voice::update_lr_gain (bool now)
 }
 
 float
-Voice::xfin_gain (int value, int lo, int hi)
+Voice::apply_xfcurve (float f, XFCurve curve)
+{
+  if (curve == XFCurve::POWER)
+    return sqrtf (f);
+  else
+    return f;
+}
+
+float
+Voice::xfin_gain (int value, int lo, int hi, XFCurve curve)
 {
   if (value < lo)
     return 0;
   if (value < hi && hi > lo)
-    return float (value - lo) / (hi - lo);
+    return apply_xfcurve (float (value - lo) / (hi - lo), curve);
   else
     return 1;
 }
 
 float
-Voice::xfout_gain (int value, int lo, int hi)
+Voice::xfout_gain (int value, int lo, int hi, XFCurve curve)
 {
   if (value > hi)
     return 0;
   if (value > lo && hi > lo)
-    return 1 - float (value - lo) / (hi - lo);
+    return apply_xfcurve (1 - float (value - lo) / (hi - lo), curve);
   else
     return 1;
 }
@@ -145,19 +154,19 @@ Voice::update_volume_gain()
 
   volume_gain_ = db_to_factor (volume);
 
-  volume_gain_ *= xfin_gain (velocity_, region_->xfin_lovel, region_->xfin_hivel);
-  volume_gain_ *= xfout_gain (velocity_, region_->xfout_lovel, region_->xfout_hivel);
+  volume_gain_ *= xfin_gain (velocity_, region_->xfin_lovel, region_->xfin_hivel, region_->xf_velcurve);
+  volume_gain_ *= xfout_gain (velocity_, region_->xfout_lovel, region_->xfout_hivel, region_->xf_velcurve);
 
-  volume_gain_ *= xfin_gain (key_, region_->xfin_lokey, region_->xfin_hikey);
-  volume_gain_ *= xfout_gain (key_, region_->xfout_lokey, region_->xfout_hikey);
+  volume_gain_ *= xfin_gain (key_, region_->xfin_lokey, region_->xfin_hikey, region_->xf_keycurve);
+  volume_gain_ *= xfout_gain (key_, region_->xfout_lokey, region_->xfout_hikey, region_->xf_keycurve);
 
   // xfin_locc / xfin_hicc
   for (auto xfcc : region_->xfin_ccs)
-    volume_gain_ *= xfin_gain (synth_->get_cc (channel_, xfcc.cc), xfcc.lo, xfcc.hi);
+    volume_gain_ *= xfin_gain (synth_->get_cc (channel_, xfcc.cc), xfcc.lo, xfcc.hi, region_->xf_cccurve);
 
   // xfout_locc / xfout_hicc
   for (auto xfcc : region_->xfout_ccs)
-    volume_gain_ *= xfout_gain (synth_->get_cc (channel_, xfcc.cc), xfcc.lo, xfcc.hi);
+    volume_gain_ *= xfout_gain (synth_->get_cc (channel_, xfcc.cc), xfcc.lo, xfcc.hi, region_->xf_cccurve);
 }
 
 void

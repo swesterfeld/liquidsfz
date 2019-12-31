@@ -50,6 +50,11 @@ enum class OffMode {
   TIME
 };
 
+enum class XFCurve {
+  POWER,
+  GAIN
+};
+
 struct CCParam
 {
   int cc = -1;
@@ -127,6 +132,10 @@ struct Region
   int xfout_hikey = 127;
   std::vector<XFCC> xfin_ccs;
   std::vector<XFCC> xfout_ccs;
+
+  XFCurve xf_velcurve = XFCurve::POWER;
+  XFCurve xf_keycurve = XFCurve::POWER;
+  XFCurve xf_cccurve = XFCurve::POWER;
 
   CCParam pan_cc;
   CCParam gain_cc;
@@ -259,6 +268,7 @@ public:
   }
   LoopMode convert_loop_mode (const std::string& l);
   OffMode convert_off_mode (const std::string& s);
+  XFCurve convert_xfcurve (const std::string& c);
   bool
   starts_with (const std::string& key, const std::string& start)
   {

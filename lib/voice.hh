@@ -80,8 +80,9 @@ public:
   void update_cc (int controller);
   void update_gain();
 
-  float xfin_gain (int value, int lo, int hi);
-  float xfout_gain (int value, int lo, int hi);
+  float xfin_gain (int value, int lo, int hi, XFCurve curve);
+  float xfout_gain (int value, int lo, int hi, XFCurve curve);
+  float apply_xfcurve (float f, XFCurve curve);
 };
 
 }
