@@ -123,6 +123,30 @@ Loader::update_cc_info (int cc)
   return cc_list.emplace_back (cc_info);
 }
 
+bool
+Loader::parse_amp_param (AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str)
+{
+  if (key == "ampeg_" + param_str) // ampeg_attack,...
+    {
+      amp_param.base = convert_float (value);
+      return true;
+    }
+  if (key == "ampeg_vel2" + param_str) // ampeg_vel2attack,...
+    {
+      amp_param.vel2 = convert_float (value);
+      return true;
+    }
+  int sub_key;
+  if (split_sub_key (key, "ampeg_" + param_str + "cc", sub_key)) // ampeg_attackccN,...
+    {
+      amp_param.cc.cc = sub_key;
+      amp_param.cc.value = convert_float (value);
+      update_cc_info (sub_key);
+      return true;
+    }
+  return false;
+}
+
 void
 Loader::set_key_value (const string& key, const string& value)
 {
@@ -217,18 +241,14 @@ Loader::set_key_value (const string& key, const string& value)
     region.seq_length = convert_int (value);
   else if (key == "seq_position")
     region.seq_position = convert_int (value);
-  else if (key == "ampeg_delay")
-    region.ampeg_delay = convert_float (value);
-  else if (key == "ampeg_attack")
-    region.ampeg_attack = convert_float (value);
-  else if (key == "ampeg_hold")
-    region.ampeg_hold = convert_float (value);
-  else if (key == "ampeg_decay")
-    region.ampeg_decay = convert_float (value);
-  else if (key == "ampeg_sustain")
-    region.ampeg_sustain = convert_float (value);
-  else if (key == "ampeg_release")
-    region.ampeg_release = convert_float (value);
+  else if (parse_amp_param (region.ampeg_delay, key, value, "delay") ||
+           parse_amp_param (region.ampeg_attack, key, value, "attack") ||
+           parse_amp_param (region.ampeg_hold, key, value, "hold") ||
+           parse_amp_param (region.ampeg_sustain, key, value, "sustain") ||
+           parse_amp_param (region.ampeg_release, key, value, "release"))
+  {
+      // actual value conversion is performed by parse_amp_param
+    }
   else if (key == "volume")
     region.volume = convert_float (value);
   else if (key == "amplitude")

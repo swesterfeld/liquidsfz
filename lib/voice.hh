@@ -43,6 +43,7 @@ class Voice
   void update_pan_gain();
   void update_lr_gain (bool now);
 
+  float amp_value (float vnorm, const AmpParam& amp_param);
 public:
   Synth *synth_;
   int sample_rate_ = 44100;

@@ -88,9 +88,27 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   update_pan_gain();
   update_lr_gain (true);
 
+  const float vnorm = velocity * (1 / 127.f);
+  envelope_.set_delay (amp_value (vnorm, region.ampeg_delay));
+  envelope_.set_attack (amp_value (vnorm, region.ampeg_attack));
+  envelope_.set_hold (amp_value (vnorm, region.ampeg_hold));
+  envelope_.set_decay (amp_value (vnorm, region.ampeg_decay));
+  envelope_.set_sustain (amp_value (vnorm, region.ampeg_sustain));
+  envelope_.set_release (amp_value (vnorm, region.ampeg_release));
+
   state_ = ACTIVE;
   envelope_.start (region, sample_rate_);
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
+}
+
+float
+Voice::amp_value (float vnorm, const AmpParam& amp_param)
+{
+  float value = amp_param.base + amp_param.vel2 * vnorm;
+  if (amp_param.cc.cc >= 0)
+    value += synth_->get_cc (channel_, amp_param.cc.cc) * (1 / 127.f) * amp_param.cc.value;
+
+  return value;
 }
 
 void

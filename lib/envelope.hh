@@ -32,6 +32,14 @@ namespace LiquidSFZInternal
 
 class Envelope
 {
+  /* values in seconds */
+  float delay_ = 0;
+  float attack_ = 0;
+  float hold_ = 0;
+  float decay_ = 0;
+  float sustain_ = 0; /* <- percent */
+  float release_ = 0;
+
   int delay_len_ = 0;
   int attack_len_ = 0;
   int hold_len_ = 0;
@@ -57,14 +65,44 @@ class Envelope
 
 public:
   void
+  set_delay (float f)
+  {
+    delay_ = f;
+  }
+  void
+  set_attack (float f)
+  {
+    attack_ = f;
+  }
+  void
+  set_hold (float f)
+  {
+    hold_ = f;
+  }
+  void
+  set_decay (float f)
+  {
+    decay_ = f;
+  }
+  void
+  set_sustain (float f)
+  {
+    sustain_ = f;
+  }
+  void
+  set_release (float f)
+  {
+    release_ = f;
+  }
+  void
   start (const Region& r, int sample_rate)
   {
-    delay_len_ = std::max (int (sample_rate * r.ampeg_delay), 1);
-    attack_len_ = std::max (int (sample_rate * r.ampeg_attack), 1);
-    hold_len_ = std::max (int (sample_rate * r.ampeg_hold), 1);
-    decay_len_ = std::max (int (sample_rate * r.ampeg_decay), 1);
-    sustain_level_ = std::clamp<float> (r.ampeg_sustain * 0.01, 0, 1); // percent->level
-    release_len_ = std::max (int (sample_rate * r.ampeg_release), 1);
+    delay_len_ = std::max (int (sample_rate * delay_), 1);
+    attack_len_ = std::max (int (sample_rate * attack_), 1);
+    hold_len_ = std::max (int (sample_rate * hold_), 1);
+    decay_len_ = std::max (int (sample_rate * decay_), 1);
+    sustain_level_ = std::clamp<float> (sustain_ * 0.01, 0, 1); // percent->level
+    release_len_ = std::max (int (sample_rate * release_), 1);
     stop_len_ = std::max (int (sample_rate * 0.030), 1);
     off_time_len_ = std::max (int (sample_rate * r.off_time), 1);
 

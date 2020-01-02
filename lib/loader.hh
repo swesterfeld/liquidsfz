@@ -61,6 +61,17 @@ struct CCParam
   float value = 0;
 };
 
+struct AmpParam
+{
+  explicit AmpParam (float b)
+    : base (b)
+  {
+  }
+  float   base = 0;
+  float   vel2 = 0;
+  CCParam cc;
+};
+
 struct XFCC
 {
   int cc = -1;
@@ -98,12 +109,15 @@ struct Region
   int seq_position = 1;
   std::vector<int> locc = std::vector<int> (128, 0);
   std::vector<int> hicc = std::vector<int> (128, 127);
-  float ampeg_delay = 0;
-  float ampeg_attack = 0;
-  float ampeg_hold = 0;
-  float ampeg_decay = 0;
-  float ampeg_sustain = 100;
-  float ampeg_release = 0;
+
+  /* amp envelope generator */
+  AmpParam ampeg_delay    { 0 };
+  AmpParam ampeg_attack   { 0 };
+  AmpParam ampeg_hold     { 0 };
+  AmpParam ampeg_decay    { 0 };
+  AmpParam ampeg_sustain  { 100 };
+  AmpParam ampeg_release  { 0 };
+
   float volume = 0;
   float amplitude = 100;
   float amp_veltrack = 100;
@@ -190,6 +204,7 @@ class Loader
   std::set<std::string> preprocess_done;
   Synth *synth_ = nullptr;
 
+  bool parse_amp_param (AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
 public:
   Loader (Synth *synth)
   {
