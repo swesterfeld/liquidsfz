@@ -244,6 +244,7 @@ Loader::set_key_value (const string& key, const string& value)
   else if (parse_amp_param (region.ampeg_delay, key, value, "delay") ||
            parse_amp_param (region.ampeg_attack, key, value, "attack") ||
            parse_amp_param (region.ampeg_hold, key, value, "hold") ||
+           parse_amp_param (region.ampeg_decay, key, value, "decay") ||
            parse_amp_param (region.ampeg_sustain, key, value, "sustain") ||
            parse_amp_param (region.ampeg_release, key, value, "release"))
   {
