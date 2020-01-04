@@ -11,3 +11,4 @@ Makefile
 Makefile.in
 libtool
 stamp-h1
+liquidsfz.pc
