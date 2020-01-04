@@ -1,0 +1,7 @@
+*.o
+.deps/
+.libs/
+testenvelope
+testliquid
+testperf
+testxf

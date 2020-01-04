@@ -3,4 +3,5 @@
 *.o
 *.lo
 *.la
+liquidsfz_lv2.so
 liquidsfz.ttl
