@@ -123,6 +123,7 @@ struct Region
   float volume = 0;
   float amplitude = 100;
   float amp_veltrack = 100;
+  float amp_random = 0;
   float pan = 0;
   float rt_decay = 0;
   uint group = 0;
@@ -138,6 +139,7 @@ struct Region
 
   int tune = 0;
   int transpose = 0;
+  int pitch_random = 0;
 
   int xfin_lovel = 0;
   int xfin_hivel = 0;

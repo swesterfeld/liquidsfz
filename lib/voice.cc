@@ -54,7 +54,7 @@ double
 Voice::replay_speed()
 {
   double semi_tones = (key_ - region_->pitch_keycenter) * (region_->pitch_keytrack * 0.01);
-  semi_tones += region_->tune * 0.01;
+  semi_tones += (region_->tune + pitch_random_cent_) * 0.01;
   semi_tones += region_->transpose;
 
   return exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_;
@@ -79,6 +79,9 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   trigger_ = region.trigger;
   left_gain_.reset (sample_rate, 0.020);
   right_gain_.reset (sample_rate, 0.020);
+
+  amp_random_gain_ = db_to_factor (region.amp_random * synth_->normalized_random_value());
+  pitch_random_cent_ = region.pitch_random * synth_->normalized_random_value();
 
   velocity_gain_ = velocity_track_factor (region, velocity);
   rt_decay_gain_ = 1.0;
@@ -177,6 +180,7 @@ Voice::update_volume_gain()
 
   volume_gain_ = db_to_factor (volume);
 
+  volume_gain_ *= amp_random_gain_;
   volume_gain_ *= xfin_gain (velocity_, region_->xfin_lovel, region_->xfin_hivel, region_->xf_velcurve);
   volume_gain_ *= xfout_gain (velocity_, region_->xfout_lovel, region_->xfout_hivel, region_->xf_velcurve);
 

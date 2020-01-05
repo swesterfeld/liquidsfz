@@ -258,6 +258,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.amplitude = convert_float (value);
   else if (key == "amp_veltrack")
     region.amp_veltrack = convert_float (value);
+  else if (key == "amp_random")
+    region.amp_random = convert_float (value);
   else if (key == "pan")
     region.pan = convert_float (value);
   else if (key == "rt_decay")
@@ -286,6 +288,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.tune = convert_int (value);
   else if (key == "transpose")
     region.transpose = convert_int (value);
+  else if (key == "pitch_random")
+    region.pitch_random = convert_int (value);
   else if (split_sub_key (key, "pan_oncc", sub_key))
     {
       region.pan_cc.cc = sub_key;

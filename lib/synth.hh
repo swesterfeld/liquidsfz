@@ -181,12 +181,19 @@ public:
     trigger_regions (Trigger::ATTACK, chan, key, vel, /* time_since_note_on */ 0.0);
   }
 
+  double
+  normalized_random_value()
+  {
+    // - random must be >= 0.0
+    // - random must be <  1.0  (and never 1.0)
+    return random_gen() / double (random_gen.max() + 1);
+  }
   void
   trigger_regions (Trigger trigger, int chan, int key, int vel, double time_since_note_on)
   {
     // - random must be >= 0.0
     // - random must be <  1.0  (and never 1.0)
-    double random = random_gen() / double (random_gen.max() + 1);
+    double random = normalized_random_value();
 
     for (auto& region : regions_)
       {
