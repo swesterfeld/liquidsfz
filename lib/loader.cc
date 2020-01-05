@@ -247,9 +247,11 @@ Loader::set_key_value (const string& key, const string& value)
            parse_amp_param (region.ampeg_decay, key, value, "decay") ||
            parse_amp_param (region.ampeg_sustain, key, value, "sustain") ||
            parse_amp_param (region.ampeg_release, key, value, "release"))
-  {
+    {
       // actual value conversion is performed by parse_amp_param
     }
+  else if (split_sub_key (key, "amp_velcurve_", sub_key))
+    region.amp_velcurve.set (sub_key, convert_float (value));
   else if (key == "volume")
     region.volume = convert_float (value);
   else if (key == "amplitude")
@@ -674,6 +676,8 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
         }
       if (regions[i].sw_lolast >= 0)
         regions[i].switch_match = (regions[i].sw_lolast <= regions[i].sw_default && regions[i].sw_hilast >= regions[i].sw_default);
+
+      curve_table.expand_curve (regions[i].amp_velcurve);
 
       synth_->progress ((i + 1) * 100.0 / regions.size());
     }

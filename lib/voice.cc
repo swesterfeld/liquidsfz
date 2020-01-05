@@ -36,7 +36,12 @@ Voice::pan_stereo_factor (double region_pan, int ch)
 double
 Voice::velocity_track_factor (const Region& r, int midi_velocity)
 {
-  double curve = (midi_velocity * midi_velocity) / (127.0 * 127.0);
+  double curve;
+  if (r.amp_velcurve.empty())
+    curve = (midi_velocity * midi_velocity) / (127.0 * 127.0);
+  else
+    curve = r.amp_velcurve.get (midi_velocity);
+
   double veltrack_factor = r.amp_veltrack * 0.01;
 
   double offset = (veltrack_factor >= 0) ? 1 : 0;

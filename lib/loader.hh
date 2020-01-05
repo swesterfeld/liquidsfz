@@ -26,6 +26,7 @@
 
 #include "log.hh"
 #include "samplecache.hh"
+#include "curve.hh"
 
 namespace LiquidSFZInternal
 {
@@ -117,6 +118,7 @@ struct Region
   AmpParam ampeg_decay    { 0 };
   AmpParam ampeg_sustain  { 100 };
   AmpParam ampeg_release  { 0 };
+  Curve    amp_velcurve;
 
   float volume = 0;
   float amplitude = 100;
@@ -222,6 +224,7 @@ public:
   std::vector<Region> regions;
   Control control;
   std::vector<CCInfo> cc_list;
+  CurveTable curve_table;
   std::string sample_path;
 
   int

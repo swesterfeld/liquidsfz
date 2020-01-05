@@ -61,6 +61,7 @@ class Synth
   std::vector<Region> regions_;
   Control control_;
   std::vector<CCInfo> cc_list_;
+  CurveTable curve_table_;
   Log log_level_ = Log::INFO;
   SampleCache sample_cache_; // FIXME: should share sample cache between different instances
   float gain_ = 1.0;
@@ -122,9 +123,10 @@ public:
     Loader loader (this);
     if (loader.parse (filename, sample_cache_))
       {
-        regions_ = loader.regions;
-        control_ = loader.control;
-        cc_list_ = loader.cc_list;
+        regions_      = loader.regions;
+        control_      = loader.control;
+        cc_list_      = loader.cc_list;
+        curve_table_  = std::move (loader.curve_table);
 
         init_channels();
         return true;
