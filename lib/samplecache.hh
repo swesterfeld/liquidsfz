@@ -66,6 +66,9 @@ public:
         return nullptr;
       }
 
+    /* when reading float data, scale to integer range */
+    sf_command (sndfile, SFC_SET_SCALE_FLOAT_INT_READ, nullptr, SF_TRUE);
+
     /* load loop points */
     SF_INSTRUMENT instrument = {0,};
     if (sf_command (sndfile, SFC_GET_INSTRUMENT, &instrument, sizeof (instrument)) == SF_TRUE)
