@@ -137,7 +137,8 @@ Loader::parse_amp_param (AmpParam& amp_param, const std::string& key, const std:
       return true;
     }
   int sub_key;
-  if (split_sub_key (key, "ampeg_" + param_str + "cc", sub_key)) // ampeg_attackccN,...
+  if (split_sub_key (key, "ampeg_" + param_str + "cc", sub_key)    // ampeg_attackccN,...
+  ||  split_sub_key (key, "ampeg_" + param_str + "_oncc", sub_key)) // ampeg_attack_onccN,...
     {
       amp_param.cc.cc = sub_key;
       amp_param.cc.value = convert_float (value);
