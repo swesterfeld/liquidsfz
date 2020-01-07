@@ -24,6 +24,7 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <algorithm>
 
 #include <sndfile.h>
 
@@ -66,9 +67,6 @@ public:
         return nullptr;
       }
 
-    /* when reading float data, scale to integer range */
-    sf_command (sndfile, SFC_SET_SCALE_FLOAT_INT_READ, nullptr, SF_TRUE);
-
     /* load loop points */
     SF_INSTRUMENT instrument = {0,};
     if (sf_command (sndfile, SFC_GET_INSTRUMENT, &instrument, sizeof (instrument)) == SF_TRUE)
@@ -85,7 +83,32 @@ public:
         }
     /* load sample data */
     std::vector<short> isamples (sfinfo.frames * sfinfo.channels);
-    sf_count_t count = sf_readf_short (sndfile, &isamples[0], sfinfo.frames);
+    sf_count_t count;
+
+    int mask_format = sfinfo.format & SF_FORMAT_SUBMASK;
+    if (mask_format == SF_FORMAT_FLOAT || mask_format == SF_FORMAT_DOUBLE)
+      {
+        // https://github.com/erikd/libsndfile/issues/388
+        //
+        // for floating point wav files, libsndfile isn't able to convert to shorts
+        // properly when using sf_readf_short(), so we convert the data manually
+
+        std::vector<float> fsamples (sfinfo.frames * sfinfo.channels);
+        count = sf_readf_float (sndfile, &fsamples[0], sfinfo.frames);
+
+        for (size_t i = 0; i < fsamples.size(); i++)
+          {
+            const double norm      =  0x8000;
+            const double min_value = -0x8000;
+            const double max_value =  0x7FFF;
+
+            isamples[i] = lrint (std::clamp (fsamples[i] * norm, min_value, max_value));
+          }
+      }
+    else
+      {
+        count = sf_readf_short (sndfile, &isamples[0], sfinfo.frames);
+      }
     if (count != sfinfo.frames)
       {
         printf ("short read\n");
