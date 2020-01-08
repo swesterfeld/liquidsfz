@@ -191,6 +191,8 @@ public:
                            break;
                 case 0xb0: synth.add_event_cc (in_event.time, channel, in_event.buffer[1], in_event.buffer[2]);
                            break;
+                case 0xe0: synth.add_event_pitch_bend (in_event.time, channel, in_event.buffer[1] + 128 * in_event.buffer[2]);
+                           break;
               }
           }
       }
