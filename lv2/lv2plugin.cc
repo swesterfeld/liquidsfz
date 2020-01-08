@@ -288,6 +288,8 @@ public:
                            break;
                 case 0xb0: synth.add_event_cc (time, channel, msg[1], msg[2]);
                            break;
+                case 0xe0: synth.add_event_pitch_bend (time, channel, msg[1] + 128 * msg[2]);
+                           break;
               }
             debug ("got midi event\n");
           }
