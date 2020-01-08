@@ -141,6 +141,9 @@ struct Region
   int transpose = 0;
   int pitch_random = 0;
 
+  int bend_up = 200;
+  int bend_down = -200;
+
   int xfin_lovel = 0;
   int xfin_hivel = 0;
   int xfout_lovel = 127;

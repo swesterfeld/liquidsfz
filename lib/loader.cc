@@ -291,6 +291,10 @@ Loader::set_key_value (const string& key, const string& value)
     region.transpose = convert_int (value);
   else if (key == "pitch_random")
     region.pitch_random = convert_int (value);
+  else if (key == "bend_up")
+    region.bend_up = convert_int (value);
+  else if (key == "bend_down")
+    region.bend_down = convert_int (value);
   else if (split_sub_key (key, "pan_oncc", sub_key))
     {
       region.pan_cc.cc = sub_key;

@@ -56,7 +56,10 @@ Voice::update_replay_speed (bool now)
   double semi_tones = (key_ - region_->pitch_keycenter) * (region_->pitch_keytrack * 0.01);
   semi_tones += (region_->tune + pitch_random_cent_) * 0.01;
   semi_tones += region_->transpose;
-  semi_tones += pitch_bend_value_ * 200. / 100;
+  if (pitch_bend_value_ >= 0)
+    semi_tones += pitch_bend_value_ * (region_->bend_up * 0.01);
+  else
+    semi_tones += pitch_bend_value_ * (region_->bend_down * -0.01);
 
   replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_, now);
 }
