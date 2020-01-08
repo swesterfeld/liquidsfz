@@ -81,6 +81,12 @@ Synth::add_event_cc (uint time_frames, int channel, int cc, int value)
 }
 
 void
+Synth::add_event_pitch_bend (uint time_frames, int channel, int value)
+{
+  impl->synth.add_event_pitch_bend (time_frames, channel, value);
+}
+
+void
 Synth::process (float **outputs, uint nframes)
 {
   impl->synth.process (outputs, nframes);

@@ -146,6 +146,20 @@ public:
   void add_event_cc (uint time_frames, int channel, int cc, int value);
 
   /**
+   * \brief Add a pitch bend event
+   *
+   * This function adds a pitch bend event to the event list that will be
+   * rendered by the next process() call.
+   *
+   * Events must always be added sorted by event time (time_frames). The
+   * pitch bend value must in range [0..16383], center value is 8192.
+   *
+   * @param time_frames the start time of the event (in frames)
+   * @param channel     midi channel
+   * @param value       new value for the controller [0..16383]
+   */
+  void add_event_pitch_bend (uint time_frames, int channel, int value);
+  /**
    * \brief Synthesize audio
    *
    * This will render one stereo output stream, left output to outputs[0] and
