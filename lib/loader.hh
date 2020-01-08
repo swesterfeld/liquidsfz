@@ -130,6 +130,7 @@ struct Region
   uint off_by = 0;
   OffMode off_mode = OffMode::FAST;
   float off_time = 0;
+  float delay = 0;
 
   int sw_lokey = -1;
   int sw_hikey = -1;
@@ -163,6 +164,7 @@ struct Region
   CCParam gain_cc;
   CCParam amplitude_cc;
   CCParam tune_cc;
+  CCParam delay_cc;
 
   bool empty()
   {

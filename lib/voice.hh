@@ -40,6 +40,7 @@ class Voice
 
   float amp_random_gain_ = 0;
   float pitch_random_cent_ = 0;
+  uint  delay_samples_ = 0;
 
   void update_volume_gain();
   void update_amplitude_gain();

@@ -102,6 +102,12 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
       synth_->debug ("rt_decay_gain %f\n", rt_decay_gain_);
     }
 
+  double delay = region.delay;
+  /* delay_oncc */
+  if (region_->delay_cc.cc >= 0)
+    delay += synth_->get_cc (channel_, region_->delay_cc.cc) * (1 / 127.f) * region_->delay_cc.value;
+  delay_samples_ = std::max (delay * sample_rate, 0.0);
+
   update_volume_gain();
   update_amplitude_gain();
   update_pan_gain();
@@ -321,8 +327,12 @@ Voice::process (float **outputs, uint nframes)
             }
         }
     };
+  /* delay start of voice for delay_samples_ frames */
+  uint dframes = std::min (nframes, delay_samples_);
+  delay_samples_ -= dframes;
 
-  for (uint i = 0; i < nframes; i++)
+  /* render voice */
+  for (uint i = dframes; i < nframes; i++)
     {
       const uint ii = ppos_;
       const uint x = ii * channels;

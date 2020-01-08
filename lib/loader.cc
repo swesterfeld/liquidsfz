@@ -273,6 +273,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.off_mode = convert_off_mode (value);
   else if (key == "off_time")
     region.off_time = convert_float (value);
+  else if (key == "delay")
+    region.delay = convert_float (value);
   else if (key == "sw_lokey")
     region.sw_lokey = convert_key (value);
   else if (key == "sw_hikey")
@@ -317,6 +319,12 @@ Loader::set_key_value (const string& key, const string& value)
     {
       region.tune_cc.cc = sub_key;
       region.tune_cc.value = convert_float (value);
+      update_cc_info (sub_key);
+    }
+  else if (split_sub_key (key, "delay_oncc", sub_key))
+    {
+      region.delay_cc.cc = sub_key;
+      region.delay_cc.value = convert_float (value);
       update_cc_info (sub_key);
     }
   else if (key == "xfin_lovel")
