@@ -39,6 +39,7 @@ using LiquidSFZ::Log;
 struct Channel
 {
   std::vector<uint8_t> cc_values = std::vector<uint8_t> (128, 0);
+  int pitch_bend = 0x2000;
 
   void
   init (const Control& control)
@@ -47,6 +48,7 @@ struct Channel
     for (auto set_cc : control.set_cc)
       if (set_cc.cc >= 0 && set_cc.cc <= 127)
         cc_values[set_cc.cc] = std::clamp (set_cc.value, 0, 127);
+    pitch_bend = 0x2000;
   }
 };
 
@@ -345,9 +347,36 @@ public:
       }
     return ch.cc_values[controller];
   }
+  void
+  update_pitch_bend (int channel, int value)
+  {
+    if (channel < 0 || uint (channel) > channels_.size())
+      {
+        error ("update_pitch_bend: bad channel %d\n", channel);
+        return;
+      }
+    auto& ch = channels_[channel];
+    ch.pitch_bend = value;
+
+    for (auto& voice : voices_)
+      {
+        if (voice.state_ != Voice::IDLE && voice.channel_ == channel)
+          voice.update_pitch_bend (value);
+      }
+  }
+  int
+  get_pitch_bend (int channel)
+  {
+    if (channel < 0 || uint (channel) > channels_.size())
+      {
+        error ("get_pitch_bend: bad channel %d\n", channel);
+        return 0;
+      }
+    return channels_[channel].pitch_bend;
+  }
   struct Event
   {
-    enum class Type : uint16_t { NONE, NOTE_ON, NOTE_OFF, CC };
+    enum class Type : uint16_t { NONE, NOTE_ON, NOTE_OFF, CC, PITCH_BEND };
 
     uint     time_frames = 0;
     Type     type = Type::NONE;
@@ -392,6 +421,16 @@ public:
     event.channel = channel;
     event.arg1 = cc;
     event.arg2 = value;
+    events.push_back (event);
+  }
+  void
+  add_event_pitch_bend (uint time_frames, int channel, int value)
+  {
+    Event event;
+    event.time_frames = time_frames;
+    event.type = Event::Type::PITCH_BEND;
+    event.channel = channel;
+    event.arg1 = value;
     events.push_back (event);
   }
   void process_audio (float **outputs, uint n_frames, uint offset);

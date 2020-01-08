@@ -50,14 +50,15 @@ Voice::velocity_track_factor (const Region& r, int midi_velocity)
   return v;
 }
 
-double
-Voice::replay_speed()
+void
+Voice::update_replay_speed (bool now)
 {
   double semi_tones = (key_ - region_->pitch_keycenter) * (region_->pitch_keytrack * 0.01);
   semi_tones += (region_->tune + pitch_random_cent_) * 0.01;
   semi_tones += region_->transpose;
+  semi_tones += pitch_bend_value_ * 200. / 100;
 
-  return exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_;
+  replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_, now);
 }
 
 uint
@@ -79,6 +80,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   trigger_ = region.trigger;
   left_gain_.reset (sample_rate, 0.020);
   right_gain_.reset (sample_rate, 0.020);
+  replay_speed_.reset (sample_rate, 0.020);
 
   amp_random_gain_ = db_to_factor (region.amp_random * synth_->normalized_random_value());
   pitch_random_cent_ = region.pitch_random * synth_->normalized_random_value();
@@ -95,6 +97,9 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   update_amplitude_gain();
   update_pan_gain();
   update_lr_gain (true);
+
+  set_pitch_bend (synth_->get_pitch_bend (channel));
+  update_replay_speed (true);
 
   const float vnorm = velocity * (1 / 127.f);
   envelope_.set_delay (amp_value (vnorm, region.ampeg_delay));
@@ -245,11 +250,23 @@ Voice::update_gain()
 }
 
 void
+Voice::set_pitch_bend (int bend)
+{
+  pitch_bend_value_ = bend / double (0x2000) - 1.0;
+}
+
+void
+Voice::update_pitch_bend (int bend)
+{
+  set_pitch_bend (bend);
+  update_replay_speed (false);
+}
+
+void
 Voice::process (float **outputs, uint nframes)
 {
   const auto csample = region_->cached_sample;
   const auto channels = csample->channels;
-  const double step = replay_speed();
 
   auto get_samples_mono = [csample, this] (uint x, auto& fsamples)
     {
@@ -328,7 +345,7 @@ Voice::process (float **outputs, uint nframes)
           state_ = IDLE;
           break;
         }
-      ppos_ += step;
+      ppos_ += replay_speed_.get_next();
       if (region_->loop_mode == LoopMode::SUSTAIN || region_->loop_mode == LoopMode::CONTINUOUS)
         {
           if (region_->loop_end > region_->loop_start)

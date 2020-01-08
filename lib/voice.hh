@@ -47,6 +47,12 @@ class Voice
   void update_lr_gain (bool now);
 
   float amp_value (float vnorm, const AmpParam& amp_param);
+
+  LinearSmooth replay_speed_;
+  float        pitch_bend_value_ = 0; // [-1:1]
+
+  void set_pitch_bend (int value);
+  void update_replay_speed (bool now);
 public:
   Synth *synth_;
   int sample_rate_ = 44100;
@@ -75,7 +81,6 @@ public:
   }
   double pan_stereo_factor (double region_pan, int ch);
   double velocity_track_factor (const Region& r, int midi_velocity);
-  double replay_speed();
 
   void start (const Region& region, int channel, int key, int velocity, double time_since_note_on, uint64_t global_frame_count, uint sample_rate);
   void stop (OffMode off_mode);
@@ -83,6 +88,8 @@ public:
   uint off_by();
   void update_cc (int controller);
   void update_gain();
+
+  void update_pitch_bend (int bend);
 
   float xfin_gain (int value, int lo, int hi, XFCurve curve);
   float xfout_gain (int value, int lo, int hi, XFCurve curve);

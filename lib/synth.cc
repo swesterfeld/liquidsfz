@@ -65,13 +65,15 @@ Synth::process (float **outputs, uint n_frames)
       // process event at timestamp offset
       switch (event.type)
         {
-          case Event::Type::NOTE_ON:  note_on (event.channel, event.arg1, event.arg2);
-                                      break;
-          case Event::Type::NOTE_OFF: note_off (event.channel, event.arg1);
-                                      break;
-          case Event::Type::CC:       update_cc (event.channel, event.arg1, event.arg2);
-                                      break;
-          default:                    error ("unsupported event type %d\n", int (event.type));
+          case Event::Type::NOTE_ON:    note_on (event.channel, event.arg1, event.arg2);
+                                        break;
+          case Event::Type::NOTE_OFF:   note_off (event.channel, event.arg1);
+                                        break;
+          case Event::Type::CC:         update_cc (event.channel, event.arg1, event.arg2);
+                                        break;
+          case Event::Type::PITCH_BEND: update_pitch_bend (event.channel, event.arg1);
+                                        break;
+          default:                      error ("unsupported event type %d\n", int (event.type));
         }
     }
   events.clear();
