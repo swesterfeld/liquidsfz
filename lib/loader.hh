@@ -162,6 +162,7 @@ struct Region
   CCParam pan_cc;
   CCParam gain_cc;
   CCParam amplitude_cc;
+  CCParam tune_cc;
 
   bool empty()
   {

@@ -56,10 +56,16 @@ Voice::update_replay_speed (bool now)
   double semi_tones = (key_ - region_->pitch_keycenter) * (region_->pitch_keytrack * 0.01);
   semi_tones += (region_->tune + pitch_random_cent_) * 0.01;
   semi_tones += region_->transpose;
+
+  /* pitch bend */
   if (pitch_bend_value_ >= 0)
     semi_tones += pitch_bend_value_ * (region_->bend_up * 0.01);
   else
     semi_tones += pitch_bend_value_ * (region_->bend_down * -0.01);
+
+  /* tune_oncc */
+  if (region_->tune_cc.cc >= 0)
+    semi_tones += synth_->get_cc (channel_, region_->tune_cc.cc) * (1 / 127.f) * (region_->tune_cc.value * 0.01);
 
   replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_, now);
 }
@@ -234,16 +240,19 @@ Voice::update_cc (int controller)
       update_pan_gain();
       update_lr_gain (false);
     }
-  else if (controller == region_->gain_cc.cc)
+  if (controller == region_->gain_cc.cc)
     {
       update_volume_gain();
       update_lr_gain (false);
     }
-  else if (controller == region_->amplitude_cc.cc)
+  if (controller == region_->amplitude_cc.cc)
     {
       update_amplitude_gain();
       update_lr_gain (false);
     }
+
+  if (controller == region_->tune_cc.cc)
+    update_replay_speed (false);
 }
 
 void

@@ -313,6 +313,12 @@ Loader::set_key_value (const string& key, const string& value)
       region.amplitude_cc.value = convert_float (value);
       update_cc_info (sub_key);
     }
+  else if (split_sub_key (key, "tune_oncc", sub_key))
+    {
+      region.tune_cc.cc = sub_key;
+      region.tune_cc.value = convert_float (value);
+      update_cc_info (sub_key);
+    }
   else if (key == "xfin_lovel")
     region.xfin_lovel = convert_int (value);
   else if (key == "xfin_hivel")
