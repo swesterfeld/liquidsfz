@@ -133,7 +133,10 @@ CCInfo::cc() const
 string
 CCInfo::label() const
 {
-  return impl->cc_info.label;
+  if (impl->cc_info.has_label)
+    return impl->cc_info.label;
+  else
+    return LiquidSFZInternal::string_printf ("CC%03d", impl->cc_info.cc);
 }
 
 bool
