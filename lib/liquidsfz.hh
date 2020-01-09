@@ -195,6 +195,7 @@ public:
    * @param value       new value for the controller [0..16383]
    */
   void add_event_pitch_bend (uint time_frames, int channel, int value);
+
   /**
    * \brief Synthesize audio
    *
