@@ -42,6 +42,9 @@ enum class Log {
   DISABLE_ALL // special log level which can be used to disable all logging
 };
 
+/**
+ * \brief Information for one continuous controller
+ */
 class CCInfo
 {
   friend class Synth;
@@ -53,12 +56,40 @@ public:
   CCInfo (CCInfo&&) = default;
   ~CCInfo();
 
+  /**
+   * @returns CC controller number (0-127)
+   */
   int cc() const;
+
+  /**
+   * Some .sfz files contain labels (label_cc opcode) for the CCs they provide.
+   * If a label is available, this function will return it.  If no label was
+   * defined in the .sfz file, a label will be generated automatically (like
+   * "CC080"). To check if a label is available, call @ref has_label().
+   *
+   * @returns label for the CC controller
+   */
   std::string label() const;
+
+  /**
+   * This function returns true if the .sfz file contains a label for
+   * this CC (that is, if a label_cc opcode was found for this CC).
+   *
+   * @returns true if a label is available.
+   */
   bool has_label() const;
+
+  /**
+   * This contains the initial value for the CC.
+   *
+   * @returns the a CC value (0-127)
+   */
   int default_value() const;
 };
 
+/**
+ * \brief SFZ Synthesizer (main API)
+ */
 class Synth
 {
   struct Impl;
@@ -98,6 +129,11 @@ public:
    */
   bool load (const std::string& filename);
 
+  /**
+   * \brief List CCs supported by this .sfz file
+   *
+   * @returns a vector that contains information for each supported CC
+   */
   std::vector<CCInfo> list_ccs() const;
 
   /**
@@ -170,6 +206,7 @@ public:
    *  - add_event_note_on()
    *  - add_event_note_off()
    *  - add_event_cc()
+   *  - add_event_pitch_bend()
    *
    * These events will processed at the appropriate time positions (which means
    * we provide sample accurate timing for all events). Events must always be
