@@ -152,7 +152,7 @@ public:
     uris.patch_value        = map->map (map->handle, LV2_PATCH__value);
     uris.state_StateChanged = map->map (map->handle, LV2_STATE__StateChanged);
 
-    uris.liquidsfz_sfzfile  = map->map (map->handle, LIQUIDSFZ_URI "#sfzfile"); // FIXME: maybe use :something like afs
+    uris.liquidsfz_sfzfile  = map->map (map->handle, LIQUIDSFZ_URI "#sfzfile");
   }
 
   const char *
