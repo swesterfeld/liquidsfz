@@ -1,3 +1,19 @@
+Overview of Changes in liquidsfz-0.2.0:
+
+* Provide LV2 plugin
+* Support for <control>/<global>/<master> sections
+* Handle #define
+* Lots of new opcodes supported, including
+  - key switches
+  - crossfading for layers
+  - more amp-related opcodes
+  - allow changing more parameters using CCs
+* API additions
+  - load progress function (Synth::set_progress_function)
+  - global gain factor (Synth::set_gain)
+  - provide list of CCs supported by .sfz file (Synth::list_ccs)
+  - support pitch bend (Synth::add_event_pitch_bend)
+
 Overview of Changes in liquidsfz-0.1.0:
 
 * Initial public release
