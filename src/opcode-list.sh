@@ -23,6 +23,7 @@ opcode ampeg_decaycc0
 opcode ampeg_delay
 opcode ampeg_delaycc0
 opcode ampeg_depth
+opcode ampeg_dynamic
 opcode ampeg_hold
 opcode ampeg_holdcc0
 opcode ampeg_release
@@ -50,6 +51,7 @@ opcode amplfo_freqcc0
 opcode amplfo_freqchanaft
 opcode amplfo_freqpolyaft
 opcode amplitude
+opcode amplitude_cc0
 opcode amplitude_curvecc0
 opcode amplitude_oncc0
 opcode amplitude_smoothcc0
@@ -144,6 +146,7 @@ opcode eg0_width_oncc0
 opcode end
 opcode eq0_bw
 opcode eq0_bwcc0
+opcode eq0_dynamic
 opcode eq0_freq
 opcode eq0_freqcc0
 opcode eq0_gain
@@ -166,6 +169,7 @@ opcode fileg_decay_shape
 opcode fileg_decay_zero
 opcode fileg_delay
 opcode fileg_depth
+opcode fileg_dynamic
 opcode fileg_hold
 opcode fileg_release
 opcode fileg_release_shape
@@ -211,6 +215,7 @@ opcode hiprog
 opcode hirand
 opcode hitimer
 opcode hivel
+opcode image
 opcode include
 opcode key
 opcode label_cc0
@@ -310,6 +315,9 @@ opcode lfo0_width
 opcode lfo0_width_oncc0
 opcode lfo0_width_smoothcc0
 opcode lfo0_width_stepcc0
+opcode load_end
+opcode load_mode
+opcode load_start
 opcode lobend
 opcode lobpm
 opcode locc0
@@ -356,8 +364,20 @@ opcode offset_oncc0
 opcode offset_random
 opcode on_hicc0
 opcode on_locc0
+opcode oscillator
+opcode oscillator_detune
+opcode oscillator_detune_oncc0
+opcode oscillator_mod_depth
+opcode oscillator_mod_depth_oncc0
+opcode oscillator_mod_smoothcc0
+opcode oscillator_mode
+opcode oscillator_multi
+opcode oscillator_phase
+opcode oscillator_quality
+opcode oscillator_table_size
 opcode output
 opcode pan
+opcode pan_cc0
 opcode pan_curvecc0
 opcode pan_keycenter
 opcode pan_keytrack
@@ -384,6 +404,7 @@ opcode pitcheg_decay_shape
 opcode pitcheg_decay_zero
 opcode pitcheg_delay
 opcode pitcheg_depth
+opcode pitcheg_dynamic
 opcode pitcheg_hold
 opcode pitcheg_release
 opcode pitcheg_release_shape
@@ -426,6 +447,7 @@ opcode reverse_locc0
 opcode rt_dead
 opcode rt_decay
 opcode sample
+opcode sample_quality
 opcode script
 opcode seq_length
 opcode seq_position
@@ -460,6 +482,7 @@ opcode sync_offset
 opcode transpose
 opcode trigger
 opcode tune
+opcode tune_cc0
 opcode tune_curvecc0
 opcode tune_oncc0
 opcode tune_smoothcc0
