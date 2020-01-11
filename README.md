@@ -2,10 +2,11 @@
 
 ## DESCRIPTION
 
-liquidsfz is an attempt to implement an free and open source sampler that can
-load and play .sfz files. The main goal is to provide a library that is easy to
-integrate into other projects. Right now the API is still changing, but in the
-long term goal is to provide a library API that is stable.
+liquidsfz is a free and open source sampler that can load and play .sfz files.
+
+The main goal is to provide a library that is easy to integrate into other
+projects. Right now the API is still changing, but in the long term goal is to
+provide a library API that is stable.
 
  * API documentation is available here: http://space.twc.de/~stefan/liquidsfz/api-0.1.0
  * There is also a [List of currently supported SFZ opcodes](OPCODES.md)
