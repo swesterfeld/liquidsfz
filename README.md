@@ -29,16 +29,26 @@ If you are building from git, you also need the package (for autogen.sh to work)
 
 * autoconf-archive
 
-## TESTING
+## USING JACK
 
-Right now, liquidsfz is only available as command line program. You can use it
-like this:
+The liquidsfz command line program can be used like this:
 
     liquidsfz ~/sfz/SalamanderGrandPianoV3_44.1khz16bit/SalamanderGrandPianoV3.sfz
 
 liquidsfz works as jack client with midi input and audio ouput. If you connect
 the jack midi input / audio output using a patchbay, you can send midi events
 to liquidsfz to test the sfz loader.
+
+If you are interested in using a graphical front-end in conjunction with jack,
+there is qliquidsfz, which you can find here:
+
+    https://github.com/be1/qliquidsfz
+
+## LV2 PLUGIN
+
+We provide a LV2 plugin for hosts like Ardour/Carla/Qtractor and others, which
+is built and installed by default. It can also be downloaded as binary release
+below.
 
 ## LICENSE
 
@@ -50,3 +60,8 @@ The current version of liquidsfz is liquidsfz-0.1.0, and can be downloaded
 here:
 
 * http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2
+
+## BINARY LV2 PLUGIN
+
+The LV2 plugin (and only the LV2 plugin) is available as self-contained binary
+which should run on most recend linux distributions (newer than Ubuntu 16.04).
