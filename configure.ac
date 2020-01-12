@@ -36,8 +36,17 @@ AC_DEFUN([AC_JACK_REQUIREMENTS],
     PKG_CHECK_MODULES(JACK, [jack], [with_jack="yes"], [with_jack="no"])
 ])
 
+dnl
+dnl LV2
+dnl
+AC_DEFUN([AC_LV2_REQUIREMENTS],
+[
+  PKG_CHECK_MODULES([LV2], [[lv2 >= 1.2.0]], [with_lv2="yes"], [with_lv2="no"])
+])
+
 AC_SNDFILE_REQUIREMENTS
 AC_JACK_REQUIREMENTS
+AC_LV2_REQUIREMENTS
 
 dnl link c++ libs statically if requested
 AC_ARG_WITH([static-cxx], AS_HELP_STRING([--with-static-cxx], [link libstdc++ statically]))
