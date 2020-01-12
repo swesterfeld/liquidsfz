@@ -23,6 +23,7 @@ You need the packages (on Debian/Ubuntu):
 
 * libjack-jackd2-dev
 * libsndfile1-dev
+* lv2-dev
 
 If you are building from git, you also need the package (for autogen.sh to work):
 
