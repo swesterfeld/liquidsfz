@@ -55,10 +55,10 @@ The code is licensed under the LGPL 2.1 or later.
 
 ## RELEASES
 
-The current version of liquidsfz is liquidsfz-0.1.0, and can be downloaded
+The current version of liquidsfz is liquidsfz-0.2.0, and can be downloaded
 here:
 
-* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2
+* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.0.tar.bz2
 
 ## BINARY LV2 PLUGIN
 
@@ -72,3 +72,7 @@ To install it, extract the archive and
 
     mkdir -p $HOME/.lv2
     cp -a liquidsfz.lv2  $HOME/.lv2/
+
+## OLDER VERSIONS
+
+* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2
