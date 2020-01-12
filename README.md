@@ -40,7 +40,7 @@ the jack midi input / audio output using a patchbay, you can send midi events
 to liquidsfz to test the sfz loader.
 
 If you are interested in using a graphical front-end in conjunction with jack,
-you can try [qliquidsfz](https://github.com/be1/qliquidsfz).
+you can try [QLiquidSFZ](https://github.com/be1/qliquidsfz).
 
 ## LV2 PLUGIN
 
