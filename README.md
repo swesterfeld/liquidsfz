@@ -65,3 +65,10 @@ here:
 The LV2 plugin (and only the LV2 plugin) is available as self-contained 64-bit
 binary which should run on most recend linux distributions (newer than Ubuntu
 16.04).
+
+* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.0-x86_64.tar.gz
+
+To install it, extract the archive and
+
+    mkdir -p $HOME/.lv2
+    cp -a liquidsfz.lv2  $HOME/.lv2/
