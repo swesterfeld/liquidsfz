@@ -75,4 +75,4 @@ To install it, extract the archive and
 
 ## OLDER VERSIONS
 
-* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2
+* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2 (old version)
