@@ -2,7 +2,8 @@
 
 ## DESCRIPTION
 
-liquidsfz is a free and open source sampler that can load and play .sfz files.
+liquidsfz is a free and open source sampler that can load and play .sfz files. We
+support JACK and LV2.
 
 The main goal is to provide a library that is easy to integrate into other
 projects. Right now the API is still changing, but in the long term goal is to
