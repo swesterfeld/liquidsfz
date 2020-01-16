@@ -322,8 +322,8 @@ main (int argc, char **argv)
 # Using multiple threads
 
 The LiquidSFZ API, unless otherwise documented, doesn't use locks to make the
-API thread safe. This means that you are responsible that only one API function
-is executed at a time.
+API thread safe. This means that you are responsible that <b>only one API
+function is executed at a time</b>.
 
 So you must not call a function (i.e. \ref Synth::process) in thread A and
 another function (i.e. \ref Synth::load) in thread B so that both are running
@@ -341,7 +341,7 @@ from different threads.
 Most applications will have one single real-time thread that generates the
 audio output. In this real-time thread, only some of the API functions provided
 by liquidsfz should be used, to avoid stalling the audio thread (for instance
-    by waiting for a lock, allocating memory or doing file I/O).
+by waiting for a lock, allocating memory or doing file I/O).
 
 - \ref Synth::active_voice_count
 - \ref Synth::add_event_note_on
@@ -351,11 +351,47 @@ by liquidsfz should be used, to avoid stalling the audio thread (for instance
 - \ref Synth::process
 - \ref Synth::set_gain
 
+Typically these restrictions mean that at the beginning of your application,
+you setup the \ref Synth object by loading an .sfz file, setting the sample
+rate, number of voices and so forth. Eventually this is done, and you start a
+real time thread that does audio I/O. Since you must ensure that only one
+thread at a time is using the \ref Synth object, you would then only use
+the functions of this list in the audio thread and no longer use any other
+function from any other thread.
+
+If you need to access one of the other functions (for instance for loading a
+new .sfz file using \ref Synth::load), you would ensure that the audio thread
+is no longer using the \ref Synth object. Then the setup phase would start
+again, loading, setting sample rate and so forth, until you can restart the
+audio thread.
+
 ## Callbacks from load
 
 It is possible to request progress information for \ref Synth::load by using
 \ref Synth::set_progress_function. If you enable this, the progress function
 will be invoked in the same thread that you called \ref Synth::load.
+
+## Callbacks from the logging framework
+
+If you setup a custom log function using \ref Synth::set_log_function,
+callbacks will occur in the threads that you call functions in. That
+is, if you \ref Synth::load during initialization, you will get callbacks in
+the thread you started load in. If you call Synth function from your audio
+thread, you can get logging callbacks in the audio thread.
+
+Example: this can for instance occur if you (as a developer) enqueue a bad midi
+event with a pitch bend on a channel that doesn't exist. This would produce a
+message like
+```
+update_pitch_bend: bad channel 42
+```
+in the audio thread.
+
+This may be undesirable because your logging function may not be RT safe. A
+workaround could be to call \ref Synth::set_log_level to Log::DISABLE_ALL
+before starting the audio thread, and relaxing it back to the level you want
+when the audio thread is stopped and you load new files. We may be able to
+find a cleaner solution for this later on.
 
 */
 
