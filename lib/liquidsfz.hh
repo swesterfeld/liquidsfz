@@ -114,6 +114,18 @@ public:
   void set_max_voices (uint n_voices);
 
   /**
+   * \brief Get active voice count
+   *
+   * The maximum number of voices can be set using \ref set_max_voices.
+   * Note that the number of voices that are active is not the same as
+   * the number of midi notes, as synthesizing one note can require more
+   * than one voice, for instance if multiple samples are cross-faded.
+   *
+   * @returns the number of currently active voices
+   */
+  uint active_voice_count() const;
+
+  /**
    * \brief Set global gain
    *
    * @param gain  gain (as a factor)
@@ -331,6 +343,7 @@ audio output. In this real-time thread, only some of the API functions provided
 by liquidsfz should be used, to avoid stalling the audio thread (for instance
     by waiting for a lock, allocating memory or doing file I/O).
 
+- \ref Synth::active_voice_count
 - \ref Synth::add_event_note_on
 - \ref Synth::add_event_note_off
 - \ref Synth::add_event_cc

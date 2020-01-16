@@ -50,6 +50,12 @@ Synth::set_max_voices (uint n_voices)
   impl->synth.set_max_voices (n_voices);
 }
 
+uint
+Synth::active_voice_count() const
+{
+  return impl->synth.active_voice_count();
+}
+
 void
 Synth::set_gain (float gain)
 {
