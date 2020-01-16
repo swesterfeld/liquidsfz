@@ -256,7 +256,6 @@ public:
   void set_progress_function (std::function<void (double)> progress_function);
 };
 
-}
 
 /**
  *
@@ -307,6 +306,45 @@ main (int argc, char **argv)
     printf ("%d %f %f\n", i, left_output[i], right_output[i]);
 }
 \endcode
+
+# Using multiple threads
+
+The LiquidSFZ API, unless otherwise documented, doesn't use locks to make the
+API thread safe. This means that you are responsible that only one API function
+is executed at a time.
+
+So you must not call a function (i.e. \ref Synth::process) in thread A and
+another function (i.e. \ref Synth::load) in thread B so that both are running
+at the same time. Instead you need to either use a mutex to ensure that only
+one function is running at a time, or use other synchronization between the
+threads A and B to ensure that only one thread uses the \ref Synth instance at
+any point in time.
+
+Note that if you have more than one \ref Synth instance (object), these can be
+treated as isolated instances, i.e. different instances can be use concurrently
+from different threads.
+
+## The audio thread
+
+Most applications will have one single real-time thread that generates the
+audio output. In this real-time thread, only some of the API functions provided
+by liquidsfz should be used, to avoid stalling the audio thread (for instance
+    by waiting for a lock, allocating memory or doing file I/O).
+
+- \ref Synth::add_event_note_on
+- \ref Synth::add_event_note_off
+- \ref Synth::add_event_cc
+- \ref Synth::add_event_pitch_bend
+- \ref Synth::process
+- \ref Synth::set_gain
+
+## Callbacks from load
+
+It is possible to request progress information for \ref Synth::load by using
+\ref Synth::set_progress_function. If you enable this, the progress function
+will be invoked in the same thread that you called \ref Synth::load.
+
 */
 
+}
 #endif
