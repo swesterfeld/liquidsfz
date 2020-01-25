@@ -374,24 +374,26 @@ will be invoked in the same thread that you called \ref Synth::load.
 ## Callbacks from the logging framework
 
 If you setup a custom log function using \ref Synth::set_log_function,
-callbacks will occur in the threads that you call functions in. That
-is, if you \ref Synth::load during initialization, you will get callbacks in
-the thread you started load in. If you call Synth function from your audio
-thread, you can get logging callbacks in the audio thread.
+callbacks will occur in the threads that you call functions in. For example,
+if you \ref Synth::load during initialization, you will get callbacks in the
+thread you started load in.
 
-Example: this can for instance occur if you (as a developer) enqueue a bad midi
-event with a pitch bend on a channel that doesn't exist. This would produce a
-message like
-```
-update_pitch_bend: bad channel 42
-```
-in the audio thread.
+Messages that are <b>relevant to end users</b> are errors, warnings and info
+messages.  For these log levels, we guarantee that such log messages are never
+produced from functions that can be run in the audio thread (real time thread).
+These log messages are enabled by default.
 
-This may be undesirable because your logging function may not be RT safe. A
-workaround could be to call \ref Synth::set_log_level to Log::DISABLE_ALL
-before starting the audio thread, and relaxing it back to the level you want
-when the audio thread is stopped and you load new files. We may be able to
-find a cleaner solution for this later on.
+This means that the callback set by \ref Synth::set_log_function doesn't need
+to be realtime safe, as these callbacks only occur in non-rt-safe functions
+such as \ref Synth::load.
+
+Messages that are <b>relevant to developers</b> use the log level debug. These
+can occur from any thread, including real time safe functions like \ref
+Synth::process. Debug messages are only relevant for developers, so in almost
+every case you should keep them disabled, which is the default. If you enable
+debug messages using \ref Synth::set_log_level, you either need to provide an
+realtime safe logging callback or accept that during development, debug
+messages will break realtime capabilty.
 
 */
 
