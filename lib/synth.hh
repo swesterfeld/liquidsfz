@@ -289,7 +289,7 @@ public:
   {
     if (voice.state_ != Voice::ACTIVE && voice.state_ != Voice::SUSTAIN)
       {
-        error ("release() state %d not active/sustain\n", voice.state_);
+        debug ("release: state %d not active/sustain\n", voice.state_);
         return;
       }
     voice.stop (OffMode::NORMAL);
@@ -303,13 +303,13 @@ public:
   {
     if (channel < 0 || uint (channel) > channels_.size())
       {
-        error ("update_cc: bad channel %d\n", channel);
+        debug ("update_cc: bad channel %d\n", channel);
         return;
       }
     auto& ch = channels_[channel];
     if (controller < 0 || uint (controller) > ch.cc_values.size())
       {
-        error ("update_cc: bad channel controller %d\n", controller);
+        debug ("update_cc: bad channel controller %d\n", controller);
         return;
       }
     ch.cc_values[controller] = value;
@@ -336,13 +336,13 @@ public:
   {
     if (channel < 0 || uint (channel) > channels_.size())
       {
-        error ("get_cc: bad channel %d\n", channel);
+        debug ("get_cc: bad channel %d\n", channel);
         return 0;
       }
     auto& ch = channels_[channel];
     if (controller < 0 || uint (controller) > ch.cc_values.size())
       {
-        error ("get_cc: bad channel controller %d\n", controller);
+        debug ("get_cc: bad channel controller %d\n", controller);
         return 0;
       }
     return ch.cc_values[controller];
@@ -352,7 +352,7 @@ public:
   {
     if (channel < 0 || uint (channel) > channels_.size())
       {
-        error ("update_pitch_bend: bad channel %d\n", channel);
+        debug ("update_pitch_bend: bad channel %d\n", channel);
         return;
       }
     auto& ch = channels_[channel];
@@ -369,7 +369,7 @@ public:
   {
     if (channel < 0 || uint (channel) > channels_.size())
       {
-        error ("get_pitch_bend: bad channel %d\n", channel);
+        debug ("get_pitch_bend: bad channel %d\n", channel);
         return 0;
       }
     return channels_[channel].pitch_bend;

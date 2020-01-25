@@ -73,7 +73,7 @@ Synth::process (float **outputs, uint n_frames)
                                         break;
           case Event::Type::PITCH_BEND: update_pitch_bend (event.channel, event.arg1);
                                         break;
-          default:                      error ("unsupported event type %d\n", int (event.type));
+          default:                      debug ("process: unsupported event type %d\n", int (event.type));
         }
     }
   events.clear();
