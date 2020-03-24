@@ -69,6 +69,8 @@ get_time()
   return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
+double string_to_double (const std::string& str);
+
 static constexpr char PATH_SEPARATOR = '/';
 
 std::string path_absolute (const std::string& filename);

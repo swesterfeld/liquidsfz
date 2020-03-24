@@ -284,7 +284,7 @@ public:
   float
   convert_float (const std::string& s)
   {
-    return atof (s.c_str());
+    return string_to_double (s);
   }
   Trigger
   convert_trigger (const std::string& t)

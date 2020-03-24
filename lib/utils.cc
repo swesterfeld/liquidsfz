@@ -23,6 +23,7 @@
 #include <libgen.h>
 
 #include <vector>
+#include <sstream>
 
 using std::string;
 using std::vector;
@@ -63,6 +64,23 @@ string
 path_join (const string& path1, const string& path2)
 {
   return path1 + PATH_SEPARATOR + path2;
+}
+
+/*
+ * locale independent string to double conversion
+ *
+ * ideally, this would use std::from_chars, but g++-7 and g++-8 don't implement
+ * the double case, so this is relatively slow, but good enough
+ */
+
+double
+string_to_double (const string& str)
+{
+  double d = 0;
+  std::istringstream is (str);
+  is.imbue (std::locale::classic());
+  is >> d;
+  return d;
 }
 
 }
