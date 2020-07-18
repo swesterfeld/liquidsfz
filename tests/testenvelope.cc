@@ -19,6 +19,7 @@
  */
 
 #include "envelope.hh"
+#include <string.h>
 
 using namespace LiquidSFZInternal;
 
@@ -34,6 +35,12 @@ main (int argc, char **argv)
   envelope.set_sustain (atof (argv[5]));
   envelope.set_release (atof (argv[6]));
   envelope.start (Region(), 48000);
+  if (strcmp (argv[7], "lin") == 0)
+    envelope.set_shape (Envelope::Shape::LINEAR);
+  else if (strcmp (argv[7], "exp") == 0)
+    envelope.set_shape (Envelope::Shape::EXPONENTIAL);
+  else
+    assert (false);
 
   for (int i = 0; i < 24000; i++)
     printf ("%f\n", envelope.get_next());
