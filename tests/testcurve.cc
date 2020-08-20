@@ -20,6 +20,8 @@
 
 #include "curve.hh"
 
+#include <cstdlib>
+#include <cstdio>
 #include <cassert>
 
 using namespace LiquidSFZInternal;
