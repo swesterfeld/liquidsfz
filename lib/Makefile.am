@@ -7,3 +7,5 @@ libliquidsfz_la_SOURCES = liquidsfz.cc liquidsfz.hh loader.cc loader.hh log.hh l
 
 liquidsfzincludedir = $(includedir)
 liquidsfzinclude_HEADERS = liquidsfz.hh
+
+libliquidsfz_la_LDFLAGS = -no-undefined -version-info $(LT_VERSION_INFO)

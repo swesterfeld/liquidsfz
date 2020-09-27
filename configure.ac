@@ -18,6 +18,21 @@ AC_SUBST(MAJOR_VERSION)
 AC_SUBST(MINOR_VERSION)
 AC_SUBST(MICRO_VERSION)
 
+dnl construct libtool version info (see also https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html)
+dnl
+dnl  - every time we change $MAJOR_VERSION or $MINOR_VERSION, ABI can be totally different
+dnl  - every time we change $MICRO_VERSION, only compatible ABI additions are possible
+dnl
+dnl  - for code which was compiled against the same $MAJOR_VERSION and $MINOR_VERSION of the library,
+dnl    * old binaries will run with newer $MICRO_VERSION (lt_revision)
+dnl    * new binaries will not run with older $MICRO_VERSION (lt_revision, lt_age == 0)
+dnl
+lt_current=`expr $MAJOR_VERSION \* 100 + $MINOR_VERSION`
+lt_revision=$MICRO_VERSION
+lt_age=0
+LT_VERSION_INFO=$lt_current:$lt_revision:$lt_age
+AC_SUBST(LT_VERSION_INFO)
+
 dnl
 dnl sndfile
 dnl
