@@ -83,6 +83,13 @@ Synth::process (float **outputs, uint n_frames)
 }
 
 void
+Synth::all_sound_off()
+{
+  for (auto& voice : voices_)
+    voice.kill();
+}
+
+void
 Synth::set_progress_function (std::function<void (double)> function)
 {
   progress_function_ = function;

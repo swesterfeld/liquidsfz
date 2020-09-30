@@ -234,6 +234,12 @@ Voice::stop (OffMode off_mode)
 }
 
 void
+Voice::kill()
+{
+  state_ = Voice::IDLE;
+}
+
+void
 Voice::update_cc (int controller)
 {
   if (region_->xfin_ccs.size() || region_->xfout_ccs.size())

@@ -68,7 +68,9 @@ class Synth
   SampleCache sample_cache_; // FIXME: should share sample cache between different instances
   float gain_ = 1.0;
 
-  static constexpr int CC_SUSTAIN = 0x40;
+  static constexpr int CC_SUSTAIN       = 64;
+  static constexpr int CC_ALL_SOUND_OFF = 120;
+  static constexpr int CC_ALL_NOTES_OFF = 123;
 
   void
   init_channels()
@@ -312,6 +314,11 @@ public:
         debug ("update_cc: bad channel controller %d\n", controller);
         return;
       }
+    if (controller == CC_ALL_SOUND_OFF || controller == CC_ALL_NOTES_OFF)
+      {
+        all_sound_off();
+        return;
+      }
     ch.cc_values[controller] = value;
 
     for (auto& voice : voices_)
@@ -435,6 +442,7 @@ public:
   }
   void process_audio (float **outputs, uint n_frames, uint offset);
   void process (float **outputs, uint n_frames);
+  void all_sound_off();
 
   void set_progress_function (std::function<void (double)> function);
 
