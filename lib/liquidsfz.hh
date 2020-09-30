@@ -232,6 +232,14 @@ public:
   void process (float **outputs, uint n_frames);
 
   /**
+   * \brief All sound off
+   *
+   * Stop all active voices immediately. This may click because the voices are
+   * not faded out.
+   */
+  void all_sound_off();
+
+  /**
    * \brief Set minimum log level
    *
    * This function can be used to set the minimum level of log messages that you
@@ -350,6 +358,7 @@ by waiting for a lock, allocating memory or doing file I/O).
 - \ref Synth::add_event_pitch_bend
 - \ref Synth::process
 - \ref Synth::set_gain
+- \ref Synth::all_sound_off
 
 Typically these restrictions mean that at the beginning of your application,
 you setup the \ref Synth object by loading an .sfz file, setting the sample

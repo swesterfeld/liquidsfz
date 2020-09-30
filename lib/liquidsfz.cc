@@ -99,6 +99,12 @@ Synth::process (float **outputs, uint nframes)
 }
 
 void
+Synth::all_sound_off()
+{
+  impl->synth.all_sound_off();
+}
+
+void
 Synth::set_log_level (Log log_level)
 {
   impl->synth.set_log_level (log_level);
