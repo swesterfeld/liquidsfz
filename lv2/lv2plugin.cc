@@ -236,6 +236,12 @@ public:
   }
 
   void
+  activate()
+  {
+    synth.all_sound_off();
+  }
+
+  void
   run (uint32_t n_samples)
   {
     LV2_Atom_Forge_Frame notify_frame;
@@ -449,6 +455,8 @@ connect_port (LV2_Handle instance,
 static void
 activate (LV2_Handle instance)
 {
+  LV2Plugin *self = static_cast<LV2Plugin *> (instance);
+  self->activate();
 }
 
 static void
