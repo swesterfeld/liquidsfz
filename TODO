@@ -10,3 +10,4 @@ maybe:
 - warn on shared libs
 - hydrogen loader
 - aria xml index
+- maintain active voice list
