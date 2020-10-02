@@ -443,6 +443,7 @@ public:
   void process_audio (float **outputs, uint n_frames, uint offset);
   void process (float **outputs, uint n_frames);
   void all_sound_off();
+  void system_reset();
 
   void set_progress_function (std::function<void (double)> function);
 

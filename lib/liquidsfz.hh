@@ -240,6 +240,17 @@ public:
   void all_sound_off();
 
   /**
+   * \brief System reset
+   *
+   * Reset Synth state:
+   *  - reset all CC values to their defaults
+   *  - stop all active voices immediately
+   *
+   * This may click because the voices are not faded out.
+   */
+  void system_reset();
+
+  /**
    * \brief Set minimum log level
    *
    * This function can be used to set the minimum level of log messages that you

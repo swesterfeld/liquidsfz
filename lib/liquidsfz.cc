@@ -105,6 +105,12 @@ Synth::all_sound_off()
 }
 
 void
+Synth::system_reset()
+{
+  impl->synth.system_reset();
+}
+
+void
 Synth::set_log_level (Log log_level)
 {
   impl->synth.set_log_level (log_level);

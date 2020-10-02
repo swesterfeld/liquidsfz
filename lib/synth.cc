@@ -90,6 +90,13 @@ Synth::all_sound_off()
 }
 
 void
+Synth::system_reset()
+{
+  all_sound_off();
+  init_channels();
+}
+
+void
 Synth::set_progress_function (std::function<void (double)> function)
 {
   progress_function_ = function;
