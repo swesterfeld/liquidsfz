@@ -307,6 +307,7 @@ public:
             printf ("quit                - quit liquidsfz\n");
             printf ("\n");
             printf ("allsoundoff         - stop all sounds\n");
+            printf ("reset               - system reset (stop all sounds, reset controllers)\n");
             printf ("noteon chan key vel - start note\n");
             printf ("noteoff chan key    - stop note\n");
             printf ("cc chan ctrl value  - send controller event\n");
@@ -315,6 +316,10 @@ public:
         else if (cli_parser.command ("allsoundoff"))
           {
             cmd_q.append ([=] () { synth.all_sound_off(); });
+          }
+        else if (cli_parser.command ("reset"))
+          {
+            cmd_q.append ([=] () { synth.system_reset(); });
           }
         else if (cli_parser.command ("noteon", ch, key, vel))
           {
