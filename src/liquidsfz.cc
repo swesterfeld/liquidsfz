@@ -28,6 +28,8 @@
 #include <string>
 #include <regex>
 #include <random>
+#include <readline/readline.h>
+#include <readline/history.h>
 #include "loader.hh"
 #include "utils.hh"
 #include "synth.hh"
@@ -141,6 +143,49 @@ parse_options (int   *argc_p,
   *argc_p = e;
 }
 
+class CommandQueue
+{
+  struct Command
+  {
+    std::function<void()> fun;
+  };
+  vector<Command> commands;
+  bool            done = false;
+  std::mutex      mutex;
+public:
+  void
+  append (std::function<void()> fun)
+  {
+    std::lock_guard lg (mutex);
+
+    /* we insert and free in this thread to avoid malloc() in audio thread */
+    if (done)
+      {
+        commands.clear();
+        done = false;
+      }
+
+    Command c;
+    c.fun = fun;
+    commands.push_back (c);
+  }
+  void
+  run()
+  {
+    if (mutex.try_lock()) /* never stall audio thread */
+      {
+        if (!done)
+          {
+            for (auto& c : commands)
+              c.fun();
+
+            done = true;
+          }
+        mutex.unlock();
+      }
+  }
+};
+
 class JackStandalone
 {
   jack_client_t *client = nullptr;
@@ -148,6 +193,7 @@ class JackStandalone
   jack_port_t *audio_left = nullptr;
   jack_port_t *audio_right = nullptr;
 
+  CommandQueue cmd_q;
 public:
   Synth synth;
 
@@ -173,6 +219,8 @@ public:
   int
   process (jack_nframes_t nframes)
   {
+    cmd_q.run();
+
     void* port_buf = jack_port_get_buffer (midi_input_port, nframes);
     jack_nframes_t event_count = jack_midi_get_event_count (port_buf);
 
@@ -226,8 +274,25 @@ public:
         exit (1);
       }
 
-    printf ("Synthesizer running - press \"Enter\" to quit.\n");
-    getchar();
+    for (;;)
+      {
+        char *input = readline ("liquidsfz> ");
+        if (!input)
+          {
+            printf ("\n");
+            break;
+          }
+        add_history (input);
+
+        string s = input;
+        if (s == "quit" || s == "q")
+          break;
+        if (s == "allsoundoff")
+          {
+            cmd_q.append ([&] () { synth.all_sound_off(); });
+          }
+        free (input);
+      }
   }
   bool
   load (const string& filename)
@@ -238,7 +303,12 @@ public:
         fflush (stdout);
       });
 
-    return synth.load (filename);
+    bool load_ok = synth.load (filename);
+    if (!load_ok)
+      return false;
+
+    printf ("%30s\r", ""); // overwrite progress message
+    return true;
   }
 };
 
