@@ -60,9 +60,16 @@ AC_DEFUN([AC_LV2_REQUIREMENTS],
   PKG_CHECK_MODULES([LV2], [[lv2 >= 1.2.0]], [with_lv2="yes"], [with_lv2="no"])
 ])
 
+dnl
+AC_DEFUN([AC_READLINE_REQUIREMENTS],
+[
+  PKG_CHECK_MODULES([READLINE], [readline])
+])
+
 AC_SNDFILE_REQUIREMENTS
 AC_JACK_REQUIREMENTS
 AC_LV2_REQUIREMENTS
+AC_READLINE_REQUIREMENTS
 
 dnl determine static/shared library to use for lv2 plugin
 if test "x$enable_static" = "xyes"; then
