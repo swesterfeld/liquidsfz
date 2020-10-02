@@ -35,6 +35,10 @@ private:
 public:
   bool parse (const std::string& line);
 
+  bool empty_line()
+  {
+    return !tokenizer_error && !tokens.size();
+  }
   bool command (const std::string& cmd)
   {
     if (tokenizer_error || tokens.size() != 1 || cmd != tokens[0])

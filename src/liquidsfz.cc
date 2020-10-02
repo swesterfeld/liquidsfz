@@ -275,6 +275,8 @@ public:
         exit (1);
       }
 
+    printf ("Type 'quit' to quit, 'help' for help.\n");
+
     CLIParser cli_parser;
     for (;;)
       {
@@ -290,13 +292,19 @@ public:
         free (input);
 
         int ch, key, vel;
-        if (cli_parser.command ("quit"))
+        if (cli_parser.empty_line())
+          {
+            /* empty line (or comment) */
+          }
+        else if (cli_parser.command ("quit"))
           {
             break;
           }
         else if (cli_parser.command ("help"))
           {
+            printf ("help                - show this help\n");
             printf ("quit                - quit liquidsfz\n");
+            printf ("\n");
             printf ("allsoundoff         - stop all sounds\n");
             printf ("noteon chan key vel - start note\n");
             printf ("noteoff chan key    - stop note\n");
