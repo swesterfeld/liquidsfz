@@ -6,5 +6,5 @@ AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) $(READLINE_LIBS) -I$(top_srcdir)/
 
 LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
-liquidsfz_SOURCES = liquidsfz.cc
+liquidsfz_SOURCES = liquidsfz.cc cliparser.cc
 liquidsfz_LDADD = $(LIQUIDSFZ_LIBS) $(JACK_LIBS) $(READLINE_LIBS)

@@ -34,6 +34,7 @@
 #include "utils.hh"
 #include "synth.hh"
 #include "liquidsfz.hh"
+#include "cliparser.hh"
 #include "config.h"
 
 using std::vector;
@@ -274,6 +275,7 @@ public:
         exit (1);
       }
 
+    CLIParser cli_parser;
     for (;;)
       {
         char *input = readline ("liquidsfz> ");
@@ -284,14 +286,37 @@ public:
           }
         add_history (input);
 
-        string s = input;
-        if (s == "quit" || s == "q")
-          break;
-        if (s == "allsoundoff")
-          {
-            cmd_q.append ([&] () { synth.all_sound_off(); });
-          }
+        cli_parser.parse (input);
         free (input);
+
+        int ch, key, vel;
+        if (cli_parser.command ("quit"))
+          {
+            break;
+          }
+        else if (cli_parser.command ("help"))
+          {
+            printf ("quit                - quit liquidsfz\n");
+            printf ("allsoundoff         - stop all sounds\n");
+            printf ("noteon chan key vel - start note\n");
+            printf ("noteoff chan key    - stop note\n");
+          }
+        else if (cli_parser.command ("allsoundoff"))
+          {
+            cmd_q.append ([=] () { synth.all_sound_off(); });
+          }
+        else if (cli_parser.command ("noteon", ch, key, vel))
+          {
+            cmd_q.append ([=]() { synth.add_event_note_on (0, ch, key, vel); });
+          }
+        else if (cli_parser.command ("noteoff", ch, key))
+          {
+            cmd_q.append ([=]() { synth.add_event_note_off (0, ch, key); });
+          }
+        else
+          {
+            printf ("error while parsing command\n");
+          }
       }
   }
   bool
