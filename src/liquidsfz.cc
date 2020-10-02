@@ -291,7 +291,8 @@ public:
         cli_parser.parse (input);
         free (input);
 
-        int ch, key, vel;
+        int ch, key, vel, cc, value;
+        double dvalue;
         if (cli_parser.empty_line())
           {
             /* empty line (or comment) */
@@ -308,6 +309,8 @@ public:
             printf ("allsoundoff         - stop all sounds\n");
             printf ("noteon chan key vel - start note\n");
             printf ("noteoff chan key    - stop note\n");
+            printf ("cc chan ctrl value  - send controller event\n");
+            printf ("gain value          - set gain (0 < value < 5)\n");
           }
         else if (cli_parser.command ("allsoundoff"))
           {
@@ -320,6 +323,14 @@ public:
         else if (cli_parser.command ("noteoff", ch, key))
           {
             cmd_q.append ([=]() { synth.add_event_note_off (0, ch, key); });
+          }
+        else if (cli_parser.command ("cc", ch, cc, value))
+          {
+            cmd_q.append ([=]() { synth.add_event_cc (0, ch, cc, value); });
+          }
+        else if (cli_parser.command ("gain", dvalue))
+          {
+            cmd_q.append ([=]() { synth.set_gain (std::clamp (dvalue, 0., 5.)); });
           }
         else
           {
