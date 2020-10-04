@@ -1,4 +1,3 @@
-- share sample cache between Synth instances
 - offset opcode
 
 - key switches (details: API, sw_down, sw_up)
