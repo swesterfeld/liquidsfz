@@ -25,6 +25,7 @@
 #include <map>
 #include <memory>
 #include <algorithm>
+#include <mutex>
 
 #include <sndfile.h>
 
@@ -45,6 +46,7 @@ public:
   };
 private:
   std::map<std::string, std::weak_ptr<Entry>> cache;
+  std::mutex mutex;
 
 protected:
   void
@@ -70,6 +72,8 @@ public:
   std::shared_ptr<Entry>
   load (const std::string& filename)
   {
+    std::lock_guard lg (mutex);
+
     std::shared_ptr<Entry> cached_entry = cache[filename].lock();
     if (cached_entry) /* already in cache? -> nothing to do */
       return cached_entry;
