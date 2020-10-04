@@ -44,15 +44,39 @@ public:
     uint                channels;
   };
 private:
-  std::map<std::string, std::unique_ptr<Entry>> cache;
+  std::map<std::string, std::weak_ptr<Entry>> cache;
+
+protected:
+  void
+  remove_expired_entries()
+  {
+    /* the deletion of the actual cache entry is done automatically (shared ptr)
+     * this just removes entries in the std::map for filenames with a null weak ptr
+     */
+    auto it = cache.begin();
+    while (it != cache.end())
+      {
+        if (it->second.expired())
+          {
+            it = cache.erase (it);
+          }
+        else
+          {
+            it++;
+          }
+      }
+  }
 public:
-  Entry *
+  std::shared_ptr<Entry>
   load (const std::string& filename)
   {
-    if (cache[filename]) /* already in cache? -> nothing to do */
-      return cache[filename].get();
+    std::shared_ptr<Entry> cached_entry = cache[filename].lock();
+    if (cached_entry) /* already in cache? -> nothing to do */
+      return cached_entry;
 
-    auto new_entry = std::make_unique<Entry>();
+    remove_expired_entries();
+
+    auto new_entry = std::make_shared<Entry>();
 
     SF_INFO sfinfo = { 0, };
     SNDFILE *sndfile = sf_open (filename.c_str(), SFM_READ, &sfinfo);
@@ -125,8 +149,8 @@ public:
     new_entry->sample_rate = sfinfo.samplerate;
     new_entry->channels = sfinfo.channels;
 
-    cache[filename] = std::move (new_entry);
-    return cache[filename].get();
+    cache[filename] = new_entry;
+    return new_entry;
   }
 };
 

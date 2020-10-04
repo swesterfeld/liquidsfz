@@ -91,7 +91,7 @@ struct CCInfo
 struct Region
 {
   std::string sample;
-  SampleCache::Entry *cached_sample = nullptr;
+  std::shared_ptr<SampleCache::Entry> cached_sample;
   bool switch_match = true;
 
   int lokey = 0;
