@@ -23,6 +23,7 @@
 
 #include <random>
 #include <algorithm>
+#include <mutex>
 #include <assert.h>
 
 #include "loader.hh"
@@ -52,6 +53,37 @@ struct Channel
   }
 };
 
+class Global
+{
+  std::mutex mutex;
+  int count = 0;
+
+public:
+  SampleCache *sample_cache = nullptr;
+
+  void
+  init()
+  {
+    std::lock_guard lg (mutex);
+
+    if (count == 0)
+      sample_cache = new SampleCache();
+    count++;
+  }
+  void
+  free()
+  {
+    std::lock_guard lg (mutex);
+
+    count--;
+    if (count == 0)
+      {
+        delete sample_cache;
+        sample_cache = nullptr;
+      }
+  }
+};
+
 class Synth
 {
   std::minstd_rand random_gen;
@@ -65,7 +97,7 @@ class Synth
   std::vector<CCInfo> cc_list_;
   CurveTable curve_table_;
   Log log_level_ = Log::INFO;
-  SampleCache sample_cache_; // FIXME: should share sample cache between different instances
+  static Global global_;
   float gain_ = 1.0;
 
   static constexpr int CC_SUSTAIN       = 64;
@@ -81,9 +113,17 @@ class Synth
 public:
   Synth()
   {
+    // init data shared between all Synth instances
+    global_.init();
+
     // sane defaults:
     set_max_voices (256);
     set_channels (16);
+  }
+  ~Synth()
+  {
+    // free data shared between all Synth instances
+    global_.free();
   }
   void
   set_sample_rate (uint sample_rate)
@@ -125,7 +165,7 @@ public:
       v = Voice (this);
 
     Loader loader (this);
-    if (loader.parse (filename, sample_cache_))
+    if (loader.parse (filename, *global_.sample_cache))
       {
         regions_      = loader.regions;
         control_      = loader.control;

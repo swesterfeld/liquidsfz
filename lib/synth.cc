@@ -192,4 +192,6 @@ Synth::debug (const char *format, ...)
     }
 }
 
+Global Synth::global_;
+
 }
