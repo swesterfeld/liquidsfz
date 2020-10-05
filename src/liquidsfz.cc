@@ -277,8 +277,8 @@ public:
 
     printf ("Type 'quit' to quit, 'help' for help.\n");
 
-    CLIParser cli_parser;
-    for (;;)
+    bool is_running = true;
+    while (is_running)
       {
         char *input = readline ("liquidsfz> ");
         if (!input)
@@ -295,61 +295,93 @@ public:
                 break;
               }
           }
-
-        cli_parser.parse (input);
+        is_running = execute (input);
         free (input);
+      }
+  }
+  bool
+  execute (const string& input)
+  {
+    CLIParser cli_parser;
+    cli_parser.parse (input);
 
-        int ch, key, vel, cc, value;
-        double dvalue;
-        if (cli_parser.empty_line())
+    int ch, key, vel, cc, value;
+    double dvalue;
+    string script, text;
+    if (cli_parser.empty_line())
+      {
+        /* empty line (or comment) */
+      }
+    else if (cli_parser.command ("quit"))
+      {
+        return false;
+      }
+    else if (cli_parser.command ("help"))
+      {
+        printf ("help                - show this help\n");
+        printf ("quit                - quit liquidsfz\n");
+        printf ("\n");
+        printf ("allsoundoff         - stop all sounds\n");
+        printf ("reset               - system reset (stop all sounds, reset controllers)\n");
+        printf ("noteon chan key vel - start note\n");
+        printf ("noteoff chan key    - stop note\n");
+        printf ("cc chan ctrl value  - send controller event\n");
+        printf ("gain value          - set gain (0 < value < 5)\n");
+        printf ("sleep time_ms       - sleep for some milliseconds\n");
+        printf ("source filename     - load a file and execute each line as command\n");
+        printf ("echo text           - print text\n");
+      }
+    else if (cli_parser.command ("allsoundoff"))
+      {
+        cmd_q.append ([=] () { synth.all_sound_off(); });
+      }
+    else if (cli_parser.command ("reset"))
+      {
+        cmd_q.append ([=] () { synth.system_reset(); });
+      }
+    else if (cli_parser.command ("noteon", ch, key, vel))
+      {
+        cmd_q.append ([=]() { synth.add_event_note_on (0, ch, key, vel); });
+      }
+    else if (cli_parser.command ("noteoff", ch, key))
+      {
+        cmd_q.append ([=]() { synth.add_event_note_off (0, ch, key); });
+      }
+    else if (cli_parser.command ("cc", ch, cc, value))
+      {
+        cmd_q.append ([=]() { synth.add_event_cc (0, ch, cc, value); });
+      }
+    else if (cli_parser.command ("gain", dvalue))
+      {
+        cmd_q.append ([=]() { synth.set_gain (std::clamp (dvalue, 0., 5.)); });
+      }
+    else if (cli_parser.command ("sleep", dvalue))
+      {
+        usleep (lrint (dvalue * 1000));
+      }
+    else if (cli_parser.command ("source", script))
+      {
+        FILE *f = fopen (script.c_str(), "r");
+        if (f)
           {
-            /* empty line (or comment) */
-          }
-        else if (cli_parser.command ("quit"))
-          {
-            break;
-          }
-        else if (cli_parser.command ("help"))
-          {
-            printf ("help                - show this help\n");
-            printf ("quit                - quit liquidsfz\n");
-            printf ("\n");
-            printf ("allsoundoff         - stop all sounds\n");
-            printf ("reset               - system reset (stop all sounds, reset controllers)\n");
-            printf ("noteon chan key vel - start note\n");
-            printf ("noteoff chan key    - stop note\n");
-            printf ("cc chan ctrl value  - send controller event\n");
-            printf ("gain value          - set gain (0 < value < 5)\n");
-          }
-        else if (cli_parser.command ("allsoundoff"))
-          {
-            cmd_q.append ([=] () { synth.all_sound_off(); });
-          }
-        else if (cli_parser.command ("reset"))
-          {
-            cmd_q.append ([=] () { synth.system_reset(); });
-          }
-        else if (cli_parser.command ("noteon", ch, key, vel))
-          {
-            cmd_q.append ([=]() { synth.add_event_note_on (0, ch, key, vel); });
-          }
-        else if (cli_parser.command ("noteoff", ch, key))
-          {
-            cmd_q.append ([=]() { synth.add_event_note_off (0, ch, key); });
-          }
-        else if (cli_parser.command ("cc", ch, cc, value))
-          {
-            cmd_q.append ([=]() { synth.add_event_cc (0, ch, cc, value); });
-          }
-        else if (cli_parser.command ("gain", dvalue))
-          {
-            cmd_q.append ([=]() { synth.set_gain (std::clamp (dvalue, 0., 5.)); });
-          }
-        else
-          {
-            printf ("error while parsing command\n");
+            char buf[1024];
+            while (fgets (buf, sizeof (buf), f))
+              {
+                if (!execute (buf))
+                  break;
+              }
+            fclose (f);
           }
       }
+    else if (cli_parser.command ("echo", text))
+      {
+        printf ("%s\n", text.c_str());
+      }
+    else
+      {
+        printf ("error while parsing command\n");
+      }
+    return true;
   }
   bool
   load (const string& filename)
