@@ -286,7 +286,15 @@ public:
             printf ("\n");
             break;
           }
-        add_history (input);
+        for (unsigned char ch : string (input))
+          {
+            if (ch > 32)
+              {
+                /* do not add pure whitespace lines to history */
+                add_history (input);
+                break;
+              }
+          }
 
         cli_parser.parse (input);
         free (input);
