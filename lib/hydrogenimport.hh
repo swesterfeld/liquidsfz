@@ -30,9 +30,7 @@ class HydrogenImport
 {
 public:
   bool detect (const std::string& filename);
-  bool parse (const std::string& filename);
-
-  std::string result;
+  bool parse (const std::string& filename, std::string& out);
 };
 
 }

@@ -21,8 +21,9 @@
 
 #include "hydrogenimport.hh"
 #include "pugixml.hh"
+#include "log.hh"
 
-#include <math.h>
+#include <cmath>
 
 #include <vector>
 
@@ -41,7 +42,7 @@ struct Region
   int hivel = 0;
 };
 
-void
+static void
 cleanup_regions (vector<Region>& regions)
 {
   vector<Region *> note_region (128);
@@ -94,7 +95,26 @@ cleanup_regions (vector<Region>& regions)
 }
 
 bool
-HydrogenImport::parse (const string& filename)
+HydrogenImport::detect (const string& filename)
+{
+  xml_document doc;
+  auto result = doc.load_file (filename.c_str());
+  if (!result)
+    return false;
+
+  xml_node drumkit_info = doc.child ("drumkit_info");
+  xml_node instrument_list = drumkit_info.child ("instrumentList");
+  for (xml_node instrument : instrument_list.children ("instrument"))
+    {
+      xml_node name = instrument.child ("name");
+      if (name)
+        return true;
+    }
+  return false;
+}
+
+bool
+HydrogenImport::parse (const string& filename, string& out)
 {
   constexpr bool use_midi_out_note = false;
 
@@ -103,7 +123,7 @@ HydrogenImport::parse (const string& filename)
   if (!result)
     {
       printf ("load error\n");
-      return 1;
+      return false;
     }
   xml_node drumkit_info = doc.child ("drumkit_info");
   xml_node instrument_list = drumkit_info.child ("instrumentList");
@@ -113,20 +133,20 @@ HydrogenImport::parse (const string& filename)
   for (xml_node instrument : instrument_list.children ("instrument"))
     {
       xml_node name = instrument.child ("name");
-      printf ("// %s\n", name.text().as_string());
+      out += string_printf ("// %s\n", name.text().as_string());
       int key = instrument_index + 36;
 
       int midi_out_note = instrument.child ("midiOutNote").text().as_int();
       if (use_midi_out_note && midi_out_note > 0)
         key = midi_out_note;
 
-      printf ("<group>\n");
-      printf ("  key=%d\n", key);
-      printf ("  loop_mode=one_shot\n");
-      printf ("  amp_velcurve_1=0.008\n");
-      printf ("  group=%d\n", group);
-      printf ("  off_by=%d\n", group);
-      printf ("\n");
+      out += string_printf ("<group>\n");
+      out += string_printf ("  key=%d\n", key);
+      out += string_printf ("  loop_mode=one_shot\n");
+      out += string_printf ("  amp_velcurve_1=0.008\n");
+      out += string_printf ("  group=%d\n", group);
+      out += string_printf ("  off_by=%d\n", group);
+      out += string_printf ("\n");
 
       vector<Region> regions;
       auto do_layer = [&region_count,&regions] (const xml_node& layer)
@@ -155,10 +175,10 @@ HydrogenImport::parse (const string& filename)
 
       for (auto r : regions)
         {
-          printf ("  <region>\n");
-          printf ("    lovel=%d hivel=%d\n", r.lovel, r.hivel);
-          printf ("    sample=%s\n", r.sample.c_str());
-          printf ("\n");
+          out += string_printf ("  <region>\n");
+          out += string_printf ("    lovel=%d hivel=%d\n", r.lovel, r.hivel);
+          out += string_printf ("    sample=%s\n", r.sample.c_str());
+          out += string_printf ("\n");
 
           region_count++;
         }
@@ -169,13 +189,13 @@ HydrogenImport::parse (const string& filename)
         {
           string sample = filename.text().as_string();
 
-          printf ("  <region>\n");
-          printf ("    sample=%s\n", sample.c_str());
-          printf ("\n");
+          out += string_printf ("  <region>\n");
+          out += string_printf ("    sample=%s\n", sample.c_str());
+          out += string_printf ("\n");
 
           region_count++;
         }
-      printf ("\n");
+      out += string_printf ("\n");
 
       group++;
       instrument_index++;
@@ -184,7 +204,7 @@ HydrogenImport::parse (const string& filename)
   if (region_count == 0)
     {
       printf ("load error: no hydrogen regions found in input file\n");
-      return 1;
+      return false;
     }
   return true;
 }

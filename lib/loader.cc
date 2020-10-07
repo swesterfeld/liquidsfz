@@ -20,6 +20,7 @@
 
 #include "loader.hh"
 #include "synth.hh"
+#include "hydrogenimport.hh"
 
 #include <algorithm>
 #include <regex>
@@ -560,15 +561,23 @@ load_file (FILE *file)
 }
 
 bool
-Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines)
+Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, const std::string& content_str)
 {
-  FILE *file = fopen (filename.c_str(), "r");
-  if (!file)
-    return false;
+  vector<char> contents;
 
-  const vector<char> contents = load_file (file);
-  fclose (file);
+  if (content_str != "")
+    {
+      contents.insert (contents.begin(), content_str.begin(), content_str.end());
+    }
+  else
+    {
+      FILE *file = fopen (filename.c_str(), "r");
+      if (!file)
+        return false;
 
+      contents = load_file (file);
+      fclose (file);
+    }
   preprocess_done.insert (filename);
 
   LineInfo line_info;
@@ -609,10 +618,31 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   // read file
   vector<LineInfo> lines;
 
-  if (!preprocess_file (filename, lines))
+  HydrogenImport himport;
+  if (himport.detect (filename))
     {
-      synth_->error ("error reading file '%s'\n", filename.c_str());
-      return false;
+      string out;
+      if (himport.parse (filename, out))
+        {
+          if (!preprocess_file (filename, lines, out))
+            {
+              synth_->error ("error reading converted hydrogen drumkit '%s'\n", filename.c_str());
+              return false;
+            }
+        }
+      else
+        {
+          synth_->error ("error reading hydrogen drumkit '%s'\n", filename.c_str());
+          return false;
+        }
+    }
+  else
+    {
+      if (!preprocess_file (filename, lines))
+        {
+          synth_->error ("error reading file '%s'\n", filename.c_str());
+          return false;
+        }
     }
 
   static const regex space_re ("\\s+(.*)");
