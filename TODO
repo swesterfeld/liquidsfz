@@ -9,3 +9,7 @@ maybe:
 - hydrogen loader
 - aria xml index
 - maintain active voice list
+
+hydrogen:
+- figure out all amplification factors
+- move pugixml to internal namespace
