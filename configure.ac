@@ -108,3 +108,11 @@ echo "  Build static library . .: $enable_static"
 echo "  Build shared library . .: $enable_shared"
 echo "  Install prefix . . . . .: $prefix"
 echo
+if test "x$enable_shared" = "xyes"; then
+  echo "NOTE: Shared libraries can cause problems if binaries created by different"
+  echo "people are combined (for instance for an Plugin binary and a DAW binary"
+  echo "which need different versions of liquidsfz)."
+  echo ""
+  echo "So using static libraries is the safer choice."
+  echo ""
+fi
