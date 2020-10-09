@@ -94,6 +94,12 @@ cleanup_regions (vector<Region>& regions)
     }
 }
 
+static double
+xml_to_double (const xml_node& node)
+{
+  return string_to_double (node.text().as_string());
+}
+
 bool
 HydrogenImport::detect (const string& filename)
 {
@@ -152,14 +158,10 @@ HydrogenImport::parse (const string& filename, string& out)
       auto do_layer = [&region_count,&regions] (const xml_node& layer)
         {
           xml_node filename = layer.child ("filename");
-#if 0
-          printf (" - %s\n", filename.text().as_string());
-          printf (" min=%f\n", layer.child ("min").text().as_double());
-          printf (" max=%f\n", layer.child ("max").text().as_double());
-#endif
           string sample = filename.text().as_string();
-          int lovel = lrint (layer.child ("min").text().as_double() * 127);
-          int hivel = lrint (layer.child ("max").text().as_double() * 127);
+
+          int lovel = lrint (xml_to_double (layer.child ("min")) * 127);
+          int hivel = lrint (xml_to_double (layer.child ("max")) * 127);
           regions.push_back ({ sample, lovel, hivel });
         };
       // new style: layer is in an instrumentComponent node

@@ -4583,6 +4583,8 @@ PUGI__NS_BEGIN
 	#ifdef PUGIXML_WCHAR_MODE
 		return wcstod(value, 0);
 	#else
+                fprintf (stderr, "liquidsfz: pugixml get_value_double should never be called\n");
+                return NAN; // strtod is not locale independent, so we want to ensure this function is not used
 		return strtod(value, 0);
 	#endif
 	}
@@ -4592,6 +4594,8 @@ PUGI__NS_BEGIN
 	#ifdef PUGIXML_WCHAR_MODE
 		return static_cast<float>(wcstod(value, 0));
 	#else
+                fprintf (stderr, "liquidsfz pugixml get_value_float should never be called\n");
+                return NAN; // strtod is not locale independent, so we want to ensure this function is not used
 		return static_cast<float>(strtod(value, 0));
 	#endif
 	}
@@ -8330,6 +8334,8 @@ PUGI__NS_BEGIN
 	#ifdef PUGIXML_WCHAR_MODE
 		return wcstod(string, 0);
 	#else
+                fprintf (stderr, "liquidsfz: pugixml convert_string_to_number should never be called\n");
+                return NAN; // strtod is not locale independent, so we want to ensure this function is not used
 		return strtod(string, 0);
 	#endif
 	}
