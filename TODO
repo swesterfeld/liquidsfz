@@ -5,11 +5,11 @@
 - C++ style block comments
 
 maybe:
-- warn on shared libs
-- hydrogen loader
 - aria xml index
 - maintain active voice list
+- load in cli
 
 hydrogen:
 - figure out all amplification factors
 - move pugixml to internal namespace
+- mute groups
