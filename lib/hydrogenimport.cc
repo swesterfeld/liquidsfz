@@ -95,9 +95,10 @@ cleanup_regions (vector<Region>& regions)
 }
 
 static double
-xml_to_double (const xml_node& node)
+xml_to_double (const xml_node& node, double def)
 {
-  return string_to_double (node.text().as_string());
+  string str = node.text().as_string();
+  return (str != "") ? string_to_double (str) : def;
 }
 
 bool
@@ -142,6 +143,8 @@ HydrogenImport::parse (const string& filename, string& out)
       out += string_printf ("// %s\n", name.text().as_string());
       int key = instrument_index + 36;
 
+      double volume = xml_to_double (instrument.child ("volume"), 1);
+
       int midi_out_note = instrument.child ("midiOutNote").text().as_int();
       if (use_midi_out_note && midi_out_note > 0)
         key = midi_out_note;
@@ -152,6 +155,7 @@ HydrogenImport::parse (const string& filename, string& out)
       out += string_printf ("  amp_velcurve_1=0.008\n");
       out += string_printf ("  group=%d\n", group);
       out += string_printf ("  off_by=%d\n", group);
+      out += string_printf ("  volume=%f\n", db_from_factor (volume, -144));
       out += string_printf ("\n");
 
       vector<Region> regions;
@@ -160,8 +164,8 @@ HydrogenImport::parse (const string& filename, string& out)
           xml_node filename = layer.child ("filename");
           string sample = filename.text().as_string();
 
-          int lovel = lrint (xml_to_double (layer.child ("min")) * 127);
-          int hivel = lrint (xml_to_double (layer.child ("max")) * 127);
+          int lovel = lrint (xml_to_double (layer.child ("min"), 0) * 127);
+          int hivel = lrint (xml_to_double (layer.child ("max"), 1) * 127);
           regions.push_back ({ sample, lovel, hivel });
         };
       // new style: layer is in an instrumentComponent node
