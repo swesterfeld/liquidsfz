@@ -26,6 +26,7 @@
 #include <cmath>
 
 #include <vector>
+#include <algorithm>
 
 namespace LiquidSFZInternal {
 
@@ -40,6 +41,7 @@ struct Region
   string sample;
   int lovel = 0;
   int hivel = 0;
+  double layer_gain = 1;
 };
 
 static void
@@ -120,6 +122,38 @@ HydrogenImport::detect (const string& filename)
   return false;
 }
 
+static double
+pan_stereo_factor (double region_pan, int ch)
+{
+  /* sine panning law (constant power panning) */
+  const double pan = ch == 0 ? -region_pan : region_pan;
+  return sin ((pan + 100) / 400 * M_PI);
+}
+
+static void
+debug_pan (double left, double right, double volume, double pan, string& out)
+{
+  out += string_printf ("    // pan: %f %f\n", left, right);
+
+  // convert volume/pan back to left/right should produce the same factors
+  out += string_printf ("    // back: %f %f\n", volume * pan_stereo_factor (pan, 0), volume * pan_stereo_factor (pan, 1));
+}
+
+void
+left_right2volume_pan (double left, double right, string& out)
+{
+  left /= M_SQRT2;
+  right /= M_SQRT2;
+  double volume = sqrt (left * left + right * right);
+
+  // inverse of panning law: sin ((pan + 100) / 400 * M_PI);
+  double pan = asin (std::clamp (right / volume, 0.0, 1.0)) / M_PI * 400 - 100;
+  out += string_printf ("    volume=%f pan=%f\n", db_from_factor (volume, -144), pan);
+
+  if (0)
+    debug_pan (left, right, volume, pan, out);
+}
+
 bool
 HydrogenImport::parse (const string& filename, string& out)
 {
@@ -143,7 +177,10 @@ HydrogenImport::parse (const string& filename, string& out)
       out += string_printf ("// %s\n", name.text().as_string());
       int key = instrument_index + 36;
 
-      double volume = xml_to_double (instrument.child ("volume"), 1);
+      double inst_volume = xml_to_double (instrument.child ("volume"), 1);
+      double inst_gain = xml_to_double (instrument.child ("gain"), 1);
+      double inst_pan_l = xml_to_double (instrument.child ("pan_L"), 1);
+      double inst_pan_r = xml_to_double (instrument.child ("pan_R"), 1);
 
       int midi_out_note = instrument.child ("midiOutNote").text().as_int();
       if (use_midi_out_note && midi_out_note > 0)
@@ -155,7 +192,6 @@ HydrogenImport::parse (const string& filename, string& out)
       out += string_printf ("  amp_velcurve_1=0.008\n");
       out += string_printf ("  group=%d\n", group);
       out += string_printf ("  off_by=%d\n", group);
-      out += string_printf ("  volume=%f\n", db_from_factor (volume, -144));
       out += string_printf ("\n");
 
       vector<Region> regions;
@@ -166,7 +202,8 @@ HydrogenImport::parse (const string& filename, string& out)
 
           int lovel = lrint (xml_to_double (layer.child ("min"), 0) * 127);
           int hivel = lrint (xml_to_double (layer.child ("max"), 1) * 127);
-          regions.push_back ({ sample, lovel, hivel });
+          double layer_gain = xml_to_double (layer.child ("gain"), 1);
+          regions.push_back ({ sample, lovel, hivel, layer_gain });
         };
       // new style: layer is in an instrumentComponent node
       xml_node instrument_component = instrument.child ("instrumentComponent");
@@ -177,6 +214,13 @@ HydrogenImport::parse (const string& filename, string& out)
       for (xml_node layer : instrument.children ("layer"))
         do_layer (layer);
 
+      // even older style: filename is child of this node
+      xml_node filename = instrument.child ("filename");
+      if (filename)
+        {
+          string sample = filename.text().as_string();
+          regions.push_back ({ sample, 1, 127, 1 });
+        }
       cleanup_regions (regions);
 
       for (auto r : regions)
@@ -184,23 +228,12 @@ HydrogenImport::parse (const string& filename, string& out)
           out += string_printf ("  <region>\n");
           out += string_printf ("    lovel=%d hivel=%d\n", r.lovel, r.hivel);
           out += string_printf ("    sample=%s\n", r.sample.c_str());
+          left_right2volume_pan (inst_pan_l * inst_volume * inst_gain * r.layer_gain, inst_pan_r * inst_volume * inst_gain * r.layer_gain, out);
           out += string_printf ("\n");
 
           region_count++;
         }
 
-      // even older style: filename is child of this node
-      xml_node filename = instrument.child ("filename");
-      if (filename)
-        {
-          string sample = filename.text().as_string();
-
-          out += string_printf ("  <region>\n");
-          out += string_printf ("    sample=%s\n", sample.c_str());
-          out += string_printf ("\n");
-
-          region_count++;
-        }
       out += string_printf ("\n");
 
       group++;
