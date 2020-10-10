@@ -546,18 +546,19 @@ Loader::replace_defines (string& line)
     }
 }
 
-static vector<char>
-load_file (FILE *file)
+static bool
+load_file (FILE *file, vector<char>& contents)
 {
+  contents.clear();
+
   /* read file into memory */
   char buffer[1024];
-  std::vector<char> contents;
 
   size_t l;
   while (!feof (file) && (l = fread (buffer, 1, sizeof (buffer), file)) > 0)
     contents.insert (contents.end(), buffer, buffer + l);
 
-  return contents;
+  return !ferror (file);
 }
 
 bool
@@ -575,8 +576,11 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, c
       if (!file)
         return false;
 
-      contents = load_file (file);
+      bool read_ok = load_file (file, contents);
       fclose (file);
+
+      if (!read_ok)
+        return false;
     }
   preprocess_done.insert (filename);
 
