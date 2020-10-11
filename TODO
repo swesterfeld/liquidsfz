@@ -11,5 +11,4 @@ maybe:
 
 hydrogen:
 - figure out all amplification factors
-- move pugixml to internal namespace
 - mute groups
