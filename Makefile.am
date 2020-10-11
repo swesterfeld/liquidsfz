@@ -1,4 +1,8 @@
-SUBDIRS = lib src lv2 tests
+SUBDIRS = lib lv2 tests
+
+if COND_WITH_JACK
+SUBDIRS += src
+endif
 
 AUTOMAKE_OPTIONS = 1.9 dist-bzip2 no-dist-gzip
 ACLOCAL_AMFLAGS = -I m4 -Wno-portability

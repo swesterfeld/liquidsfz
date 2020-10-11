@@ -48,8 +48,8 @@ dnl JACK
 dnl
 AC_DEFUN([AC_JACK_REQUIREMENTS],
 [
-    dnl disable jack if not found using pkg-config
-    PKG_CHECK_MODULES(JACK, [jack], [with_jack="yes"], [with_jack="no"])
+  PKG_CHECK_MODULES(JACK, [jack])
+  PKG_CHECK_MODULES(READLINE, [readline])
 ])
 
 dnl
@@ -60,16 +60,18 @@ AC_DEFUN([AC_LV2_REQUIREMENTS],
   PKG_CHECK_MODULES([LV2], [[lv2 >= 1.2.0]], [with_lv2="yes"], [with_lv2="no"])
 ])
 
-dnl
-AC_DEFUN([AC_READLINE_REQUIREMENTS],
-[
-  PKG_CHECK_MODULES([READLINE], [readline])
-])
-
 AC_SNDFILE_REQUIREMENTS
-AC_JACK_REQUIREMENTS
+
+dnl -------------------- jack support is optional ---------------------------
+AC_ARG_WITH([jack], [AS_HELP_STRING([--with-jack], [build support for JACK])])
+if test "x$with_jack" != "xno"; then
+  with_jack=yes
+  AC_JACK_REQUIREMENTS
+fi
+AM_CONDITIONAL([COND_WITH_JACK], [test "x$with_jack" != "xno"])
+dnl -------------------------------------------------------------------------
+
 AC_LV2_REQUIREMENTS
-AC_READLINE_REQUIREMENTS
 
 dnl determine static/shared library to use for lv2 plugin
 if test "x$enable_static" = "xyes"; then
@@ -106,6 +108,7 @@ echo "$PACKAGE_NAME $PACKAGE_VERSION"
 echo "---------------------------------------------------------------------------"
 echo "  Build static library . .: $enable_static"
 echo "  Build shared library . .: $enable_shared"
+echo "  JACK support . . . . . .: $with_jack"
 echo "  Install prefix . . . . .: $prefix"
 echo
 if test "x$enable_shared" = "xyes"; then
