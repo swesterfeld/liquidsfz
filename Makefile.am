@@ -1,7 +1,11 @@
-SUBDIRS = lib lv2 tests
+SUBDIRS = lib tests
 
 if COND_WITH_JACK
 SUBDIRS += src
+endif
+
+if COND_WITH_LV2
+SUBDIRS += lv2
 endif
 
 AUTOMAKE_OPTIONS = 1.9 dist-bzip2 no-dist-gzip
