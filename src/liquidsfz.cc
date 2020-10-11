@@ -28,6 +28,7 @@
 #include <string>
 #include <regex>
 #include <random>
+#include <filesystem>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "loader.hh"
@@ -41,6 +42,8 @@ using std::vector;
 using std::string;
 
 using namespace LiquidSFZ;
+
+using LiquidSFZInternal::path_join;
 
 namespace Options
 {
@@ -187,6 +190,32 @@ public:
   }
 };
 
+string
+liquidsfz_user_data_dir()
+{
+  string dir;
+  const char *data_dir_env = getenv ("XDG_DATA_HOME");
+  if (data_dir_env && data_dir_env[0])
+    {
+      dir = data_dir_env;
+    }
+  else
+    {
+      const char *home = getenv ("HOME");
+      if (home && home[0])
+        {
+          dir = path_join (path_join (home, ".local"), "share");
+        }
+    }
+  if (!dir.empty())
+    {
+      dir = path_join (dir, "liquidsfz");
+      std::filesystem::create_directories (dir);
+    }
+
+  return dir;
+}
+
 class JackStandalone
 {
   jack_client_t *client = nullptr;
@@ -275,6 +304,9 @@ public:
         exit (1);
       }
 
+    string history_file = path_join (liquidsfz_user_data_dir(), "history");
+    read_history (history_file.c_str());
+
     printf ("Type 'quit' to quit, 'help' for help.\n");
 
     bool is_running = true;
@@ -298,6 +330,8 @@ public:
         is_running = execute (input);
         free (input);
       }
+    write_history (history_file.c_str());
+    history_truncate_file (history_file.c_str(), 500);
   }
   bool
   execute (const string& input)
