@@ -167,7 +167,7 @@ HydrogenImport::parse (const string& filename, string& out)
   xml_node instrument_list = drumkit_info.child ("instrumentList");
   int instrument_index = 0;
   int region_count = 0;
-  int group = 1;
+  int next_group = 1;
   for (xml_node instrument : instrument_list.children ("instrument"))
     {
       xml_node name = instrument.child ("name");
@@ -182,6 +182,9 @@ HydrogenImport::parse (const string& filename, string& out)
       int midi_out_note = instrument.child ("midiOutNote").text().as_int();
       if (use_midi_out_note && midi_out_note > 0)
         key = midi_out_note;
+
+      int mute_group = instrument.child ("muteGroup").text().as_int (-1);
+      int group = (mute_group > 0) ? (mute_group + 1000) : next_group++;
 
       out += string_printf ("<group>\n");
       out += string_printf ("  key=%d\n", key);
@@ -233,7 +236,6 @@ HydrogenImport::parse (const string& filename, string& out)
 
       out += string_printf ("\n");
 
-      group++;
       instrument_index++;
     }
 
