@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y build-essential
 RUN apt-get install -y dpkg-dev
 RUN apt-get install -y autoconf-archive
 RUN apt-get install -y libtool
-RUN apt-get install -y libjack-jackd2-dev
+RUN apt-get install -y pkg-config
 RUN apt-get install -y lv2-dev
 RUN apt-get install -y curl
 RUN apt-get install -y software-properties-common
@@ -27,7 +27,7 @@ WORKDIR /liquidsfz
 ENV PKG_CONFIG_PATH=/liquidsfz/static/prefix/lib/pkgconfig
 ENV PKG_CONFIG="pkg-config --static"
 RUN cd static && ./build-deps.sh
-RUN ./autogen.sh --prefix=/usr/local/liquidsfz --with-static-cxx
+RUN ./autogen.sh --prefix=/usr/local/liquidsfz --with-static-cxx --without-jack
 RUN make -j16
 RUN make install
 
