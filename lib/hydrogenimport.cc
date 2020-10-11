@@ -136,7 +136,7 @@ debug_pan (double left, double right, double volume, double pan, string& out)
   out += string_printf ("    // back: %f %f\n", volume * pan_stereo_factor (pan, 0), volume * pan_stereo_factor (pan, 1));
 }
 
-void
+static void
 left_right2volume_pan (double left, double right, string& out)
 {
   left /= M_SQRT2;
@@ -198,10 +198,15 @@ HydrogenImport::parse (const string& filename, string& out)
       int mute_group = instrument.child ("muteGroup").text().as_int (-1);
       int group = (mute_group > 0) ? (mute_group + 1000) : next_group++;
 
+      bool apply_velocity = instrument.child ("applyVelocity").text().as_bool (true);
+
       out += string_printf ("<group>\n");
       out += string_printf ("  key=%d\n", key);
       out += string_printf ("  loop_mode=one_shot\n");
-      out += string_printf ("  amp_velcurve_1=0.008\n");
+      if (apply_velocity)
+        out += string_printf ("  amp_velcurve_1=0.008\n");
+      else
+        out += string_printf ("  amp_veltrack=0\n");
       out += string_printf ("  group=%d\n", group);
       out += string_printf ("  off_by=%d\n", group);
       out += string_printf ("\n");
