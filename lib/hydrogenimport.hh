@@ -24,6 +24,7 @@
 #include <string>
 
 #include "synth.hh"
+#include "pugixml.hh"
 
 namespace LiquidSFZInternal
 {
@@ -41,6 +42,8 @@ class HydrogenImport
   Synth *synth_ = nullptr;
 
   void cleanup_regions (std::vector<Region>& regions);
+  void add_layer (const pugi::xml_node& layer, std::vector<Region>& regions);
+
 public:
   HydrogenImport (Synth *synth);
 

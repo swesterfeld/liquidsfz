@@ -151,6 +151,18 @@ left_right2volume_pan (double left, double right, string& out)
     debug_pan (left, right, volume, pan, out);
 }
 
+void
+HydrogenImport::add_layer (const xml_node& layer, vector<Region>& regions)
+{
+  xml_node filename = layer.child ("filename");
+  string sample = filename.text().as_string();
+
+  int lovel = lrint (xml_to_double (layer.child ("min"), 0) * 127);
+  int hivel = lrint (xml_to_double (layer.child ("max"), 1) * 127);
+  double layer_gain = xml_to_double (layer.child ("gain"), 1);
+  regions.push_back ({ sample, lovel, hivel, layer_gain });
+}
+
 bool
 HydrogenImport::parse (const string& filename, string& out)
 {
@@ -195,24 +207,14 @@ HydrogenImport::parse (const string& filename, string& out)
       out += string_printf ("\n");
 
       vector<Region> regions;
-      auto do_layer = [&region_count,&regions] (const xml_node& layer)
-        {
-          xml_node filename = layer.child ("filename");
-          string sample = filename.text().as_string();
-
-          int lovel = lrint (xml_to_double (layer.child ("min"), 0) * 127);
-          int hivel = lrint (xml_to_double (layer.child ("max"), 1) * 127);
-          double layer_gain = xml_to_double (layer.child ("gain"), 1);
-          regions.push_back ({ sample, lovel, hivel, layer_gain });
-        };
       // new style: layer is in an instrumentComponent node
       xml_node instrument_component = instrument.child ("instrumentComponent");
       for (xml_node layer : instrument_component.children ("layer"))
-        do_layer (layer);
+        add_layer (layer, regions);
 
       // old style: layer is a child of the instrument
       for (xml_node layer : instrument.children ("layer"))
-        do_layer (layer);
+        add_layer (layer, regions);
 
       // even older style: filename is child of this node
       xml_node filename = instrument.child ("filename");
