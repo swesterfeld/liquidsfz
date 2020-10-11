@@ -23,12 +23,27 @@
 
 #include <string>
 
+#include "synth.hh"
+
 namespace LiquidSFZInternal
 {
 
 class HydrogenImport
 {
+  struct Region
+  {
+    std::string sample;
+    int lovel = 0;
+    int hivel = 0;
+    double layer_gain = 1;
+  };
+
+  Synth *synth_ = nullptr;
+
+  void cleanup_regions (std::vector<Region>& regions);
 public:
+  HydrogenImport (Synth *synth);
+
   bool detect (const std::string& filename);
   bool parse (const std::string& filename, std::string& out);
 };

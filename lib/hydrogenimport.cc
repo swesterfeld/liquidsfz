@@ -36,16 +36,13 @@ using pugi::xml_node;
 using std::vector;
 using std::string;
 
-struct Region
+HydrogenImport::HydrogenImport (Synth *synth)
 {
-  string sample;
-  int lovel = 0;
-  int hivel = 0;
-  double layer_gain = 1;
-};
+  synth_ = synth;
+}
 
-static void
-cleanup_regions (vector<Region>& regions)
+void
+HydrogenImport::cleanup_regions (vector<Region>& regions)
 {
   vector<Region *> note_region (128);
 
@@ -163,7 +160,7 @@ HydrogenImport::parse (const string& filename, string& out)
   auto result = doc.load_file (filename.c_str());
   if (!result)
     {
-      printf ("load error\n");
+      synth_->error ("hydrogen load error: %s\n", result.description());
       return false;
     }
   xml_node drumkit_info = doc.child ("drumkit_info");
@@ -242,7 +239,7 @@ HydrogenImport::parse (const string& filename, string& out)
 
   if (region_count == 0)
     {
-      printf ("load error: no hydrogen regions found in input file\n");
+      synth_->error ("hydrogen load error: no regions found in input file\n");
       return false;
     }
   return true;

@@ -622,7 +622,7 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   // read file
   vector<LineInfo> lines;
 
-  HydrogenImport himport;
+  HydrogenImport himport (synth_);
   if (himport.detect (filename))
     {
       string out;
