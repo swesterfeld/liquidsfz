@@ -212,10 +212,16 @@ HydrogenImport::parse (const string& filename, string& out)
       out += string_printf ("\n");
 
       vector<Region> regions;
+      double component_gain = 1.0;
+
       // new style: layer is in an instrumentComponent node
       xml_node instrument_component = instrument.child ("instrumentComponent");
-      for (xml_node layer : instrument_component.children ("layer"))
-        add_layer (layer, regions);
+      if (instrument_component)
+        {
+          component_gain = xml_to_double (instrument_component.child ("gain"), 1);
+          for (xml_node layer : instrument_component.children ("layer"))
+            add_layer (layer, regions);
+        }
 
       // old style: layer is a child of the instrument
       for (xml_node layer : instrument.children ("layer"))
@@ -235,7 +241,9 @@ HydrogenImport::parse (const string& filename, string& out)
           out += string_printf ("  <region>\n");
           out += string_printf ("    lovel=%d hivel=%d\n", r.lovel, r.hivel);
           out += string_printf ("    sample=%s\n", r.sample.c_str());
-          left_right2volume_pan (inst_pan_l * inst_volume * inst_gain * r.layer_gain, inst_pan_r * inst_volume * inst_gain * r.layer_gain, out);
+
+          const double g = component_gain * inst_volume * inst_gain * r.layer_gain;
+          left_right2volume_pan (inst_pan_l * g, inst_pan_r * g, out);
           out += string_printf ("\n");
 
           region_count++;
