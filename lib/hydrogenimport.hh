@@ -42,6 +42,7 @@ class HydrogenImport
     int lovel = 0;
     int hivel = 0;
     double layer_gain = 1;
+    double pitch = 0;
   };
 
   Synth *synth_ = nullptr;

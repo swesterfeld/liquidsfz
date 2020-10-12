@@ -159,8 +159,9 @@ HydrogenImport::add_layer (const xml_node& layer, vector<Region>& regions)
 
   int lovel = lrint (xml_to_double (layer.child ("min"), 0) * 127);
   int hivel = lrint (xml_to_double (layer.child ("max"), 1) * 127);
-  double layer_gain = xml_to_double (layer.child ("gain"), 1);
-  regions.push_back ({ sample, lovel, hivel, layer_gain });
+  double gain = xml_to_double (layer.child ("gain"), 1);
+  double pitch = xml_to_double (layer.child ("pitch"), 0);
+  regions.push_back ({ sample, lovel, hivel, gain, pitch });
 }
 
 bool
@@ -255,7 +256,7 @@ HydrogenImport::parse (const string& filename, string& out)
       if (filename)
         {
           string sample = filename.text().as_string();
-          regions.push_back ({ sample, 1, 127, 1 });
+          regions.push_back ({ sample, 1, 127, 1, 0 });
         }
       cleanup_regions (regions);
 
@@ -264,6 +265,7 @@ HydrogenImport::parse (const string& filename, string& out)
           out += string_printf ("  <region>\n");
           out += string_printf ("    lovel=%d hivel=%d\n", r.lovel, r.hivel);
           out += string_printf ("    sample=%s\n", r.sample.c_str());
+          out += string_printf ("    tune=%f\n", /* cent */ r.pitch * 100);
 
           const double g = drumkit_component_volume * component_gain * inst_volume * inst_gain * r.layer_gain;
           left_right2volume_pan (inst_pan_l * g, inst_pan_r * g, out);
