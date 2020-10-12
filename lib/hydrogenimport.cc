@@ -265,7 +265,9 @@ HydrogenImport::parse (const string& filename, string& out)
           out += string_printf ("  <region>\n");
           out += string_printf ("    lovel=%d hivel=%d\n", r.lovel, r.hivel);
           out += string_printf ("    sample=%s\n", r.sample.c_str());
-          out += string_printf ("    tune=%f\n", /* cent */ r.pitch * 100);
+
+          const int tune = lrint (r.pitch * 100); // -> cent
+          out += string_printf ("    tune=%d\n", tune);
 
           const double g = drumkit_component_volume * component_gain * inst_volume * inst_gain * r.layer_gain;
           left_right2volume_pan (inst_pan_l * g, inst_pan_r * g, out);
