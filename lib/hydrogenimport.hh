@@ -31,6 +31,11 @@ namespace LiquidSFZInternal
 
 class HydrogenImport
 {
+  struct DrumkitComponent
+  {
+    int    id = 0;
+    double volume = 1;
+  };
   struct Region
   {
     std::string sample;

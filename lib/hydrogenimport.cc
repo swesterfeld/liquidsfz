@@ -176,6 +176,18 @@ HydrogenImport::parse (const string& filename, string& out)
       return false;
     }
   xml_node drumkit_info = doc.child ("drumkit_info");
+
+  // import drumkit component list (if available)
+  vector<DrumkitComponent> drumkit_components;
+  xml_node drumkit_component_list = drumkit_info.child ("componentList");
+  for (xml_node drumkit_component : drumkit_component_list.children ("drumkitComponent"))
+    {
+      int id = drumkit_component.child ("id").text().as_int (-1);
+      double volume = xml_to_double (drumkit_component.child ("volume"), 1);
+      drumkit_components.push_back ({ id, volume });
+    }
+
+  // import instrument list
   xml_node instrument_list = drumkit_info.child ("instrumentList");
   int instrument_index = 0;
   int region_count = 0;
@@ -212,6 +224,7 @@ HydrogenImport::parse (const string& filename, string& out)
       out += string_printf ("\n");
 
       vector<Region> regions;
+      double drumkit_component_volume = 1.0;
       double component_gain = 1.0;
 
       // new style: layer is in an instrumentComponent node
@@ -219,6 +232,16 @@ HydrogenImport::parse (const string& filename, string& out)
       if (instrument_component)
         {
           component_gain = xml_to_double (instrument_component.child ("gain"), 1);
+
+          int drumkit_component_id = instrument_component.child ("component_id").text().as_int (-1);
+          if (drumkit_component_id != -1)
+            {
+              for (auto dcomp : drumkit_components)
+                {
+                  if (drumkit_component_id == dcomp.id)
+                    drumkit_component_volume = dcomp.volume;
+                }
+            }
           for (xml_node layer : instrument_component.children ("layer"))
             add_layer (layer, regions);
         }
@@ -242,7 +265,7 @@ HydrogenImport::parse (const string& filename, string& out)
           out += string_printf ("    lovel=%d hivel=%d\n", r.lovel, r.hivel);
           out += string_printf ("    sample=%s\n", r.sample.c_str());
 
-          const double g = component_gain * inst_volume * inst_gain * r.layer_gain;
+          const double g = drumkit_component_volume * component_gain * inst_volume * inst_gain * r.layer_gain;
           left_right2volume_pan (inst_pan_l * g, inst_pan_r * g, out);
           out += string_printf ("\n");
 
