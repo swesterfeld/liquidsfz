@@ -116,6 +116,9 @@ public:
     // init data shared between all Synth instances
     global_.init();
 
+    // preallocate event buffer to avoid malloc in audio thread
+    events.reserve (1024);
+
     // sane defaults:
     set_max_voices (256);
     set_channels (16);
@@ -446,7 +449,7 @@ public:
     event.channel = channel;
     event.arg1 = key;
     event.arg2 = velocity;
-    events.push_back (event);
+    push_event_no_malloc (event);
   }
   void
   add_event_note_off (uint time_frames, int channel, int key)
@@ -457,7 +460,7 @@ public:
     event.channel = channel;
     event.arg1 = key;
     event.arg2 = 0;
-    events.push_back (event);
+    push_event_no_malloc (event);
   }
   void
   add_event_cc (uint time_frames, int channel, int cc, int value)
@@ -468,7 +471,7 @@ public:
     event.channel = channel;
     event.arg1 = cc;
     event.arg2 = value;
-    events.push_back (event);
+    push_event_no_malloc (event);
   }
   void
   add_event_pitch_bend (uint time_frames, int channel, int value)
@@ -478,6 +481,16 @@ public:
     event.type = Event::Type::PITCH_BEND;
     event.channel = channel;
     event.arg1 = value;
+    push_event_no_malloc (event);
+  }
+  void
+  push_event_no_malloc (const Event& event)
+  {
+    if ((events.size() + 1) > events.capacity())
+      {
+        debug ("event ignored (no space for new event; capacity=%zd)\n", events.capacity());
+        return;
+      }
     events.push_back (event);
   }
   void process_audio (float **outputs, uint n_frames, uint offset);
