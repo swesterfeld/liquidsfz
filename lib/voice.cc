@@ -116,7 +116,9 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
     }
 
   /* play start position */
-  ppos_ = region.offset;
+  uint offset = region.offset;
+  offset += lrint (region.offset_random * synth_->normalized_random_value());
+  ppos_ = offset;
   if (ppos_ > region.loop_end)
     loop_enabled_ = false;
 

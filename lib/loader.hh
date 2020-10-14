@@ -132,6 +132,7 @@ struct Region
   float off_time = 0;
   float delay = 0;
   uint  offset = 0;
+  uint  offset_random = 0;
 
   int sw_lokey = -1;
   int sw_hikey = -1;

@@ -278,6 +278,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.delay = convert_float (value);
   else if (key == "offset")
     region.offset = convert_uint (value);
+  else if (key == "offset_random")
+    region.offset_random = convert_uint (value);
   else if (key == "sw_lokey")
     region.sw_lokey = convert_key (value);
   else if (key == "sw_hikey")
