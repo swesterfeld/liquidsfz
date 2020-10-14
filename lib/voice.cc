@@ -85,7 +85,6 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   channel_ = channel;
   key_ = key;
   velocity_ = velocity;
-  ppos_ = 0;
   trigger_ = region.trigger;
   left_gain_.reset (sample_rate, 0.020);
   right_gain_.reset (sample_rate, 0.020);
@@ -107,6 +106,19 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   if (region_->delay_cc.cc >= 0)
     delay += synth_->get_cc (channel_, region_->delay_cc.cc) * (1 / 127.f) * region_->delay_cc.value;
   delay_samples_ = std::max (delay * sample_rate, 0.0);
+
+  /* loop? */
+  loop_enabled_ = false;
+  if (region_->loop_mode == LoopMode::SUSTAIN || region_->loop_mode == LoopMode::CONTINUOUS)
+    {
+      if (region_->loop_end > region_->loop_start)
+        loop_enabled_ = true;
+    }
+
+  /* play start position */
+  ppos_ = region.offset;
+  if (ppos_ > region.loop_end)
+    loop_enabled_ = false;
 
   update_volume_gain();
   update_amplitude_gain();
@@ -374,11 +386,8 @@ Voice::process (float **outputs, uint nframes)
           break;
         }
       ppos_ += replay_speed_.get_next();
-      if (region_->loop_mode == LoopMode::SUSTAIN || region_->loop_mode == LoopMode::CONTINUOUS)
-        {
-          if (region_->loop_end > region_->loop_start)
-            while (ppos_ > region_->loop_end)
-              ppos_ -= (region_->loop_end - region_->loop_start);
-        }
+      if (loop_enabled_)
+        while (ppos_ > region_->loop_end)
+          ppos_ -= (region_->loop_end - region_->loop_start);
     }
 }

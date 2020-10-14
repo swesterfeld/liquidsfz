@@ -60,6 +60,7 @@ public:
   int channel_ = 0;
   int key_ = 0;
   int velocity_ = 0;
+  bool loop_enabled_ = false;
 
   enum State {
     ACTIVE,
