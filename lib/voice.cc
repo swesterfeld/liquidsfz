@@ -146,8 +146,7 @@ float
 Voice::amp_value (float vnorm, const AmpParam& amp_param)
 {
   float value = amp_param.base + amp_param.vel2 * vnorm;
-  if (amp_param.cc.cc >= 0)
-    value += synth_->get_cc (channel_, amp_param.cc.cc) * (1 / 127.f) * amp_param.cc.value;
+  value += synth_->get_cc_vec_value (channel_, amp_param.cc_vec);
 
   return value;
 }

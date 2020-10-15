@@ -114,7 +114,7 @@ struct AmpParam
   }
   float   base = 0;
   float   vel2 = 0;
-  CCParam cc;
+  CCParamVec cc_vec;
 };
 
 struct XFCC
