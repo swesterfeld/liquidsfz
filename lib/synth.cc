@@ -141,7 +141,7 @@ Synth::logv (Log level, const char *format, va_list vargs) const
 }
 
 void
-Synth::error (const char *format, ...)
+Synth::error (const char *format, ...) const
 {
   if (log_level_ <= Log::ERROR)
     {
@@ -154,7 +154,7 @@ Synth::error (const char *format, ...)
 }
 
 void
-Synth::warning (const char *format, ...)
+Synth::warning (const char *format, ...) const
 {
   if (log_level_ <= Log::WARNING)
     {
@@ -167,7 +167,7 @@ Synth::warning (const char *format, ...)
 }
 
 void
-Synth::info (const char *format, ...)
+Synth::info (const char *format, ...) const
 {
   if (log_level_ <= Log::INFO)
     {

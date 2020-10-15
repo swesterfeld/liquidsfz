@@ -512,9 +512,9 @@ public:
   void set_log_level (Log log_level);
   void logv (Log level, const char *format, va_list vargs) const;
 
-  void error (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
-  void warning (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
-  void info (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
+  void error (const char *fmt, ...) const LIQUIDSFZ_PRINTF (2, 3);
+  void warning (const char *fmt, ...) const LIQUIDSFZ_PRINTF (2, 3);
+  void info (const char *fmt, ...) const LIQUIDSFZ_PRINTF (2, 3);
   void debug (const char *fmt, ...) const LIQUIDSFZ_PRINTF (2, 3);
 };
 
