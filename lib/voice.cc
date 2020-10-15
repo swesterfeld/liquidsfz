@@ -100,9 +100,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
     }
 
   double delay = region.delay;
-  /* delay_oncc */
-  if (region_->delay_cc.cc >= 0)
-    delay += synth_->get_cc (channel_, region_->delay_cc.cc) * (1 / 127.f) * region_->delay_cc.value;
+  delay += synth_->get_cc_vec_value (channel_, region_->delay_cc); // delay_oncc
   delay_samples_ = std::max (delay * sample_rate, 0.0);
 
   /* loop? */

@@ -327,8 +327,7 @@ Loader::set_key_value (const string& key, const string& value)
     }
   else if (split_sub_key (key, "delay_oncc", sub_key))
     {
-      region.delay_cc.cc = sub_key;
-      region.delay_cc.value = convert_float (value);
+      region.delay_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (split_sub_key (key, "offset_cc", sub_key)
