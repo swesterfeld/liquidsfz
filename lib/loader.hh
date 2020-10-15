@@ -320,7 +320,7 @@ public:
   unsigned int
   convert_uint (const std::string& s)
   {
-    return stoul (s);
+    return strtoul (s.c_str(), nullptr, 10);
   }
   float
   convert_float (const std::string& s)
