@@ -56,12 +56,6 @@ enum class XFCurve {
   GAIN
 };
 
-struct CCParam
-{
-  int cc = -1;
-  float value = 0;
-};
-
 class CCParamVec
 {
 public:
