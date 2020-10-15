@@ -336,6 +336,12 @@ Loader::set_key_value (const string& key, const string& value)
       region.delay_cc.value = convert_float (value);
       update_cc_info (sub_key);
     }
+  else if (split_sub_key (key, "offset_cc", sub_key)
+       ||  split_sub_key (key, "offset_oncc", sub_key))
+    {
+      region.offset_cc.set (sub_key, convert_float (value));
+      update_cc_info (sub_key);
+    }
   else if (key == "xfin_lovel")
     region.xfin_lovel = convert_int (value);
   else if (key == "xfin_hivel")

@@ -62,6 +62,37 @@ struct CCParam
   float value = 0;
 };
 
+class CCParamVec
+{
+public:
+  struct Entry
+  {
+    int cc = -1;
+    float value = 0;
+  };
+  const std::vector<Entry>&
+  entries() const
+  {
+    return entries_;
+  }
+  void
+  set (int cc, float value)
+  {
+    for (auto& entry : entries_)
+      {
+        if (entry.cc == cc)
+          {
+            /* overwrite old value */
+            entry.value = value;
+            return;
+          }
+      }
+    entries_.push_back ({cc, value});
+  }
+private:
+  std::vector<Entry> entries_;
+};
+
 struct AmpParam
 {
   explicit AmpParam (float b)
@@ -167,6 +198,7 @@ struct Region
   CCParam amplitude_cc;
   CCParam tune_cc;
   CCParam delay_cc;
+  CCParamVec offset_cc;
 
   bool empty()
   {

@@ -128,7 +128,7 @@ log2str (Log level)
 }
 
 void
-Synth::logv (Log level, const char *format, va_list vargs)
+Synth::logv (Log level, const char *format, va_list vargs) const
 {
   char buffer[1024];
 
@@ -180,7 +180,7 @@ Synth::info (const char *format, ...)
 }
 
 void
-Synth::debug (const char *format, ...)
+Synth::debug (const char *format, ...) const
 {
   if (log_level_ <= Log::DEBUG)
     {

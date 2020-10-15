@@ -382,7 +382,7 @@ public:
       }
   }
   int
-  get_cc (int channel, int controller)
+  get_cc (int channel, int controller) const
   {
     if (channel < 0 || uint (channel) > channels_.size())
       {
@@ -396,6 +396,14 @@ public:
         return 0;
       }
     return ch.cc_values[controller];
+  }
+  float
+  get_cc_vec_value (int channel, const CCParamVec& pv) const
+  {
+    float value = 0.0;
+    for (const auto& entry : pv.entries())
+      value += get_cc (channel, entry.cc) * (1 / 127.f) * entry.value;
+    return value;
   }
   void
   update_pitch_bend (int channel, int value)
@@ -502,12 +510,12 @@ public:
 
   void set_log_function (std::function<void (Log, const char *)> function);
   void set_log_level (Log log_level);
-  void logv (Log level, const char *format, va_list vargs);
+  void logv (Log level, const char *format, va_list vargs) const;
 
   void error (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
   void warning (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
   void info (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
-  void debug (const char *fmt, ...) LIQUIDSFZ_PRINTF (2, 3);
+  void debug (const char *fmt, ...) const LIQUIDSFZ_PRINTF (2, 3);
 };
 
 }
