@@ -1,4 +1,7 @@
-- offset opcode
+- can crash using stoul
+- /home/stefan/sfz/karoryfer.meatbass-master/Programs/01_arco_modwheel.sfz sounds bad
+- implement sustain loop
+- add aliases for gain_cc
 
 - key switches (details: API, sw_down, sw_up)
 - envelope minimum times (prevent clicks)
