@@ -309,8 +309,7 @@ Loader::set_key_value (const string& key, const string& value)
     }
   else if (split_sub_key (key, "gain_cc", sub_key))
     {
-      region.gain_cc.cc = sub_key;
-      region.gain_cc.value = convert_float (value);
+      region.gain_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (split_sub_key (key, "amplitude_cc", sub_key) /* sforzando supports both variants */

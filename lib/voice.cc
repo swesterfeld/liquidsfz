@@ -206,8 +206,7 @@ void
 Voice::update_volume_gain()
 {
   float volume = region_->volume;
-  if (region_->gain_cc.cc >= 0)
-    volume += synth_->get_cc (channel_, region_->gain_cc.cc) * (1 / 127.f) * region_->gain_cc.value;
+  volume += synth_->get_cc_vec_value (channel_, region_->gain_cc);
 
   volume_gain_ = db_to_factor (volume);
 
@@ -263,7 +262,7 @@ Voice::update_cc (int controller)
       update_pan_gain();
       update_lr_gain (false);
     }
-  if (controller == region_->gain_cc.cc)
+  if (region_->gain_cc.contains (controller))
     {
       update_volume_gain();
       update_lr_gain (false);
