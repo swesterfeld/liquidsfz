@@ -315,7 +315,7 @@ Voice::process (float **outputs, uint nframes)
               fsamples[i] = csample->samples[x];
               x++;
 
-              if (region_->loop_mode == LoopMode::SUSTAIN || region_->loop_mode == LoopMode::CONTINUOUS)
+              if (loop_enabled_)
                 if (x > uint (region_->loop_end))
                   x = region_->loop_start;
             }
@@ -337,7 +337,7 @@ Voice::process (float **outputs, uint nframes)
               fsamples[i + 1] = csample->samples[x + 1];
               x += 2;
 
-              if (region_->loop_mode == LoopMode::SUSTAIN || region_->loop_mode == LoopMode::CONTINUOUS)
+              if (loop_enabled_)
                 if (x > uint (region_->loop_end * 2))
                   x = region_->loop_start * 2;
             }
