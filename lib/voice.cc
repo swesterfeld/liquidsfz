@@ -63,9 +63,7 @@ Voice::update_replay_speed (bool now)
   else
     semi_tones += pitch_bend_value_ * (region_->bend_down * -0.01);
 
-  /* tune_oncc */
-  if (region_->tune_cc.cc >= 0)
-    semi_tones += synth_->get_cc (channel_, region_->tune_cc.cc) * (1 / 127.f) * (region_->tune_cc.value * 0.01);
+  semi_tones += synth_->get_cc_vec_value (channel_, region_->tune_cc) * 0.01; // tune_oncc
 
   replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_, now);
 }
@@ -278,7 +276,7 @@ Voice::update_cc (int controller)
       update_lr_gain (false);
     }
 
-  if (controller == region_->tune_cc.cc)
+  if (region_->tune_cc.contains (controller))
     update_replay_speed (false);
 }
 

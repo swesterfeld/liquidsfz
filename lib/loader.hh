@@ -94,6 +94,14 @@ public:
       }
     entries_.push_back ({cc, value});
   }
+  bool
+  contains (int cc) const
+  {
+    for (const auto& entry : entries_)
+      if (entry.cc == cc)
+        return true;
+    return false;
+  }
 private:
   std::vector<Entry> entries_;
 };
@@ -201,7 +209,7 @@ struct Region
   CCParam pan_cc;
   CCParam gain_cc;
   CCParam amplitude_cc;
-  CCParam tune_cc;
+  CCParamVec tune_cc;
   CCParam delay_cc;
   CCParamVec offset_cc;
 
