@@ -206,7 +206,7 @@ struct Region
   XFCurve xf_keycurve = XFCurve::POWER;
   XFCurve xf_cccurve = XFCurve::POWER;
 
-  CCParam pan_cc;
+  CCParamVec pan_cc;
   CCParam gain_cc;
   CCParam amplitude_cc;
   CCParamVec tune_cc;

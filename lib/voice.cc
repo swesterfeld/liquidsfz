@@ -155,8 +155,7 @@ void
 Voice::update_pan_gain()
 {
   float pan = region_->pan;
-  if (region_->pan_cc.cc >= 0)
-    pan += synth_->get_cc (channel_, region_->pan_cc.cc) * (1 / 127.f) * region_->pan_cc.value;
+  pan += synth_->get_cc_vec_value (channel_, region_->pan_cc);
 
   pan_left_gain_ = pan_stereo_factor (pan, 0);
   pan_right_gain_ = pan_stereo_factor (pan, 1);
@@ -259,7 +258,7 @@ Voice::update_cc (int controller)
       update_volume_gain();
       update_lr_gain (false);
     }
-  if (controller == region_->pan_cc.cc)
+  if (region_->pan_cc.contains (controller))
     {
       update_pan_gain();
       update_lr_gain (false);

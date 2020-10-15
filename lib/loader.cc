@@ -304,8 +304,7 @@ Loader::set_key_value (const string& key, const string& value)
   else if (split_sub_key (key, "pan_cc", sub_key) /* sforzando supports both variants */
         || split_sub_key (key, "pan_oncc", sub_key))
     {
-      region.pan_cc.cc = sub_key;
-      region.pan_cc.value = convert_float (value);
+      region.pan_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (split_sub_key (key, "gain_cc", sub_key))
