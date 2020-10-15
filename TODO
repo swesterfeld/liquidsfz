@@ -1,5 +1,3 @@
-- can crash using stoul
-- /home/stefan/sfz/karoryfer.meatbass-master/Programs/01_arco_modwheel.sfz sounds bad
 - implement sustain loop
 - add aliases for gain_cc
 
