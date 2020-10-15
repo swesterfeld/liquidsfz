@@ -310,25 +310,33 @@ public:
     printf ("Type 'quit' to quit, 'help' for help.\n");
 
     bool is_running = true;
+    string last_input;
     while (is_running)
       {
-        char *input = readline ("liquidsfz> ");
-        if (!input)
+        char *input_c = readline ("liquidsfz> ");
+        if (!input_c)
           {
             printf ("\n");
             break;
           }
-        for (unsigned char ch : string (input))
+        string input = input_c;
+        free (input_c);
+
+        for (unsigned char ch : input)
           {
+            /* do not add pure whitespace lines to history */
             if (ch > 32)
               {
-                /* do not add pure whitespace lines to history */
-                add_history (input);
-                break;
+                /* do not add identical lines */
+                if (last_input != input)
+                  {
+                    add_history (input.c_str());
+                    last_input = input;
+                    break;
+                  }
               }
           }
         is_running = execute (input);
-        free (input);
       }
     write_history (history_file.c_str());
     history_truncate_file (history_file.c_str(), 500);
