@@ -186,6 +186,7 @@ Loader::set_key_value (const string& key, const string& value)
 
       path = path_join (path, native_filename);
       region.sample = path_absolute (path);
+      region.location = location();
     }
   else if (key == "lokey")
     region.lokey = convert_key (value);

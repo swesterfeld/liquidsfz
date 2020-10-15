@@ -137,6 +137,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 
   state_ = ACTIVE;
   envelope_.start (region, sample_rate_);
+  synth_->debug ("location %s\n", region.location.c_str());
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
 }
 
