@@ -56,7 +56,7 @@ Loader::convert_loop_mode (const string& l)
   else if (l == "loop_sustain")
     return LoopMode::SUSTAIN;
   synth_->warning ("%s unknown loop mode: %s\n", location().c_str(), l.c_str());
-  return LoopMode::DEFAULT;
+  return LoopMode::NONE;
 }
 
 OffMode
@@ -212,11 +212,20 @@ Loader::set_key_value (const string& key, const string& value)
   else if (key == "hirand")
     region.hirand = convert_float (value);
   else if (key == "loop_mode")
-    region.loop_mode = convert_loop_mode (value);
+    {
+      region.loop_mode = convert_loop_mode (value);
+      region.have_loop_mode = true;
+    }
   else if (key == "loop_start")
-    region.loop_start = convert_int (value);
+    {
+      region.loop_start = convert_int (value);
+      region.have_loop_start = true;
+    }
   else if (key == "loop_end")
-    region.loop_end = convert_int (value);
+    {
+      region.loop_end = convert_int (value);
+      region.have_loop_end = true;
+    }
   else if (split_sub_key (key, "locc", sub_key))
     {
       int cc = sub_key;
@@ -727,18 +736,19 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
       if (!cached_sample)
         synth_->warning ("%s: missing sample: '%s'\n", filename.c_str(), regions[i].sample.c_str());
 
-      if (regions[i].loop_mode == LoopMode::DEFAULT)
+      if (cached_sample && cached_sample->loop)
         {
-          if (cached_sample && cached_sample->loop)
-            {
-              regions[i].loop_mode = LoopMode::CONTINUOUS;
-              regions[i].loop_start = cached_sample->loop_start;
-              regions[i].loop_end = cached_sample->loop_end;
-            }
-          else
-            {
-              regions[i].loop_mode = LoopMode::NONE;
-            }
+          /* if values have been given explicitely, keep them
+           *   -> user can override loop settings from wav file (cached sample)
+           */
+          if (!regions[i].have_loop_mode)
+            regions[i].loop_mode = LoopMode::CONTINUOUS;
+
+          if (!regions[i].have_loop_start)
+            regions[i].loop_start = cached_sample->loop_start;
+
+          if (!regions[i].have_loop_end)
+            regions[i].loop_end = cached_sample->loop_end;
         }
       if (regions[i].sw_lolast >= 0)
         regions[i].switch_match = (regions[i].sw_lolast <= regions[i].sw_default && regions[i].sw_hilast >= regions[i].sw_default);

@@ -42,7 +42,6 @@ enum class LoopMode {
   ONE_SHOT, /* one_shot */
   CONTINUOUS, /* loop_continuous */
   SUSTAIN, /* loop_sustain */
-  DEFAULT /* automatically use NONE or CONTINUOUS (from sample) */
 };
 
 enum class OffMode {
@@ -144,7 +143,10 @@ struct Region
   int pitch_keytrack = 100;
   int loop_start = 0;
   int loop_end = 0;
-  LoopMode loop_mode = LoopMode::DEFAULT;
+  LoopMode loop_mode = LoopMode::NONE;
+  bool have_loop_mode = false;
+  bool have_loop_start = false;
+  bool have_loop_end = false;
   Trigger trigger = Trigger::ATTACK;
   int seq_length = 1;
   int seq_position = 1;
