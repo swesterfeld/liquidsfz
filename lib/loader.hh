@@ -70,10 +70,15 @@ public:
     int cc = -1;
     float value = 0;
   };
-  const std::vector<Entry>&
-  entries() const
+  const std::vector<Entry>::const_iterator
+  begin() const
   {
-    return entries_;
+    return entries_.begin();
+  }
+  const std::vector<Entry>::const_iterator
+  end() const
+  {
+    return entries_.end();
   }
   void
   set (int cc, float value)

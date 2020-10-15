@@ -398,10 +398,10 @@ public:
     return ch.cc_values[controller];
   }
   float
-  get_cc_vec_value (int channel, const CCParamVec& pv) const
+  get_cc_vec_value (int channel, const CCParamVec& cc_param_vec) const
   {
     float value = 0.0;
-    for (const auto& entry : pv.entries())
+    for (const auto& entry : cc_param_vec)
       value += get_cc (channel, entry.cc) * (1 / 127.f) * entry.value;
     return value;
   }
