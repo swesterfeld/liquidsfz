@@ -230,8 +230,10 @@ void
 Voice::update_amplitude_gain()
 {
   float gain = region_->amplitude * 0.01f;
-  if (region_->amplitude_cc.cc >= 0)
-    gain *= synth_->get_cc (channel_, region_->amplitude_cc.cc) * (1 / 127.f) * region_->amplitude_cc.value * 0.01f;
+
+  /* for CCs modulating amplitude, the amplitudes of the individual CCs are multiplied (not added) */
+  for (const auto& entry : region_->amplitude_cc)
+    gain *= synth_->get_cc (channel_, entry.cc) * (1 / 127.f) * entry.value * 0.01f;
 
   amplitude_gain_ = gain;
 }
@@ -267,7 +269,7 @@ Voice::update_cc (int controller)
       update_volume_gain();
       update_lr_gain (false);
     }
-  if (controller == region_->amplitude_cc.cc)
+  if (region_->amplitude_cc.contains (controller))
     {
       update_amplitude_gain();
       update_lr_gain (false);

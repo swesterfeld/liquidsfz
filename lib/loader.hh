@@ -208,7 +208,7 @@ struct Region
 
   CCParamVec pan_cc;
   CCParamVec gain_cc;
-  CCParam amplitude_cc;
+  CCParamVec amplitude_cc;
   CCParamVec tune_cc;
   CCParam delay_cc;
   CCParamVec offset_cc;
