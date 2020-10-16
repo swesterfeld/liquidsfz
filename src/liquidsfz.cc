@@ -158,7 +158,7 @@ class CommandQueue
   std::mutex      mutex;
 public:
   void
-  append (std::function<void()> fun)
+  append (std::function<void()> fun) // main thread
   {
     std::lock_guard lg (mutex);
 
@@ -174,7 +174,7 @@ public:
     commands.push_back (c);
   }
   void
-  run()
+  run() // audio thread
   {
     if (mutex.try_lock()) /* never stall audio thread */
       {
@@ -186,6 +186,17 @@ public:
             done = true;
           }
         mutex.unlock();
+      }
+  }
+  void
+  wait_all() // main thread
+  {
+    for (;;)
+      {
+        usleep (10 * 1000);
+        std::lock_guard lg (mutex);
+        if (commands.empty() || done)
+          return;
       }
   }
 };
@@ -369,6 +380,7 @@ public:
         printf ("noteoff chan key    - stop note\n");
         printf ("cc chan ctrl value  - send controller event\n");
         printf ("gain value          - set gain (0 < value < 5)\n");
+        printf ("voice_count         - print number of active synthesis voices\n");
         printf ("sleep time_ms       - sleep for some milliseconds\n");
         printf ("source filename     - load a file and execute each line as command\n");
         printf ("echo text           - print text\n");
@@ -396,6 +408,13 @@ public:
     else if (cli_parser.command ("gain", dvalue))
       {
         cmd_q.append ([=]() { synth.set_gain (std::clamp (dvalue, 0., 5.)); });
+      }
+    else if (cli_parser.command ("voice_count"))
+      {
+        int v = -1;
+        cmd_q.append ([&v, this]() { v = synth.active_voice_count(); });
+        cmd_q.wait_all();
+        printf ("%d\n", v);
       }
     else if (cli_parser.command ("sleep", dvalue))
       {
