@@ -235,9 +235,10 @@ class JackStandalone
   jack_port_t *audio_right = nullptr;
 
   CommandQueue cmd_q;
-public:
   Synth synth;
+  std::mutex synth_mutex;
 
+public:
   JackStandalone (jack_client_t *client) :
     client (client)
   {
@@ -258,11 +259,23 @@ public:
         }, this);
   }
   int
-  process (jack_nframes_t nframes)
+  process (jack_nframes_t n_frames)
   {
-    cmd_q.run();
+    cmd_q.run(); // execute pending commands
 
-    void* port_buf = jack_port_get_buffer (midi_input_port, nframes);
+    float *outputs[2] = {
+      (float *) jack_port_get_buffer (audio_left, n_frames),
+      (float *) jack_port_get_buffer (audio_right, n_frames)
+    };
+    if (!synth_mutex.try_lock())
+      {
+        // synth is in use (probably loading an sfz file), so we cannot call process() here
+        std::fill_n (outputs[0], n_frames, 0.0);
+        std::fill_n (outputs[1], n_frames, 0.0);
+        return 0;
+      }
+
+    void* port_buf = jack_port_get_buffer (midi_input_port, n_frames);
     jack_nframes_t event_count = jack_midi_get_event_count (port_buf);
 
     for (jack_nframes_t event_index = 0; event_index < event_count; event_index++)
@@ -286,11 +299,8 @@ public:
           }
       }
 
-    float *outputs[2] = {
-      (float *) jack_port_get_buffer (audio_left, nframes),
-      (float *) jack_port_get_buffer (audio_right, nframes)
-    };
-    synth.process (outputs, nframes);
+    synth.process (outputs, n_frames);
+    synth_mutex.unlock();
     return 0;
   }
   void
@@ -360,7 +370,7 @@ public:
 
     int ch, key, vel, cc, value;
     double dvalue;
-    string script, text;
+    string script, text, filename;
     if (cli_parser.empty_line())
       {
         /* empty line (or comment) */
@@ -374,6 +384,7 @@ public:
         printf ("help                - show this help\n");
         printf ("quit                - quit liquidsfz\n");
         printf ("\n");
+        printf ("load sfz_filename   - load sfz from filename\n");
         printf ("allsoundoff         - stop all sounds\n");
         printf ("reset               - system reset (stop all sounds, reset controllers)\n");
         printf ("noteon chan key vel - start note\n");
@@ -384,6 +395,14 @@ public:
         printf ("sleep time_ms       - sleep for some milliseconds\n");
         printf ("source filename     - load a file and execute each line as command\n");
         printf ("echo text           - print text\n");
+      }
+    else if (cli_parser.command ("load", filename))
+      {
+        std::lock_guard lg (synth_mutex); // can't process() while loading
+        if (load (filename))
+          printf ("ok\n");
+        else
+          printf ("failed\n");
       }
     else if (cli_parser.command ("allsoundoff"))
       {
