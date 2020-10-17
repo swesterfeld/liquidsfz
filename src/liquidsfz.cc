@@ -390,7 +390,8 @@ public:
         printf ("noteon chan key vel - start note\n");
         printf ("noteoff chan key    - stop note\n");
         printf ("cc chan ctrl value  - send controller event\n");
-        printf ("gain value          - set gain (0 < value < 5)\n");
+        printf ("pitch_bend chan val - send pitch bend event (0 <= val <= 16383)\n");
+        printf ("gain value          - set gain (0 <= value <= 5)\n");
         printf ("voice_count         - print number of active synthesis voices\n");
         printf ("sleep time_ms       - sleep for some milliseconds\n");
         printf ("source filename     - load a file and execute each line as command\n");
@@ -423,6 +424,10 @@ public:
     else if (cli_parser.command ("cc", ch, cc, value))
       {
         cmd_q.append ([=]() { synth.add_event_cc (0, ch, cc, value); });
+      }
+    else if (cli_parser.command ("pitch_bend", ch, value))
+      {
+        cmd_q.append ([=]() { synth.add_event_pitch_bend (0, ch, value); });
       }
     else if (cli_parser.command ("gain", dvalue))
       {
