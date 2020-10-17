@@ -25,6 +25,8 @@
 
 using namespace LiquidSFZInternal;
 
+using std::clamp;
+
 double
 Voice::pan_stereo_factor (double region_pan, int ch)
 {
@@ -155,6 +157,7 @@ Voice::update_pan_gain()
 {
   float pan = region_->pan;
   pan += synth_->get_cc_vec_value (channel_, region_->pan_cc);
+  pan = clamp (pan, -100.f, 100.f);
 
   pan_left_gain_ = pan_stereo_factor (pan, 0);
   pan_right_gain_ = pan_stereo_factor (pan, 1);
