@@ -478,7 +478,7 @@ public:
     event.type = Event::Type::CC;
     event.channel = channel;
     event.arg1 = cc;
-    event.arg2 = value;
+    event.arg2 = std::clamp (value, 0, 127);
     push_event_no_malloc (event);
   }
   void
@@ -488,7 +488,7 @@ public:
     event.time_frames = time_frames;
     event.type = Event::Type::PITCH_BEND;
     event.channel = channel;
-    event.arg1 = value;
+    event.arg1 = std::clamp (value, 0, 16383);
     push_event_no_malloc (event);
   }
   void
