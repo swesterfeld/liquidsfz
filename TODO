@@ -1,12 +1,8 @@
-- add aliases for gain_cc
-- constrain parameters after modulation
-- constrain cc value
-
 - key switches (details: API, sw_down, sw_up)
 - envelope minimum times (prevent clicks)
 - C++ style block comments
 - implement better interpolation (windowed sinc)
-- fully contstrain parameters (i.e. pan=-200 should result in pan=-100)
+- possibly contstrain parameters (however, sforzando doesn't always constrain either)
 
 maybe:
 - aria xml index
