@@ -318,6 +318,7 @@ Loader::set_key_value (const string& key, const string& value)
       update_cc_info (sub_key);
     }
   else if (split_sub_key (key, "gain_cc", sub_key)
+       ||  split_sub_key (key, "volume_cc", sub_key)
        ||  split_sub_key (key, "volume_oncc", sub_key))
     {
       region.gain_cc.set (sub_key, convert_float (value));
