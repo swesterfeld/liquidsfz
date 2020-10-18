@@ -2,15 +2,17 @@
 
 ## DESCRIPTION
 
-liquidsfz is a free and open source sampler that can load and play .sfz files. We
-support JACK and LV2.
+liquidsfz is a free and open source sampler that can load and play .sfz files.
+It can also load and play Hydrogen drumkits. We support JACK and LV2.
 
 The main goal is to provide a library that is easy to integrate into other
-projects. Right now the API is still changing, but in the long term goal is to
-provide a library API that is stable.
+projects.
 
- * API documentation is available here: http://space.twc.de/~stefan/liquidsfz/api-0.2.0
+ * API documentation is available here: http://space.twc.de/~stefan/liquidsfz/api-0.2.1
  * There is also a list of [currently supported SFZ opcodes](OPCODES.md)
+
+The API should be fairly stable at this point, so we try to maintain source
+compatibility.
 
 ## COMPILING
 
@@ -22,9 +24,13 @@ To compile liquidsfz, use the usual
 
 You need the packages (on Debian/Ubuntu):
 
-* libjack-jackd2-dev
+* libjack-jackd2-dev (JACK client)
+* libreadline-dev (JACK client)
+* lv2-dev (LV2 plugin)
 * libsndfile1-dev
-* lv2-dev
+
+Some components can be disabled during configure, --without-jack will turn off
+building the JACK client, --without-lv2 will turn off building the LV2 plugin.
 
 If you are building from git, you also need the package (for autogen.sh to work):
 
@@ -35,6 +41,10 @@ If you are building from git, you also need the package (for autogen.sh to work)
 The liquidsfz command line program can be used like this:
 
     liquidsfz ~/sfz/SalamanderGrandPianoV3_44.1khz16bit/SalamanderGrandPianoV3.sfz
+
+Or if you want to load a Hydrogen drumkit, like this:
+
+    liquidsfz /usr/share/hydrogen/data/drumkits/GMRockKit/drumkit.xml
 
 liquidsfz works as jack client with midi input and audio ouput. If you connect
 the jack midi input / audio output using a patchbay, you can send midi events
