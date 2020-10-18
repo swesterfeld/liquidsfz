@@ -142,6 +142,11 @@ public:
    * @param filename   name of the .sfz file
    *
    * @returns true if the .sfz could be loaded successfully
+   *
+   * Typically, this function is called with an .sfz filename. It can also be
+   * used with a hydrogen \c drumkit.xml file. In this case the drumkit is loaded
+   * by mapping hydrogen to sfz features. The format will be auto-detected,
+   * it will be treated as hydrogen if it contains typical hydrogen tags.
    */
   bool load (const std::string& filename);
 
