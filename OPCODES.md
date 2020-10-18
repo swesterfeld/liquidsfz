@@ -2,7 +2,7 @@
 
 ## SUPPORTED OPCODES
 
-The following SFZ opcodes are supported in liquidsfz-0.2.0:
+The following SFZ opcodes are supported in liquidsfz-0.2.1:
 
 * amp_random
 * amp_velcurve_N
@@ -52,6 +52,10 @@ The following SFZ opcodes are supported in liquidsfz-0.2.0:
 * off_by
 * off_mode
 * off_time
+* offset
+* offset_ccN
+* offset_onccN
+* offset_random
 * on_hiccN
 * on_loccN
 * pan
@@ -78,6 +82,7 @@ The following SFZ opcodes are supported in liquidsfz-0.2.0:
 * tune_ccN
 * tune_onccN
 * volume
+* volume_onccN
 * xf_cccurve
 * xf_keycurve
 * xf_velcurve
