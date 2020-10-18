@@ -1,3 +1,26 @@
+Overview of Changes in liquidsfz-0.2.1:
+
+* New opcodes: offset / offset_random / offset_ccN / offset_onccN
+* Support loading Hydrogen drumkit.xml files
+* Make liquidsfz JACK client interactive, support typing commands
+* Support building as shared library
+* Share the same sample cache between all Synth instances
+* Opcode aliases for volume_cc and volume_oncc
+* RT cleanups for standard logging (info/warning/error)
+* Document threading / RT constraints
+* API additions
+  - Synth::active_voice_count
+  - Synth::all_sound_off
+  - Synth::system_reset
+* Support compiling without some features (--without-jack / --without-lv2)
+* Fixes
+  - make string->double conversion work on any locale
+  - preallocate event buffers to avoid malloc for new events
+  - allow one parameter to be modulated by multiple CCs
+  - don't crash on broken sfz which have uint out of range
+  - fix overriding sample loop_mode/loop_start/loop_end
+  - constrain ranges for cc/pitch_bend (i.e. enforce cc to [0..127])
+
 Overview of Changes in liquidsfz-0.2.0:
 
 * Provide LV2 plugin
