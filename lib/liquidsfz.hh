@@ -122,6 +122,8 @@ public:
    * than one voice, for instance if multiple samples are cross-faded.
    *
    * @returns the number of currently active voices
+   *
+   * <em>This function is RT safe and can be used from the audio thread.</em>
    */
   uint active_voice_count() const;
 
@@ -129,6 +131,8 @@ public:
    * \brief Set global gain
    *
    * @param gain  gain (as a factor)
+   *
+   * <em>This function is RT safe and can be used from the audio thread.</em>
    */
   void set_gain (float gain);
 
@@ -161,6 +165,8 @@ public:
    * @param channel     midi channel
    * @param key         note that was pressed
    * @param velocity    velocity for note on
+   *
+   * <em>This function is RT safe and can be used from the audio thread.</em>
    */
   void add_event_note_on (uint time_frames, int channel, int key, int velocity);
 
@@ -175,6 +181,8 @@ public:
    * @param time_frames the start time of the event (in frames)
    * @param channel     midi channel
    * @param key         note that was pressed
+   *
+   * <em>This function is RT safe and can be used from the audio thread.</em>
    */
   void add_event_note_off (uint time_frames, int channel, int key);
 
@@ -190,6 +198,8 @@ public:
    * @param channel     midi channel
    * @param cc          the controller
    * @param value       new value for the controller
+   *
+   * <em>This function is RT safe and can be used from the audio thread.</em>
    */
   void add_event_cc (uint time_frames, int channel, int cc, int value);
 
@@ -205,6 +215,8 @@ public:
    * @param time_frames the start time of the event (in frames)
    * @param channel     midi channel
    * @param value       new value for the controller [0..16383]
+   *
+   * <em>This function is RT safe and can be used from the audio thread.</em>
    */
   void add_event_pitch_bend (uint time_frames, int channel, int value);
 
@@ -228,6 +240,8 @@ public:
    *
    * @param outputs    buffers for the output of the synthesizer
    * @param n_frames   number of stereo frames to be written
+   *
+   * <em>This function is RT safe and can be used from the audio thread.</em>
    */
   void process (float **outputs, uint n_frames);
 
@@ -236,6 +250,8 @@ public:
    *
    * Stop all active voices immediately. This may click because the voices are
    * not faded out.
+   *
+   * <em>This function is RT safe and can be used from the audio thread.</em>
    */
   void all_sound_off();
 
@@ -247,6 +263,8 @@ public:
    *  - stop all active voices immediately
    *
    * This may click because the voices are not faded out.
+   *
+   * <em>This function is RT safe and can be used from the audio thread.</em>
    */
   void system_reset();
 
@@ -367,9 +385,10 @@ by waiting for a lock, allocating memory or doing file I/O).
 - \ref Synth::add_event_note_off
 - \ref Synth::add_event_cc
 - \ref Synth::add_event_pitch_bend
+- \ref Synth::all_sound_off
 - \ref Synth::process
 - \ref Synth::set_gain
-- \ref Synth::all_sound_off
+- \ref Synth::system_reset
 
 Typically these restrictions mean that at the beginning of your application,
 you setup the \ref Synth object by loading an .sfz file, setting the sample
