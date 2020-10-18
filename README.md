@@ -68,7 +68,7 @@ The code is licensed under the LGPL 2.1 or later.
 The current version of liquidsfz is liquidsfz-0.2.0, and can be downloaded
 here:
 
-* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.0.tar.bz2
+* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.1.tar.bz2
 
 ## BINARY LV2 PLUGIN
 
@@ -76,7 +76,7 @@ The LV2 plugin (and only the LV2 plugin) is available as self-contained 64-bit
 binary which should run on most recent linux distributions (newer than Ubuntu
 16.04).
 
-* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.0-x86_64.tar.gz
+* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.1-x86_64.tar.gz
 
 To install it, extract the archive and
 
@@ -85,4 +85,5 @@ To install it, extract the archive and
 
 ## OLDER VERSIONS
 
+* http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.0.tar.bz2 (old version)
 * http://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2 (old version)
