@@ -10,9 +10,9 @@ LT_INIT([pic-only])
 
 dnl Version splitted
 
-[MAJOR_VERSION=`echo $PACKAGE_VERSION | sed 's/\([0-9]\+\)\.\([0-9]\+\)\.\([0-9]\+\)\(.*\)/\1/'`]
-[MINOR_VERSION=`echo $PACKAGE_VERSION | sed 's/\([0-9]\+\)\.\([0-9]\+\)\.\([0-9]\+\)\(.*\)/\2/'`]
-[MICRO_VERSION=`echo $PACKAGE_VERSION | sed 's/\([0-9]\+\)\.\([0-9]\+\)\.\([0-9]\+\)\(.*\)/\3/'`]
+[MAJOR_VERSION=`echo $PACKAGE_VERSION | cut -d . -f 1`]
+[MINOR_VERSION=`echo $PACKAGE_VERSION | cut -d . -f 2`]
+[MICRO_VERSION=`echo $PACKAGE_VERSION | cut -d . -f 3`]
 
 AC_SUBST(MAJOR_VERSION)
 AC_SUBST(MINOR_VERSION)
