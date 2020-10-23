@@ -20,6 +20,8 @@
 
 #include <math.h>
 
+#include <array>
+
 #include "voice.hh"
 #include "synth.hh"
 
