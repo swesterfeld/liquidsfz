@@ -1,7 +1,10 @@
 - key switches (details: API, sw_down, sw_up)
+- export sw_label and label_keyN in API
+- provide midnam support for LV2 (controllers, switches, key labels)
+- convert hydrogen note names to key labels
 - envelope minimum times (prevent clicks)
 - C++ style block comments
-- implement better interpolation (windowed sinc)
+- implement better interpolation (windowed sinc, bandlimited interpolation)
 - possibly contstrain parameters (however, sforzando doesn't always constrain either)
 
 maybe:
