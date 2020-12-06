@@ -237,6 +237,7 @@ class JackStandalone
   CommandQueue cmd_q;
   Synth synth;
   std::mutex synth_mutex;
+  std::vector<KeyInfo> keys;
 
 public:
   JackStandalone (jack_client_t *client) :
@@ -392,6 +393,8 @@ public:
         printf ("cc chan ctrl value  - send controller event\n");
         printf ("pitch_bend chan val - send pitch bend event (0 <= val <= 16383)\n");
         printf ("gain value          - set gain (0 <= value <= 5)\n");
+        printf ("keys                - show keys supported by the sfz\n");
+        printf ("switches            - show switches supported by the sfz\n");
         printf ("voice_count         - print number of active synthesis voices\n");
         printf ("sleep time_ms       - sleep for some milliseconds\n");
         printf ("source filename     - load a file and execute each line as command\n");
@@ -432,6 +435,14 @@ public:
     else if (cli_parser.command ("gain", dvalue))
       {
         cmd_q.append ([=]() { synth.set_gain (std::clamp (dvalue, 0., 5.)); });
+      }
+    else if (cli_parser.command ("keys"))
+      {
+        show_keys (false);
+      }
+    else if (cli_parser.command ("switches"))
+      {
+        show_keys (true);
       }
     else if (cli_parser.command ("voice_count"))
       {
@@ -481,8 +492,23 @@ public:
     if (!load_ok)
       return false;
 
+    keys = synth.list_keys();
+
     printf ("%30s\r", ""); // overwrite progress message
     return true;
+  }
+  void
+  show_keys (bool is_switch)
+  {
+    for (const auto& k : keys)
+      {
+        string label = k.label();
+        if (label == "")
+          label = "-";
+
+        if (is_switch == k.is_switch())
+          printf ("%d %s\n", k.key(), label.c_str());
+      }
   }
 };
 
