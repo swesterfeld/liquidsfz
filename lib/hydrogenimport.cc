@@ -93,6 +93,18 @@ HydrogenImport::cleanup_regions (vector<Region>& regions)
     }
 }
 
+static string
+make_sane_key_name (const xml_node& node)
+{
+  string s = node.text().as_string();
+  for (auto& c : s)
+    {
+      if (c == '<' || c == '=' || c == '>' || c == '/' || c < 32 || c >= 127)
+        c = '_';
+    }
+  return s;
+}
+
 static double
 xml_to_double (const xml_node& node, double def)
 {
@@ -193,6 +205,7 @@ HydrogenImport::parse (const string& filename, string& out)
   int instrument_index = 0;
   int region_count = 0;
   int next_group = 1;
+  string out_control = "<control>\n";
   for (xml_node instrument : instrument_list.children ("instrument"))
     {
       xml_node name = instrument.child ("name");
@@ -207,6 +220,9 @@ HydrogenImport::parse (const string& filename, string& out)
       int midi_out_note = instrument.child ("midiOutNote").text().as_int();
       if (use_midi_out_note && midi_out_note > 0)
         key = midi_out_note;
+
+      // note name goes into the <control> section
+      out_control += string_printf ("label_key%d=%s\n", key, make_sane_key_name (name).c_str());
 
       int mute_group = instrument.child ("muteGroup").text().as_int (-1);
       int group = (mute_group > 0) ? (mute_group + 1000) : next_group++;
@@ -280,6 +296,9 @@ HydrogenImport::parse (const string& filename, string& out)
 
       instrument_index++;
     }
+
+  // prepend control section entries
+  out = out_control + "\n" + out;
 
   if (region_count == 0)
     {
