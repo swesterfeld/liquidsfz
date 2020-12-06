@@ -88,6 +88,42 @@ public:
 };
 
 /**
+ * \brief Information for one key
+ */
+class KeyInfo
+{
+  friend class Synth;
+
+  struct Impl;
+  std::unique_ptr<Impl> impl;
+public:
+  KeyInfo();
+  KeyInfo (KeyInfo&&) = default;
+  ~KeyInfo();
+
+  /**
+   * @returns midi key number (1-127)
+   */
+  int key() const;
+
+  /**
+   * Some .sfz files assign labels to some of the keys; if no label is
+   * available this function will return "".
+   *
+   * @returns label for the key
+   */
+  std::string label() const;
+
+  /**
+   * Get flag that indicates whether this key acts is a key switch (as
+   * opposed to regular midi notes).
+   *
+   * @returns true if this is a key switch
+   */
+  bool is_switch() const;
+};
+
+/**
  * \brief SFZ Synthesizer (main API)
  */
 class Synth
@@ -156,6 +192,17 @@ public:
    * @returns a vector that contains information for each supported CC
    */
   std::vector<CCInfo> list_ccs() const;
+
+  /**
+   * \brief List active keys used by this .sfz file
+   *
+   * A key is active if either a sample will be played if the key pressed or
+   * the key acts as key switch. Inactive keys (which do nothing) will not be
+   * part of the returned vector.
+   *
+   * @returns a vector that contains information for the supported keys
+   */
+  std::vector<KeyInfo> list_keys() const;
 
   /**
    * \brief Add a note on event

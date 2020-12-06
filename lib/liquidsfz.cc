@@ -181,3 +181,48 @@ Synth::list_ccs() const
     }
   return result;
 }
+
+/*----------------- KeyInfo --------------*/
+
+struct KeyInfo::Impl {
+  LiquidSFZInternal::KeyInfo key_info;
+};
+
+KeyInfo::KeyInfo() : impl (new KeyInfo::Impl())
+{
+}
+
+KeyInfo::~KeyInfo()
+{
+}
+
+int
+KeyInfo::key() const
+{
+  return impl->key_info.key;
+}
+
+string
+KeyInfo::label() const
+{
+  return impl->key_info.label;
+}
+
+bool
+KeyInfo::is_switch() const
+{
+  return impl->key_info.is_switch;
+}
+
+vector<KeyInfo>
+Synth::list_keys() const
+{
+  vector<KeyInfo> result;
+
+  for (const auto& key_info : impl->synth.list_keys())
+    {
+      auto& key_result = result.emplace_back();
+      key_result.impl->key_info = key_info;
+    }
+  return result;
+}
