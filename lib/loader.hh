@@ -125,6 +125,13 @@ struct CCInfo
   int default_value = 0;
 };
 
+struct KeyInfo
+{
+  int key = -1;
+  std::string label;
+  bool is_switch = false;
+};
+
 struct Region
 {
   std::string sample;
@@ -181,6 +188,7 @@ struct Region
   int sw_lolast = -1;
   int sw_hilast = -1;
   int sw_default = -1;
+  std::string sw_label;
 
   int tune = 0;
   int transpose = 0;
@@ -277,6 +285,8 @@ public:
   std::vector<Region> regions;
   Control control;
   std::vector<CCInfo> cc_list;
+  std::map<int, KeyInfo> key_map;
+  std::vector<KeyInfo> key_list;
   CurveTable curve_table;
   std::string sample_path;
 
@@ -349,6 +359,7 @@ public:
   bool split_sub_key (const std::string& key, const std::string& start, int& sub_key);
   XFCC& search_xfcc (std::vector<XFCC>& xfcc_vec, int cc, int def);
   CCInfo& update_cc_info (int cc);
+  KeyInfo& update_key_info (int key);
   void set_key_value (const std::string& key, const std::string& value);
   void set_key_value_control (const std::string& key, const std::string& value);
   void handle_tag (const std::string& tag);

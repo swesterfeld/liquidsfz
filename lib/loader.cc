@@ -124,6 +124,14 @@ Loader::update_cc_info (int cc)
   return cc_list.emplace_back (cc_info);
 }
 
+KeyInfo&
+Loader::update_key_info (int key)
+{
+  KeyInfo& key_info = key_map[key];
+  key_info.key = key;
+  return key_info;
+}
+
 bool
 Loader::parse_amp_param (AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str)
 {
@@ -301,6 +309,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.sw_hilast = convert_key (value);
   else if (key == "sw_default")
     region.sw_default = convert_key (value);
+  else if (key == "sw_label")
+    region.sw_label = value;
   else if (key == "tune")
     region.tune = convert_int (value);
   else if (key == "transpose")
@@ -421,6 +431,10 @@ Loader::set_key_value_control (const string& key, const string& value)
       CCInfo& cc_info = update_cc_info (sub_key);
       cc_info.has_label = true;
       cc_info.label = value;
+    }
+  else if (split_sub_key (key, "label_key", sub_key))
+    {
+      update_key_info (sub_key).label = value;
     }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
@@ -732,34 +746,58 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   synth_->progress (0);
   for (size_t i = 0; i < regions.size(); i++)
     {
-      const auto cached_sample = sample_cache.load (regions[i].sample);
-      regions[i].cached_sample = cached_sample;
+      Region& region = regions[i];
+
+      const auto cached_sample = sample_cache.load (region.sample);
+      region.cached_sample = cached_sample;
 
       if (!cached_sample)
-        synth_->warning ("%s: missing sample: '%s'\n", filename.c_str(), regions[i].sample.c_str());
+        synth_->warning ("%s: missing sample: '%s'\n", filename.c_str(), region.sample.c_str());
 
       if (cached_sample && cached_sample->loop)
         {
           /* if values have been given explicitely, keep them
            *   -> user can override loop settings from wav file (cached sample)
            */
-          if (!regions[i].have_loop_mode)
-            regions[i].loop_mode = LoopMode::CONTINUOUS;
+          if (!region.have_loop_mode)
+            region.loop_mode = LoopMode::CONTINUOUS;
 
-          if (!regions[i].have_loop_start)
-            regions[i].loop_start = cached_sample->loop_start;
+          if (!region.have_loop_start)
+            region.loop_start = cached_sample->loop_start;
 
-          if (!regions[i].have_loop_end)
-            regions[i].loop_end = cached_sample->loop_end;
+          if (!region.have_loop_end)
+            region.loop_end = cached_sample->loop_end;
         }
-      if (regions[i].sw_lolast >= 0)
-        regions[i].switch_match = (regions[i].sw_lolast <= regions[i].sw_default && regions[i].sw_hilast >= regions[i].sw_default);
+      if (region.sw_lolast >= 0)
+        region.switch_match = (region.sw_lolast <= region.sw_default && region.sw_hilast >= region.sw_default);
 
-      curve_table.expand_curve (regions[i].amp_velcurve);
+      curve_table.expand_curve (region.amp_velcurve);
 
+      /* generate entries for regular notes */
+      if (region.lokey > 0)
+        for (int key = region.lokey; key <= region.hikey; key++)
+          update_key_info (key).is_switch = false;
+
+      /* generate entries for key switches */
+      if (region.sw_lolast > 0)
+        {
+          for (int key = region.sw_lolast; key <= region.sw_hilast; key++)
+            {
+              KeyInfo& ki = update_key_info (key);
+              ki.is_switch = true;
+              if (region.sw_label != "")
+                ki.label = region.sw_label;
+            }
+        }
+
+      /* update progress info */
       synth_->progress ((i + 1) * 100.0 / regions.size());
     }
+  // generate final cc_list
+  for (const auto& [key, key_info] : key_map)
+    key_list.push_back (key_info);
 
+  // generate final key_list
   std::sort (cc_list.begin(), cc_list.end(),
     [] (const CCInfo& a, const CCInfo& b) {
       return a.cc < b.cc;

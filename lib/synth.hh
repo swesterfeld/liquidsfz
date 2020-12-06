@@ -95,6 +95,7 @@ class Synth
   std::vector<Region> regions_;
   Control control_;
   std::vector<CCInfo> cc_list_;
+  std::vector<KeyInfo> key_list_;
   CurveTable curve_table_;
   Log log_level_ = Log::INFO;
   static Global global_;
@@ -173,6 +174,7 @@ public:
         regions_      = loader.regions;
         control_      = loader.control;
         cc_list_      = loader.cc_list;
+        key_list_     = loader.key_list;
         curve_table_  = std::move (loader.curve_table);
 
         init_channels();
@@ -184,6 +186,11 @@ public:
   list_ccs()
   {
     return cc_list_;
+  }
+  std::vector<KeyInfo>
+  list_keys()
+  {
+    return key_list_;
   }
   void
   progress (double percent)
