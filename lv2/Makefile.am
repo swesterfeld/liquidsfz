@@ -7,7 +7,7 @@ liquidsfz_lv2_DATA = manifest.ttl liquidsfz.ttl
 CLEANFILES = liquidsfz.ttl liquidsfz_lv2.so
 liquidsfz.ttl: $(top_builddir)/config.status
 
-EXTRA_DIST = manifest.ttl lv2plugin.cc ldscript.map
+EXTRA_DIST = manifest.ttl lv2plugin.cc lv2_midnam.h ldscript.map
 
 all-local: liquidsfz_lv2.so
 

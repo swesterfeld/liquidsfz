@@ -19,6 +19,8 @@
  */
 
 #include "liquidsfz.hh"
+#include "midnam.hh"
+#include "log.hh"
 
 #include "lv2/lv2plug.in/ns/lv2core/lv2.h"
 #include "lv2/lv2plug.in/ns/ext/atom/atom.h"
@@ -30,6 +32,8 @@
 #include "lv2/lv2plug.in/ns/ext/state/state.h"
 #include "lv2/lv2plug.in/ns/extensions/ui/ui.h"
 #include "lv2/lv2plug.in/ns/ext/worker/worker.h"
+
+#include "lv2_midnam.h"
 
 #include <string>
 #include <atomic>
@@ -126,11 +130,17 @@ class LV2Plugin
   float                    old_level = 1000;          // outside range [-80:20]
 
   LV2_Worker_Schedule     *schedule = nullptr;
+  LV2_Midnam              *midnam = nullptr;
   LV2_Atom_Forge           forge;
   Synth                    synth;
+  string                   midnam_model;
+  string                   midnam_str;
+  std::mutex               midnam_str_mutex;
 public:
-  LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule) :
-    schedule (schedule)
+
+  LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam) :
+    schedule (schedule),
+    midnam (midnam)
   {
     /* avoid allocations in RT thread */
     load_filename.reserve (1024);
@@ -138,6 +148,8 @@ public:
     current_filename.reserve (1024);
 
     synth.set_sample_rate (rate);
+
+    midnam_model = LiquidSFZInternal::string_printf ("LiquidSFZ-%p\n", this);
 
     lv2_atom_forge_init (&forge, map);
 
@@ -202,6 +214,17 @@ public:
     lv2_atom_forge_pop (&forge, &frame);
   }
 
+  char *
+  get_midnam_str()
+  {
+    std::lock_guard lg (midnam_str_mutex);
+    return strdup (midnam_str.c_str());
+  }
+  char *
+  get_midnam_model()
+  {
+    return strdup (midnam_model.c_str());
+  }
   void
   work (LV2_Worker_Respond_Function respond,
         LV2_Worker_Respond_Handle   handle,
@@ -213,6 +236,11 @@ public:
         debug ("loading file %s\n", load_filename.c_str());
 
         synth.load (load_filename);
+
+        { // midnam string is accessed from other threads than the worker thread
+          std::lock_guard lg (midnam_str_mutex);
+          midnam_str = LiquidSFZInternal::gen_midnam (synth, midnam_model);
+        }
 
         respond (handle, 1, "");
       }
@@ -325,6 +353,9 @@ public:
 
         write_state_changed();
         write_set_filename();
+
+        if (midnam)
+          midnam->update (midnam->handle);
       }
 
     // Close off sequence
@@ -426,6 +457,8 @@ instantiate (const LV2_Descriptor*     descriptor,
 {
   LV2_Worker_Schedule *schedule = nullptr;
   LV2_URID_Map *map = nullptr;
+  LV2_Midnam *midnam = nullptr;
+
   for (int i = 0; features[i]; i++)
     {
       if (!strcmp (features[i]->URI, LV2_URID__map))
@@ -436,11 +469,15 @@ instantiate (const LV2_Descriptor*     descriptor,
         {
           schedule = (LV2_Worker_Schedule*)features[i]->data;
         }
+      else if (!strcmp (features[i]->URI, LV2_MIDNAM__update))
+        {
+          midnam = (LV2_Midnam*)features[i]->data;
+        }
     }
   if (!map || !schedule)
     return nullptr; // host bug, we need this feature
 
-  return new LV2Plugin (rate, map, schedule);
+  return new LV2Plugin (rate, map, schedule, midnam);
 }
 
 static void
@@ -528,19 +565,43 @@ work_response (LV2_Handle  instance,
   return LV2_WORKER_SUCCESS;
 }
 
+static char*
+mn_file (LV2_Handle instance)
+{
+  LV2Plugin* self = (LV2Plugin*) instance;
+  return self->get_midnam_str();
+}
+
+static char*
+mn_model (LV2_Handle instance)
+{
+  LV2Plugin* self = (LV2Plugin*) instance;
+  return self->get_midnam_model();
+}
+
+static void
+mn_free (char *v)
+{
+  free (v);
+}
+
 static const void*
 extension_data (const char* uri)
 {
-  static const LV2_State_Interface  state  = { save, restore };
-
-  if (!strcmp(uri, LV2_STATE__interface))
+  if (!strcmp (uri, LV2_STATE__interface))
     {
+      static const LV2_State_Interface state = { save, restore };
       return &state;
     }
   if (!strcmp (uri, LV2_WORKER__interface))
     {
       static const LV2_Worker_Interface worker = { work, work_response, nullptr };
       return &worker;
+    }
+  if (!strcmp (uri, LV2_MIDNAM__interface))
+    {
+      static const LV2_Midnam_Interface midnam = { mn_file, mn_model, mn_free };
+      return &midnam;
     }
   return nullptr;
 }
