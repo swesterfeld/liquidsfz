@@ -47,7 +47,8 @@ midnam:update a lv2:Feature .
 	            state:interface,
                     midnam:interface;
 
-  lv2:optionalFeature midnam:update ;
+  lv2:optionalFeature lv2:hardRTCapable,
+                      midnam:update;
 
   patch:writable <http://spectmorph.org/plugins/liquidsfz#sfzfile>;
 
