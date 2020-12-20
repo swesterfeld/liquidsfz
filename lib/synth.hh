@@ -100,6 +100,7 @@ class Synth
   Log log_level_ = Log::INFO;
   static Global global_;
   float gain_ = 1.0;
+  std::array<bool, 128> is_key_switch_;
 
   static constexpr int CC_SUSTAIN       = 64;
   static constexpr int CC_ALL_SOUND_OFF = 120;
@@ -177,6 +178,11 @@ public:
         key_list_     = loader.key_list;
         curve_table_  = std::move (loader.curve_table);
 
+        is_key_switch_.fill (false);
+        for (auto k : key_list_)
+          if (k.is_switch && k.key >= 0 && uint (k.key) < is_key_switch_.size())
+            is_key_switch_[k.key] = true;
+
         init_channels();
         return true;
       }
@@ -251,7 +257,7 @@ public:
 
     for (auto& region : regions_)
       {
-        if (region.sw_lolast >= 0 && region.sw_lokey <= key && region.sw_hikey >= key && trigger == Trigger::ATTACK)
+        if (is_key_switch_[key] && region.sw_lokey <= key && region.sw_hikey >= key && trigger == Trigger::ATTACK)
           region.switch_match = region.sw_lolast <= key && region.sw_hilast >= key;
 
         if (region.lokey <= key && region.hikey >= key &&
