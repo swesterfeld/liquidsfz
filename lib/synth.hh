@@ -353,13 +353,13 @@ public:
   void
   update_cc (int channel, int controller, int value)
   {
-    if (channel < 0 || uint (channel) > channels_.size())
+    if (channel < 0 || uint (channel) >= channels_.size())
       {
         debug ("update_cc: bad channel %d\n", channel);
         return;
       }
     auto& ch = channels_[channel];
-    if (controller < 0 || uint (controller) > ch.cc_values.size())
+    if (controller < 0 || uint (controller) >= ch.cc_values.size())
       {
         debug ("update_cc: bad channel controller %d\n", controller);
         return;
@@ -391,13 +391,13 @@ public:
   int
   get_cc (int channel, int controller) const
   {
-    if (channel < 0 || uint (channel) > channels_.size())
+    if (channel < 0 || uint (channel) >= channels_.size())
       {
         debug ("get_cc: bad channel %d\n", channel);
         return 0;
       }
     auto& ch = channels_[channel];
-    if (controller < 0 || uint (controller) > ch.cc_values.size())
+    if (controller < 0 || uint (controller) >= ch.cc_values.size())
       {
         debug ("get_cc: bad channel controller %d\n", controller);
         return 0;
@@ -415,7 +415,7 @@ public:
   void
   update_pitch_bend (int channel, int value)
   {
-    if (channel < 0 || uint (channel) > channels_.size())
+    if (channel < 0 || uint (channel) >= channels_.size())
       {
         debug ("update_pitch_bend: bad channel %d\n", channel);
         return;
@@ -432,7 +432,7 @@ public:
   int
   get_pitch_bend (int channel)
   {
-    if (channel < 0 || uint (channel) > channels_.size())
+    if (channel < 0 || uint (channel) >= channels_.size())
       {
         debug ("get_pitch_bend: bad channel %d\n", channel);
         return 0;
@@ -453,6 +453,21 @@ public:
   void
   add_event_note_on (uint time_frames, int channel, int key, int velocity)
   {
+    if (channel < 0 || uint (channel) >= channels_.size())
+      {
+        debug ("add_event_note_on: bad channel %d\n", channel);
+        return;
+      }
+    if (key < 0 || key > 127)
+      {
+        debug ("add_event_note_on: bad key %d\n", key);
+        return;
+      }
+    if (velocity < 0 || velocity > 127)
+      {
+        debug ("add_event_note_on: bad velocity %d\n", velocity);
+        return;
+      }
     if (velocity == 0)
       {
         add_event_note_off (time_frames, channel, key);
@@ -469,6 +484,16 @@ public:
   void
   add_event_note_off (uint time_frames, int channel, int key)
   {
+    if (channel < 0 || uint (channel) >= channels_.size())
+      {
+        debug ("add_event_note_off: bad channel %d\n", channel);
+        return;
+      }
+    if (key < 0 || key > 127)
+      {
+        debug ("add_event_note_off: bad key %d\n", key);
+        return;
+      }
     Event event;
     event.time_frames = time_frames;
     event.type = Event::Type::NOTE_OFF;
@@ -480,6 +505,16 @@ public:
   void
   add_event_cc (uint time_frames, int channel, int cc, int value)
   {
+    if (channel < 0 || uint (channel) >= channels_.size())
+      {
+        debug ("add_event_cc: bad channel %d\n", channel);
+        return;
+      }
+    if (cc < 0 || cc > 127)
+      {
+        debug ("add_event_cc: bad cc %d\n", cc);
+        return;
+      }
     Event event;
     event.time_frames = time_frames;
     event.type = Event::Type::CC;
@@ -491,6 +526,11 @@ public:
   void
   add_event_pitch_bend (uint time_frames, int channel, int value)
   {
+    if (channel < 0 || uint (channel) >= channels_.size())
+      {
+        debug ("add_event_pitch_bend: bad channel %d\n", channel);
+        return;
+      }
     Event event;
     event.time_frames = time_frames;
     event.type = Event::Type::PITCH_BEND;
