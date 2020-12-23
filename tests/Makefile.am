@@ -2,7 +2,7 @@ LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
 AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
-noinst_PROGRAMS = testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam
+noinst_PROGRAMS = testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter
 
 testliquid_SOURCES = testliquid.cc
 testliquid_LDADD = $(LIQUIDSFZ_LIBS)
@@ -24,3 +24,6 @@ testhydrogen_LDADD = $(LIQUIDSFZ_LIBS)
 
 testmidnam_SOURCES = testmidnam.cc
 testmidnam_LDADD = $(LIQUIDSFZ_LIBS)
+
+testfilter_SOURCES = testfilter.cc
+testfilter_LDADD = $(LIQUIDSFZ_LIBS)
