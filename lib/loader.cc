@@ -83,6 +83,17 @@ Loader::convert_xfcurve (const string& c)
   return XFCurve::POWER;
 }
 
+Filter::Type
+Loader::convert_filter_type (const string& f)
+{
+  Filter::Type type = Filter::type_from_string (f);
+  if (type != Filter::Type::NONE)
+    return type;
+
+  synth_->warning ("%s unknown filter type: %s\n", location().c_str(), f.c_str());
+  return Filter::Type::NONE;
+}
+
 bool
 Loader::split_sub_key (const string& key, const string& start, int& sub_key)
 {
@@ -400,6 +411,10 @@ Loader::set_key_value (const string& key, const string& value)
     region.xf_keycurve = convert_xfcurve (value);
   else if (key == "xf_cccurve")
     region.xf_cccurve = convert_xfcurve (value);
+  else if (key == "cutoff")
+    region.cutoff = convert_float (value);
+  else if (key == "fil_type")
+    region.fil_type = convert_filter_type (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

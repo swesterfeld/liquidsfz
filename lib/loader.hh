@@ -27,6 +27,7 @@
 #include "log.hh"
 #include "samplecache.hh"
 #include "curve.hh"
+#include "filter.hh"
 
 namespace LiquidSFZInternal
 {
@@ -212,6 +213,9 @@ struct Region
   XFCurve xf_keycurve = XFCurve::POWER;
   XFCurve xf_cccurve = XFCurve::POWER;
 
+  float cutoff = 0;
+  Filter::Type fil_type = Filter::Type::NONE;
+
   CCParamVec pan_cc;
   CCParamVec gain_cc;
   CCParamVec amplitude_cc;
@@ -351,6 +355,7 @@ public:
   LoopMode convert_loop_mode (const std::string& l);
   OffMode convert_off_mode (const std::string& s);
   XFCurve convert_xfcurve (const std::string& c);
+  Filter::Type convert_filter_type (const std::string& f);
   bool
   starts_with (const std::string& key, const std::string& start)
   {

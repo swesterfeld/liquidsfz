@@ -143,6 +143,11 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   envelope_.start (region, sample_rate_);
   synth_->debug ("location %s\n", region.location.c_str());
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
+
+  filter_.set_sample_rate (sample_rate);
+  filter_.set_type (region.fil_type);
+  filter_.set_channels (2); //region.cached_sample->channels);
+  filter_.reset (region.cutoff);
 }
 
 float
@@ -394,4 +399,5 @@ Voice::process (float **outputs, uint nframes)
         while (ppos_ > region_->loop_end)
           ppos_ -= (region_->loop_end - region_->loop_start);
     }
+  filter_.process (outputs[0], outputs[1], nframes);
 }

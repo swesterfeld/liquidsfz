@@ -18,10 +18,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "envelope.hh"
-
 #ifndef LIQUIDSFZ_VOICE_HH
 #define LIQUIDSFZ_VOICE_HH
+
+#include "envelope.hh"
+#include "filter.hh"
 
 namespace LiquidSFZInternal
 {
@@ -30,6 +31,8 @@ class Voice
 {
   LinearSmooth left_gain_;
   LinearSmooth right_gain_;
+
+  Filter filter_;
 
   float volume_gain_ = 0;
   float amplitude_gain_ = 0;
