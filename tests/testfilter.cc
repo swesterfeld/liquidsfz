@@ -64,7 +64,8 @@ main (int argc, char **argv)
       gen_sweep (left, right, freq);
 
       filter.set_sample_rate (48000);
-      filter.reset (atof (argv[2]));
+      filter.update_config (atof (argv[2]));
+      filter.reset();
       filter.process (&left[0], &right[0], left.size());
 
       for (size_t i = 0; i < left.size(); i++)
