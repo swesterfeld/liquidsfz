@@ -222,6 +222,7 @@ struct Region
   CCParamVec tune_cc;
   CCParamVec delay_cc;
   CCParamVec offset_cc;
+  CCParamVec cutoff_cc;
 
   bool empty()
   {

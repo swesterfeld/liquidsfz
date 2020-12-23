@@ -87,7 +87,7 @@ coeficient approximation: p = (1 - 2*cutoff/samplerate)^2
 
 #endif
   void
-  reset (float cutoff)
+  update_config (float cutoff)
   {
     if (filter_type_ == Type::LPF_1P)
       {
@@ -99,7 +99,10 @@ coeficient approximation: p = (1 - 2*cutoff/samplerate)^2
         double x = 2 * M_PI * cutoff / sample_rate_;
         p = (2 - cos (x)) - sqrt ((2 - cos(x)) * (2 - cos (x)) - 1);
       }
-
+  }
+  void
+  reset()
+  {
     tmp_l = 0;
     tmp_r = 0;
   }

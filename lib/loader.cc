@@ -332,6 +332,10 @@ Loader::set_key_value (const string& key, const string& value)
     region.bend_up = convert_int (value);
   else if (key == "bend_down")
     region.bend_down = convert_int (value);
+  else if (key == "cutoff")
+    region.cutoff = convert_float (value);
+  else if (key == "fil_type")
+    region.fil_type = convert_filter_type (value);
   else if (split_sub_key (key, "pan_cc", sub_key) /* sforzando supports both variants */
         || split_sub_key (key, "pan_oncc", sub_key))
     {
@@ -367,6 +371,11 @@ Loader::set_key_value (const string& key, const string& value)
        ||  split_sub_key (key, "offset_oncc", sub_key))
     {
       region.offset_cc.set (sub_key, convert_uint (value));
+      update_cc_info (sub_key);
+    }
+  else if (split_sub_key (key, "cutoff_oncc", sub_key))
+    {
+      region.cutoff_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (key == "xfin_lovel")
@@ -411,10 +420,6 @@ Loader::set_key_value (const string& key, const string& value)
     region.xf_keycurve = convert_xfcurve (value);
   else if (key == "xf_cccurve")
     region.xf_cccurve = convert_xfcurve (value);
-  else if (key == "cutoff")
-    region.cutoff = convert_float (value);
-  else if (key == "fil_type")
-    region.fil_type = convert_filter_type (value);
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }

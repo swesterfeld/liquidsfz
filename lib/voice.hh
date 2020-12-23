@@ -49,6 +49,7 @@ class Voice
   void update_amplitude_gain();
   void update_pan_gain();
   void update_lr_gain (bool now);
+  void update_filter_cutoff();
 
   float amp_value (float vnorm, const AmpParam& amp_param);
 
