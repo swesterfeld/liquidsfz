@@ -30,6 +30,7 @@
 using namespace LiquidSFZInternal;
 
 using std::vector;
+using std::string;
 
 void
 gen_sweep (vector<float>& left, vector<float>& right, vector<float>& freq)
@@ -53,18 +54,24 @@ gen_sweep (vector<float>& left, vector<float>& right, vector<float>& freq)
 int
 main (int argc, char **argv)
 {
-  if (argc == 3)
+  if (argc < 3)
     {
-      Filter filter;
-      filter.set_type (Filter::type_from_string (argv[1]));
+      printf ("too few args\n");
+      return 1;
+    }
 
+  string cmd = argv[1];
+  if (argc == 4 && cmd == "sweep")
+    {
       vector<float> left;
       vector<float> right;
       vector<float> freq;
       gen_sweep (left, right, freq);
 
+      Filter filter;
+      filter.set_type (Filter::type_from_string (argv[2]));
       filter.set_sample_rate (48000);
-      filter.update_config (atof (argv[2]));
+      filter.update_config (atof (argv[3]));
       filter.reset();
       filter.process (&left[0], &right[0], left.size());
 
@@ -72,5 +79,49 @@ main (int argc, char **argv)
         printf ("%f %f\n", freq[i], sqrt (left[i] * left[i] + right[i] * right[i]));
 
       return 0;
+    }
+  else if (argc == 4 && cmd == "ir")
+    {
+      vector<float> left = { 1 };
+      vector<float> right;
+
+      left.resize (48000);
+      right.resize (48000);
+
+      Filter filter;
+      filter.set_type (Filter::type_from_string (argv[2]));
+      filter.set_sample_rate (48000);
+      filter.update_config (atof (argv[3]));
+      filter.reset();
+      filter.process (&left[0], &right[0], left.size());
+
+      for (size_t i = 0; i < left.size(); i++)
+        printf ("%.17g\n", left[i]);
+
+      return 0;
+    }
+  else if (argc == 4 && cmd == "sines")
+    {
+      Filter filter;
+      filter.set_type (Filter::type_from_string (argv[2]));
+      filter.set_sample_rate (48000);
+      filter.update_config (atof (argv[3]));
+
+      double phase = 0;
+      for (double f = 20; f < 24000; f *= 1.1)
+        {
+          vector<float> left;
+          vector<float> right;
+          for (int i = 0; i < 48000; i++)
+            {
+              left.push_back (sin (phase));
+              right.push_back (cos (phase));
+              phase += f / 48000 * 2 * M_PI;
+            }
+          filter.reset();
+          filter.process (&left[0], &right[0], left.size());
+
+          printf ("%f %f\n", f, sqrt (left.back() * left.back() + right.back() * right.back()));
+        }
     }
 }
