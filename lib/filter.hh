@@ -54,6 +54,23 @@ private:
   Type  filter_type_ = Type::NONE;
   int   channels_    = 1;
   int   sample_rate_ = 44100;
+
+  float
+  apply_hpf_1p (float in, float& tmp)
+  {
+    float x_h = in - p * tmp;
+    float out = 0.5f * (in - p * x_h - tmp);
+    tmp = x_h;
+    return out;
+  };
+  float
+  apply_lpf_1p (float in, float& tmp)
+  {
+    float x_h = in - p * tmp;
+    float out = 0.5f * (in + p * x_h + tmp);
+    tmp = x_h;
+    return out;
+  };
 public:
   void
   set_type (Type filter_type)
@@ -70,34 +87,13 @@ public:
   {
     sample_rate_ = sample_rate;
   }
-/* one pole filter musicdsp */
-#if 0
-recursion: tmp = (1-p)*in + p*tmp with output = tmp
-coefficient: p = (2-cos(x)) - sqrt((2-cos(x))^2 - 1) with x = 2*pi*cutoff/samplerate
-coeficient approximation: p = (1 - 2*cutoff/samplerate)^2
-
-HP:
-recursion: tmp = (p-1)*in - p*tmp with output = tmp
-coefficient: p = (2+cos(x)) - sqrt((2+cos(x))^2 - 1) with x = 2*pi*cutoff/samplerate
-coeficient approximation: p = (2*cutoff/samplerate)^2
-
-recursion: tmp = (1-p)*in + p*tmp with output = in-tmp (corrected version)
-coefficient: p = (2-cos(x)) - sqrt((2-cos(x))^2 - 1) with x = 2*pi*cutoff/samplerate
-coeficient approximation: p = (1 - 2*cutoff/samplerate)^2
-
-#endif
   void
   update_config (float cutoff)
   {
-    if (filter_type_ == Type::LPF_1P)
+    if (filter_type_ == Type::LPF_1P || filter_type_ == Type::HPF_1P) /* 1 pole filter design from DAFX, Zoelzer */
       {
-        double x = 2 * M_PI * cutoff / sample_rate_;
-        p = (2 - cos (x)) - sqrt ((2 - cos(x)) * (2 - cos (x)) - 1);
-      }
-    else if (filter_type_ == Type::HPF_1P)
-      {
-        double x = 2 * M_PI * cutoff / sample_rate_;
-        p = (2 - cos (x)) - sqrt ((2 - cos(x)) * (2 - cos (x)) - 1);
+        float t = tanf (M_PI * cutoff / sample_rate_);
+        p = (t - 1) / (t + 1);
       }
   }
   void
@@ -113,18 +109,16 @@ coeficient approximation: p = (1 - 2*cutoff/samplerate)^2
       {
         for (uint i = 0; i < n_frames; i++)
           {
-            left[i]  = tmp_l = (1 - p) * left[i]  + p * tmp_l;
-            right[i] = tmp_r = (1 - p) * right[i] + p * tmp_r;
+            left[i]  = apply_lpf_1p (left[i], tmp_l);
+            right[i] = apply_lpf_1p (right[i], tmp_r);
           }
       }
     if (filter_type_ == Type::HPF_1P)
       {
         for (uint i = 0; i < n_frames; i++)
           {
-            tmp_l = (1 - p) * left[i] + p * tmp_l;
-            tmp_r = (1 - p) * right[i] + p * tmp_r;
-            left[i] -= tmp_l;
-            right[i] -= tmp_r;
+            left[i]  = apply_hpf_1p (left[i], tmp_l);
+            right[i] = apply_hpf_1p (right[i], tmp_r);
           }
       }
   }
