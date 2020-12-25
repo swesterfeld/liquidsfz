@@ -108,7 +108,7 @@ main (int argc, char **argv)
       filter.update_config (atof (argv[3]), atof (argv[4]));
 
       double phase = 0;
-      for (double f = 20; f < 24000; f *= 1.1)
+      for (double f = 20; f < 24000; f *= 1.04)
         {
           vector<float> left;
           vector<float> right;
