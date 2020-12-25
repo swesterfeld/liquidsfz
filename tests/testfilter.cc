@@ -61,7 +61,7 @@ main (int argc, char **argv)
     }
 
   string cmd = argv[1];
-  if (argc == 4 && cmd == "sweep")
+  if (argc == 5 && cmd == "sweep")
     {
       vector<float> left;
       vector<float> right;
@@ -71,7 +71,7 @@ main (int argc, char **argv)
       Filter filter;
       filter.set_type (Filter::type_from_string (argv[2]));
       filter.set_sample_rate (48000);
-      filter.update_config (atof (argv[3]));
+      filter.update_config (atof (argv[3]), atof (argv[4]));
       filter.reset();
       filter.process (&left[0], &right[0], left.size());
 
@@ -80,7 +80,7 @@ main (int argc, char **argv)
 
       return 0;
     }
-  else if (argc == 4 && cmd == "ir")
+  else if (argc == 5 && cmd == "ir")
     {
       vector<float> left = { 1 };
       vector<float> right;
@@ -91,7 +91,7 @@ main (int argc, char **argv)
       Filter filter;
       filter.set_type (Filter::type_from_string (argv[2]));
       filter.set_sample_rate (48000);
-      filter.update_config (atof (argv[3]));
+      filter.update_config (atof (argv[3]), atof (argv[4]));
       filter.reset();
       filter.process (&left[0], &right[0], left.size());
 
@@ -100,12 +100,12 @@ main (int argc, char **argv)
 
       return 0;
     }
-  else if (argc == 4 && cmd == "sines")
+  else if (argc == 5 && cmd == "sines")
     {
       Filter filter;
       filter.set_type (Filter::type_from_string (argv[2]));
       filter.set_sample_rate (48000);
-      filter.update_config (atof (argv[3]));
+      filter.update_config (atof (argv[3]), atof (argv[4]));
 
       double phase = 0;
       for (double f = 20; f < 24000; f *= 1.1)
