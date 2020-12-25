@@ -34,7 +34,8 @@ public:
     NONE,
     LPF_1P,
     HPF_1P,
-    LPF_2P
+    LPF_2P,
+    HPF_2P
   };
   static Type
   type_from_string (const std::string& s)
@@ -47,6 +48,9 @@ public:
 
     if (s == "lpf_2p")
       return Type::LPF_2P;
+
+    if (s == "hpf_2p")
+      return Type::HPF_2P;
 
     return Type::NONE;
   }
@@ -147,6 +151,19 @@ public:
         a1 = 2 * (kk - 1) * div_factor;
         a2 = (1 - k / q + kk) * div_factor;
       }
+    else if (filter_type_ == Type::HPF_2P)
+      {
+        float k = tanf (M_PI * cutoff / sample_rate_);
+        float kk = k * k;
+        float q = M_SQRT1_2 * powf (10, resonance / 20.);
+        float div_factor = 1  / (1 + (k + 1 / q) * k);
+
+        b0 = div_factor;
+        b1 = -2 * div_factor;
+        b2 = div_factor;
+        a1 = 2 * (kk - 1) * div_factor;
+        a2 = (1 - k / q + kk) * div_factor;
+      }
   }
   void
   reset()
@@ -175,7 +192,8 @@ public:
             right[i] = apply_hpf_1p (right[i], tmp_r);
           }
       }
-    if (filter_type_ == Type::LPF_2P)
+    if (filter_type_ == Type::LPF_2P
+    ||  filter_type_ == Type::HPF_2P)
       {
         for (uint i = 0; i < n_frames; i++)
           {
