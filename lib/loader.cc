@@ -795,6 +795,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
           if (!region.have_loop_end)
             region.loop_end = cached_sample->loop_end;
         }
+      if (region.cutoff < 0) /* filter defaults to lpf_2p, but only if cutoff was found  */
+        region.fil_type = Filter::Type::NONE;
+
       if (region.sw_lolast >= 0)
         region.switch_match = (region.sw_lolast <= region.sw_default && region.sw_hilast >= region.sw_default);
 

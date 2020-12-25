@@ -213,9 +213,9 @@ struct Region
   XFCurve xf_keycurve = XFCurve::POWER;
   XFCurve xf_cccurve = XFCurve::POWER;
 
-  float cutoff = 0;
+  float cutoff = -1;
   float resonance = 0;
-  Filter::Type fil_type = Filter::Type::NONE;
+  Filter::Type fil_type = Filter::Type::LPF_2P;
 
   CCParamVec pan_cc;
   CCParamVec gain_cc;
