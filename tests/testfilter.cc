@@ -76,7 +76,7 @@ main (int argc, char **argv)
       filter.process (&left[0], &right[0], left.size());
 
       for (size_t i = 0; i < left.size(); i++)
-        printf ("%f %f\n", freq[i], sqrt (left[i] * left[i] + right[i] * right[i]));
+        printf ("%f %.17g\n", freq[i], sqrt (left[i] * left[i] + right[i] * right[i]));
 
       return 0;
     }
@@ -121,7 +121,7 @@ main (int argc, char **argv)
           filter.reset();
           filter.process (&left[0], &right[0], left.size());
 
-          printf ("%f %f\n", f, sqrt (left.back() * left.back() + right.back() * right.back()));
+          printf ("%f %.17g\n", f, sqrt (left.back() * left.back() + right.back() * right.back()));
         }
     }
 }
