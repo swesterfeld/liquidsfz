@@ -133,14 +133,16 @@ public:
   void
   update_config (float cutoff, float resonance)
   {
+    float norm_cutoff = std::clamp (cutoff / sample_rate_, 0.f, 0.49f);
+
     if (filter_type_ == Type::LPF_1P || filter_type_ == Type::HPF_1P) /* 1 pole filter design from DAFX, Zoelzer */
       {
-        float t = tanf (M_PI * cutoff / sample_rate_);
+        float t = tanf (M_PI * norm_cutoff);
         p = (t - 1) / (t + 1);
       }
     else if (filter_type_ == Type::LPF_2P)
       {
-        float k = tanf (M_PI * cutoff / sample_rate_);
+        float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
         float q = M_SQRT1_2 * powf (10, resonance / 20.);
         float div_factor = 1  / (1 + (k + 1 / q) * k);
@@ -153,7 +155,7 @@ public:
       }
     else if (filter_type_ == Type::HPF_2P)
       {
-        float k = tanf (M_PI * cutoff / sample_rate_);
+        float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
         float q = M_SQRT1_2 * powf (10, resonance / 20.);
         float div_factor = 1  / (1 + (k + 1 / q) * k);
