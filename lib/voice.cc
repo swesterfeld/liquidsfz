@@ -328,7 +328,7 @@ Voice::update_pitch_bend (int bend)
 }
 
 void
-Voice::process (float **outputs, uint nframes)
+Voice::process (float **outputs, uint n_frames)
 {
   const auto csample = region_->cached_sample;
   const auto channels = csample->channels;
@@ -375,11 +375,16 @@ Voice::process (float **outputs, uint nframes)
         }
     };
   /* delay start of voice for delay_samples_ frames */
-  uint dframes = std::min (nframes, delay_samples_);
+  uint dframes = std::min (n_frames, delay_samples_);
   delay_samples_ -= dframes;
 
+  float out_l[n_frames];
+  float out_r[n_frames];
+  std::fill_n (out_l, n_frames, 0.0);
+  std::fill_n (out_r, n_frames, 0.0);
+
   /* render voice */
-  for (uint i = dframes; i < nframes; i++)
+  for (uint i = dframes; i < n_frames; i++)
     {
       const uint ii = ppos_;
       const uint x = ii * channels;
@@ -393,16 +398,16 @@ Voice::process (float **outputs, uint nframes)
               get_samples_mono (x, fsamples);
 
               const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
-              outputs[0][i] += interp * amp_gain * left_gain_.get_next();
-              outputs[1][i] += interp * amp_gain * right_gain_.get_next();
+              out_l[i] = interp * amp_gain * left_gain_.get_next();
+              out_r[i] = interp * amp_gain * right_gain_.get_next();
             }
           else if (channels == 2)
             {
               std::array<float, 4> fsamples;
               get_samples_stereo (x, fsamples);
 
-              outputs[0][i] += (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain * left_gain_.get_next();
-              outputs[1][i] += (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain * right_gain_.get_next();
+              out_l[i] = (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain * left_gain_.get_next();
+              out_r[i] = (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain * right_gain_.get_next();
             }
           else
             {
@@ -420,15 +425,23 @@ Voice::process (float **outputs, uint nframes)
           ppos_ -= (region_->loop_end - region_->loop_start);
     }
 
+  /* process filter */
   float base_cutoff = region_->cutoff + synth_->get_cc_vec_value (channel_, region_->cutoff_cc);
   float base_resonance = region_->resonance + synth_->get_cc_vec_value (channel_, region_->resonance_cc);
   float depth_factor = region_->fileg_depth.base / 1200.;
-  float mod_cutoff[nframes];
-  float mod_resonance[nframes];
-  for (uint i = 0; i < nframes; i++)
+  float mod_cutoff[n_frames];
+  float mod_resonance[n_frames];
+  for (uint i = dframes; i < n_frames; i++)
     {
       mod_cutoff[i] = base_cutoff * exp2f (depth_factor * filter_envelope_.get_next()),
       mod_resonance[i] = base_resonance;
     }
-  filter_.process_mod (outputs[0], outputs[1], mod_cutoff, mod_resonance, nframes);
+  filter_.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
+
+  /* add samples to output buffer */
+  for (uint i = 0; i < n_frames; i++)
+    {
+      outputs[0][i] += out_l[i];
+      outputs[1][i] += out_r[i];
+    }
 }

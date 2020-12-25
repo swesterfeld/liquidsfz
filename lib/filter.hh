@@ -23,6 +23,7 @@
 
 #include <cmath>
 #include <string>
+#include <algorithm>
 
 namespace LiquidSFZInternal
 {
