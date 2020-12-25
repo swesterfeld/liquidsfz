@@ -148,7 +148,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   filter_.set_type (region.fil_type);
   filter_.set_channels (2); //region.cached_sample->channels);
 
-  update_filter_cutoff();
+  update_filter_config();
   filter_.reset();
 }
 
@@ -250,9 +250,10 @@ Voice::update_amplitude_gain()
 }
 
 void
-Voice::update_filter_cutoff()
+Voice::update_filter_config()
 {
-  filter_.update_config (region_->cutoff + synth_->get_cc_vec_value (channel_, region_->cutoff_cc));
+  filter_.update_config (region_->cutoff    + synth_->get_cc_vec_value (channel_, region_->cutoff_cc),
+                         region_->resonance + synth_->get_cc_vec_value (channel_, region_->resonance_cc));
 }
 
 void
@@ -294,8 +295,8 @@ Voice::update_cc (int controller)
 
   if (region_->tune_cc.contains (controller))
     update_replay_speed (false);
-  if (region_->cutoff_cc.contains (controller))
-    update_filter_cutoff();
+  if (region_->cutoff_cc.contains (controller) || region_->resonance_cc.contains (controller))
+    update_filter_config();
 }
 
 void

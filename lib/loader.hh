@@ -214,6 +214,7 @@ struct Region
   XFCurve xf_cccurve = XFCurve::POWER;
 
   float cutoff = 0;
+  float resonance = 0;
   Filter::Type fil_type = Filter::Type::NONE;
 
   CCParamVec pan_cc;
@@ -223,6 +224,7 @@ struct Region
   CCParamVec delay_cc;
   CCParamVec offset_cc;
   CCParamVec cutoff_cc;
+  CCParamVec resonance_cc;
 
   bool empty()
   {

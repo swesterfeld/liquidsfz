@@ -127,7 +127,7 @@ public:
     sample_rate_ = sample_rate;
   }
   void
-  update_config (float cutoff)
+  update_config (float cutoff, float resonance)
   {
     if (filter_type_ == Type::LPF_1P || filter_type_ == Type::HPF_1P) /* 1 pole filter design from DAFX, Zoelzer */
       {
@@ -138,7 +138,7 @@ public:
       {
         float k = tanf (M_PI * cutoff / sample_rate_);
         float kk = k * k;
-        float q = 0.707;
+        float q = M_SQRT1_2 * powf (10, resonance / 20.);
         float div_factor = 1  / (1 + (k + 1 / q) * k);
 
         b0 = kk * div_factor;

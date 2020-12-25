@@ -334,6 +334,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.bend_down = convert_int (value);
   else if (key == "cutoff")
     region.cutoff = convert_float (value);
+  else if (key == "resonance")
+    region.resonance = convert_float (value);
   else if (key == "fil_type")
     region.fil_type = convert_filter_type (value);
   else if (split_sub_key (key, "pan_cc", sub_key) /* sforzando supports both variants */
@@ -376,6 +378,11 @@ Loader::set_key_value (const string& key, const string& value)
   else if (split_sub_key (key, "cutoff_oncc", sub_key))
     {
       region.cutoff_cc.set (sub_key, convert_float (value));
+      update_cc_info (sub_key);
+    }
+  else if (split_sub_key (key, "resonance_oncc", sub_key))
+    {
+      region.resonance_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (key == "xfin_lovel")
