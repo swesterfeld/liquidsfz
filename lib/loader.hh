@@ -170,6 +170,15 @@ struct Region
   AmpParam ampeg_release  { 0 };
   Curve    amp_velcurve;
 
+  /* fil envelope generator */
+  AmpParam fileg_depth    { 0 };
+  AmpParam fileg_delay    { 0 };
+  AmpParam fileg_attack   { 0 };
+  AmpParam fileg_hold     { 0 };
+  AmpParam fileg_decay    { 0 };
+  AmpParam fileg_sustain  { 100 };
+  AmpParam fileg_release  { 0 };
+
   float volume = 0;
   float amplitude = 100;
   float amp_veltrack = 100;
@@ -274,7 +283,9 @@ class Loader
   std::set<std::string> preprocess_done;
   Synth *synth_ = nullptr;
 
-  bool parse_amp_param (AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
+  bool parse_eg_param (const std::string& eg, AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
+  bool parse_ampeg_param (AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
+  bool parse_fileg_param (AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
 public:
   Loader (Synth *synth)
   {

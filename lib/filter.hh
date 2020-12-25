@@ -202,6 +202,38 @@ public:
           }
       }
   }
+  void
+  process_mod (float *left, float *right, float *cutoff, float *resonance, uint n_frames)
+  {
+    if (filter_type_ == Type::LPF_1P)
+      {
+        for (uint i = 0; i < n_frames; i++)
+          {
+            update_config (cutoff[i], resonance[i]);
+            left[i]  = apply_lpf_1p (left[i], tmp_l);
+            right[i] = apply_lpf_1p (right[i], tmp_r);
+          }
+      }
+    if (filter_type_ == Type::HPF_1P)
+      {
+        for (uint i = 0; i < n_frames; i++)
+          {
+            update_config (cutoff[i], resonance[i]);
+            left[i]  = apply_hpf_1p (left[i], tmp_l);
+            right[i] = apply_hpf_1p (right[i], tmp_r);
+          }
+      }
+    if (filter_type_ == Type::LPF_2P
+    ||  filter_type_ == Type::HPF_2P)
+      {
+        for (uint i = 0; i < n_frames; i++)
+          {
+            update_config (cutoff[i], resonance[i]);
+            left[i]  = apply_biquad (left[i], b_state_l);
+            right[i] = apply_biquad (right[i], b_state_r);
+          }
+      }
+  }
 };
 
 }

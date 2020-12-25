@@ -32,7 +32,8 @@ class Voice
   LinearSmooth left_gain_;
   LinearSmooth right_gain_;
 
-  Filter filter_;
+  Filter   filter_;
+  Envelope filter_envelope_;
 
   float volume_gain_ = 0;
   float amplitude_gain_ = 0;

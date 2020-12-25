@@ -144,27 +144,41 @@ Loader::update_key_info (int key)
 }
 
 bool
-Loader::parse_amp_param (AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str)
+Loader::parse_eg_param (const string& eg, AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str)
 {
-  if (key == "ampeg_" + param_str) // ampeg_attack,...
+  string prefix = eg + "_";
+
+  if (key == prefix + param_str) // *eg_attack,...
     {
       amp_param.base = convert_float (value);
       return true;
     }
-  if (key == "ampeg_vel2" + param_str) // ampeg_vel2attack,...
+  if (key == prefix + "vel2" + param_str) // *eg_vel2attack,...
     {
       amp_param.vel2 = convert_float (value);
       return true;
     }
   int sub_key;
-  if (split_sub_key (key, "ampeg_" + param_str + "cc", sub_key)    // ampeg_attackccN,...
-  ||  split_sub_key (key, "ampeg_" + param_str + "_oncc", sub_key)) // ampeg_attack_onccN,...
+  if (split_sub_key (key, prefix + param_str + "cc", sub_key)    // *eg_attackccN,...
+  ||  split_sub_key (key, prefix + param_str + "_oncc", sub_key)) // *eg_attack_onccN,...
     {
       amp_param.cc_vec.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
       return true;
     }
   return false;
+}
+
+bool
+Loader::parse_ampeg_param (AmpParam& amp_param, const string& key, const string& value, const string& param_str)
+{
+  return parse_eg_param ("ampeg", amp_param, key, value, param_str);
+}
+
+bool
+Loader::parse_fileg_param (AmpParam& amp_param, const string& key, const string& value, const string& param_str)
+{
+  return parse_eg_param ("fileg", amp_param, key, value, param_str);
 }
 
 void
@@ -271,14 +285,24 @@ Loader::set_key_value (const string& key, const string& value)
     region.seq_length = convert_int (value);
   else if (key == "seq_position")
     region.seq_position = convert_int (value);
-  else if (parse_amp_param (region.ampeg_delay, key, value, "delay") ||
-           parse_amp_param (region.ampeg_attack, key, value, "attack") ||
-           parse_amp_param (region.ampeg_hold, key, value, "hold") ||
-           parse_amp_param (region.ampeg_decay, key, value, "decay") ||
-           parse_amp_param (region.ampeg_sustain, key, value, "sustain") ||
-           parse_amp_param (region.ampeg_release, key, value, "release"))
+  else if (parse_ampeg_param (region.ampeg_delay, key, value, "delay") ||
+           parse_ampeg_param (region.ampeg_attack, key, value, "attack") ||
+           parse_ampeg_param (region.ampeg_hold, key, value, "hold") ||
+           parse_ampeg_param (region.ampeg_decay, key, value, "decay") ||
+           parse_ampeg_param (region.ampeg_sustain, key, value, "sustain") ||
+           parse_ampeg_param (region.ampeg_release, key, value, "release"))
     {
-      // actual value conversion is performed by parse_amp_param
+      // actual value conversion is performed by parse_ampeg_param
+    }
+  else if (parse_fileg_param (region.fileg_depth, key, value, "depth") ||
+           parse_fileg_param (region.fileg_delay, key, value, "delay") ||
+           parse_fileg_param (region.fileg_attack, key, value, "attack") ||
+           parse_fileg_param (region.fileg_hold, key, value, "hold") ||
+           parse_fileg_param (region.fileg_decay, key, value, "decay") ||
+           parse_fileg_param (region.fileg_sustain, key, value, "sustain") ||
+           parse_fileg_param (region.fileg_release, key, value, "release"))
+    {
+      // actual value conversion is performed by parse_fileg_param
     }
   else if (split_sub_key (key, "amp_velcurve_", sub_key))
     region.amp_velcurve.set (sub_key, convert_float (value));
@@ -375,12 +399,14 @@ Loader::set_key_value (const string& key, const string& value)
       region.offset_cc.set (sub_key, convert_uint (value));
       update_cc_info (sub_key);
     }
-  else if (split_sub_key (key, "cutoff_oncc", sub_key))
+  else if (split_sub_key (key, "cutoff_cc", sub_key)
+       ||  split_sub_key (key, "cutoff_oncc", sub_key))
     {
       region.cutoff_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
-  else if (split_sub_key (key, "resonance_oncc", sub_key))
+  else if (split_sub_key (key, "resonance_cc", sub_key)
+       ||  split_sub_key (key, "resonance_oncc", sub_key))
     {
       region.resonance_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
