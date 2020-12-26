@@ -19,6 +19,7 @@
  */
 
 #include "filter.hh"
+#include "utils.hh"
 
 #include <cstdlib>
 #include <cstdio>
@@ -123,5 +124,47 @@ main (int argc, char **argv)
 
           printf ("%f %.17g\n", f, sqrt (left.back() * left.back() + right.back() * right.back()));
         }
+    }
+  else if (argc == 3 && cmd == "perf")
+    {
+      Filter filter;
+      filter.set_type (Filter::type_from_string (argv[2]));
+      filter.set_sample_rate (48000);
+      filter.update_config (500, 1);
+      filter.reset();
+      vector<float> left (1024, 1);
+      vector<float> right (1024, -1);
+      vector<float> mod_cutoff (1024, 500);
+      vector<float> mod_reso (1024, 1);
+      for (auto& c : mod_cutoff)
+        c += (rand() % 100);
+      for (auto& r : mod_reso)
+        r += (rand() % 100) * 0.01;
+
+      {
+        size_t samples = 0;
+        const double time_start = get_time();
+        for (int i = 0; i < 10000; i++)
+          {
+            filter.process (&left[0], &right[0], left.size());
+            samples += left.size();
+          }
+        const double time_total = get_time() - time_start;
+
+        printf ("CONST - time %f, samples %zd, ns/sample %f bogo_voices %f\n", time_total, samples, time_total * 1e9 / samples, (samples / 48000.) / time_total);
+      }
+
+      {
+        size_t samples = 0;
+        const double time_start = get_time();
+        for (int i = 0; i < 10000; i++)
+          {
+            filter.process_mod (&left[0], &right[0], &mod_cutoff[0], &mod_reso[0], left.size());
+            samples += left.size();
+          }
+        const double time_total = get_time() - time_start;
+
+        printf ("MOD   - time %f, samples %zd, ns/sample %f bogo_voices %f\n", time_total, samples, time_total * 1e9 / samples, (samples / 48000.) / time_total);
+      }
     }
 }
