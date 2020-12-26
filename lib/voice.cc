@@ -258,11 +258,22 @@ Voice::update_amplitude_gain()
   amplitude_gain_ = gain;
 }
 
+float
+Voice::get_base_cutoff()
+{
+  return region_->cutoff * exp2f (synth_->get_cc_vec_value (channel_, region_->cutoff_cc) * (1 / 1200.f));
+}
+
+float
+Voice::get_base_resonance()
+{
+  return region_->resonance + synth_->get_cc_vec_value (channel_, region_->resonance_cc);
+}
+
 void
 Voice::update_filter_config()
 {
-  filter_.update_config (region_->cutoff    + synth_->get_cc_vec_value (channel_, region_->cutoff_cc),
-                         region_->resonance + synth_->get_cc_vec_value (channel_, region_->resonance_cc));
+  filter_.update_config (get_base_cutoff(), get_base_resonance());
 }
 
 void
@@ -426,8 +437,8 @@ Voice::process (float **outputs, uint n_frames)
     }
 
   /* process filter */
-  float base_cutoff = region_->cutoff + synth_->get_cc_vec_value (channel_, region_->cutoff_cc);
-  float base_resonance = region_->resonance + synth_->get_cc_vec_value (channel_, region_->resonance_cc);
+  float base_cutoff = get_base_cutoff();
+  float base_resonance = get_base_resonance();
   float depth_factor = region_->fileg_depth.base / 1200.;
   float mod_cutoff[n_frames];
   float mod_resonance[n_frames];

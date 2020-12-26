@@ -53,6 +53,8 @@ class Voice
   void update_filter_config();
 
   float amp_value (float vnorm, const AmpParam& amp_param);
+  float get_base_cutoff();
+  float get_base_resonance();
 
   LinearSmooth replay_speed_;
   float        pitch_bend_value_ = 0; // [-1:1]
