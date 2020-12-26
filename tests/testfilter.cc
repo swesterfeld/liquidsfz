@@ -64,6 +64,8 @@ main (int argc, char **argv)
   string cmd = argv[1];
   if (argc == 5 && cmd == "sweep")
     {
+      float cutoff = atof (argv[3]);
+      float resonance = atof (argv[4]);
       vector<float> left;
       vector<float> right;
       vector<float> freq;
@@ -72,9 +74,8 @@ main (int argc, char **argv)
       Filter filter;
       filter.set_type (Filter::type_from_string (argv[2]));
       filter.set_sample_rate (48000);
-      filter.update_config (atof (argv[3]), atof (argv[4]));
       filter.reset();
-      filter.process (&left[0], &right[0], left.size());
+      filter.process (&left[0], &right[0], cutoff, resonance, left.size());
 
       for (size_t i = 0; i < left.size(); i++)
         printf ("%f %.17g\n", freq[i], sqrt (left[i] * left[i] + right[i] * right[i]));
@@ -83,6 +84,8 @@ main (int argc, char **argv)
     }
   else if (argc == 5 && cmd == "ir")
     {
+      float cutoff = atof (argv[3]);
+      float resonance = atof (argv[4]);
       vector<float> left = { 1 };
       vector<float> right;
 
@@ -92,9 +95,8 @@ main (int argc, char **argv)
       Filter filter;
       filter.set_type (Filter::type_from_string (argv[2]));
       filter.set_sample_rate (48000);
-      filter.update_config (atof (argv[3]), atof (argv[4]));
       filter.reset();
-      filter.process (&left[0], &right[0], left.size());
+      filter.process (&left[0], &right[0], cutoff, resonance, left.size());
 
       for (size_t i = 0; i < left.size(); i++)
         printf ("%.17g\n", left[i]);
@@ -103,10 +105,11 @@ main (int argc, char **argv)
     }
   else if (argc == 5 && cmd == "sines")
     {
+      float cutoff = atof (argv[3]);
+      float resonance = atof (argv[4]);
       Filter filter;
       filter.set_type (Filter::type_from_string (argv[2]));
       filter.set_sample_rate (48000);
-      filter.update_config (atof (argv[3]), atof (argv[4]));
 
       double phase = 0;
       for (double f = 20; f < 24000; f *= 1.04)
@@ -120,17 +123,18 @@ main (int argc, char **argv)
               phase += f / 48000 * 2 * M_PI;
             }
           filter.reset();
-          filter.process (&left[0], &right[0], left.size());
+          filter.process (&left[0], &right[0], cutoff, resonance, left.size());
 
           printf ("%f %.17g\n", f, sqrt (left.back() * left.back() + right.back() * right.back()));
         }
     }
   else if (argc == 3 && cmd == "perf")
     {
+      float cutoff = 500;
+      float resonance = 1;
       Filter filter;
       filter.set_type (Filter::type_from_string (argv[2]));
       filter.set_sample_rate (48000);
-      filter.update_config (500, 1);
       filter.reset();
       vector<float> left (1024, 1);
       vector<float> right (1024, -1);
@@ -146,7 +150,7 @@ main (int argc, char **argv)
         const double time_start = get_time();
         for (int i = 0; i < 10000; i++)
           {
-            filter.process (&left[0], &right[0], left.size());
+            filter.process (&left[0], &right[0], cutoff, resonance, left.size());
             samples += left.size();
           }
         const double time_total = get_time() - time_start;
