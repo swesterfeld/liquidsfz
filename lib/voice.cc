@@ -273,7 +273,7 @@ Voice::get_base_resonance()
 void
 Voice::update_filter_config()
 {
-  filter_.update_config (get_base_cutoff(), get_base_resonance());
+  /* FIXME: filter_.update_config (get_base_cutoff(), get_base_resonance()); */
 }
 
 void
