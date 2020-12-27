@@ -155,8 +155,6 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 
   filter_.set_sample_rate (sample_rate);
   filter_.set_type (region.fil_type);
-  filter_.set_channels (2); //region.cached_sample->channels);
-
   filter_.reset();
 
   cutoff_smooth_.reset (sample_rate, 0.005);

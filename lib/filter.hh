@@ -152,9 +152,11 @@ private:
         a2 = (1 - k / q + kk) * div_factor;
       }
   }
-  template<Type T> void
+  template<Type T, int C> void
   process_internal (float *left, float *right, float *cutoff, float *resonance, uint n_frames, uint segment_size)
   {
+    static_assert (C == 1 || C == 2);
+
     uint i = 0;
     while (i < n_frames)
       {
@@ -166,34 +168,37 @@ private:
             if constexpr (T == Type::LPF_1P)
               {
                 left[i]  = apply_lpf_1p (left[i], tmp_l);
-                right[i] = apply_lpf_1p (right[i], tmp_r);
+                if constexpr (C == 2)
+                  right[i] = apply_lpf_1p (right[i], tmp_r);
               }
             if constexpr (T == Type::HPF_1P)
               {
                 left[i]  = apply_hpf_1p (left[i], tmp_l);
-                right[i] = apply_hpf_1p (right[i], tmp_r);
+                if constexpr (C == 2)
+                  right[i] = apply_hpf_1p (right[i], tmp_r);
               }
             if constexpr (T == Type::LPF_2P || T == Type::HPF_2P)
               {
                 left[i]  = apply_biquad (left[i], b_state_l);
-                right[i] = apply_biquad (right[i], b_state_r);
+                if constexpr (C == 2)
+                  right[i] = apply_biquad (right[i], b_state_r);
               }
             i++;
           }
       }
   }
-  void
+  template<int C> void
   process_type (float *left, float *right, float *cutoff, float *resonance, uint n_frames, uint segment_size)
   {
     switch (filter_type_)
     {
-      case Type::LPF_1P:  process_internal<Type::LPF_1P> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::LPF_1P:  process_internal<Type::LPF_1P, C> (left, right, cutoff, resonance, n_frames, segment_size);
                           break;
-      case Type::HPF_1P:  process_internal<Type::HPF_1P> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::HPF_1P:  process_internal<Type::HPF_1P, C> (left, right, cutoff, resonance, n_frames, segment_size);
                           break;
-      case Type::LPF_2P:  process_internal<Type::LPF_2P> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::LPF_2P:  process_internal<Type::LPF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
                           break;
-      case Type::HPF_2P:  process_internal<Type::HPF_2P> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::HPF_2P:  process_internal<Type::HPF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
                           break;
       case Type::NONE:    ;
     }
@@ -203,11 +208,6 @@ public:
   set_type (Type filter_type)
   {
     filter_type_ = filter_type;
-  }
-  void
-  set_channels (int channels)
-  {
-    channels_ = channels;
   }
   void
   set_sample_rate (int sample_rate)
@@ -225,14 +225,26 @@ public:
   void
   process (float *left, float *right, float cutoff, float resonance, uint n_frames)
   {
-    process_type (left, right, &cutoff, &resonance, n_frames, /* just one segment */ n_frames);
+    process_type<2> (left, right, &cutoff, &resonance, n_frames, /* just one segment */ n_frames);
+  }
+  void
+  process_mono (float *left, float cutoff, float resonance, uint n_frames)
+  {
+    process_type<1> (left, nullptr, &cutoff, &resonance, n_frames, /* just one segment */ n_frames);
   }
   void
   process_mod (float *left, float *right, float *cutoff, float *resonance, uint n_frames)
   {
     constexpr uint segment_size = 16; /* subsample control inputs to avoid some of the filter redesign cost */
 
-    process_type (left, right, cutoff, resonance, n_frames, segment_size);
+    process_type<2> (left, right, cutoff, resonance, n_frames, segment_size);
+  }
+  void
+  process_mod_mono (float *left, float *cutoff, float *resonance, uint n_frames)
+  {
+    constexpr uint segment_size = 16; /* subsample control inputs to avoid some of the filter redesign cost */
+
+    process_type<1> (left, nullptr, cutoff, resonance, n_frames, segment_size);
   }
 };
 
