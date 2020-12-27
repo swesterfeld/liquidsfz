@@ -171,4 +171,34 @@ main (int argc, char **argv)
         printf ("MOD   - time %f, samples %zd, ns/sample %f bogo_voices %f\n", time_total, samples, time_total * 1e9 / samples, (samples / 48000.) / time_total);
       }
     }
+  else if (argc == 4 && cmd == "jump")
+    {
+      Filter filter;
+      filter.set_type (Filter::type_from_string (argv[2]));
+      filter.set_sample_rate (48000);
+      filter.reset();
+
+      vector<float> in, out;
+      for (int i = 0; i < 480000; i++)
+        {
+          if (string (argv[3]) == "saw")
+            in.push_back (((i % 200) / 200.) * 2 - 1);
+          else if (string (argv[3]) == "imp")
+            in.push_back (((i % 200) == 0) ? 1 : 0);
+          else if (string (argv[3]) == "rect")
+            in.push_back (((i % 200) < 100) ? 1 : -1);
+          else
+            assert (false);
+        }
+      out = in;
+      bool up = false;
+      for (size_t i = 0; i < out.size(); i++)
+        {
+          if ((rand() % 1000) == 0)
+            up = !up;
+          filter.process_mono (&out[i], up ? 12000 : 500, 1, 1);
+        }
+      for (size_t i = 0; i < out.size(); i++)
+        printf ("%f\n", out[i]);
+    }
 }
