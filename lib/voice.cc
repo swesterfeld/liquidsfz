@@ -157,8 +157,12 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   filter_.set_type (region.fil_type);
   filter_.set_channels (2); //region.cached_sample->channels);
 
-  update_filter_config();
   filter_.reset();
+
+  cutoff_smooth_.reset (sample_rate, 0.005);
+  resonance_smooth_.reset (sample_rate, 0.005);
+  update_cutoff (true);
+  update_resonance (true);
 }
 
 float
@@ -258,22 +262,17 @@ Voice::update_amplitude_gain()
   amplitude_gain_ = gain;
 }
 
-float
-Voice::get_base_cutoff()
+void
+Voice::update_cutoff (bool now)
 {
-  return region_->cutoff * exp2f (synth_->get_cc_vec_value (channel_, region_->cutoff_cc) * (1 / 1200.f));
-}
-
-float
-Voice::get_base_resonance()
-{
-  return region_->resonance + synth_->get_cc_vec_value (channel_, region_->resonance_cc);
+  /* FIXME: maybe smooth only cc value */
+  cutoff_smooth_.set (region_->cutoff * exp2f (synth_->get_cc_vec_value (channel_, region_->cutoff_cc) * (1 / 1200.f)), now);
 }
 
 void
-Voice::update_filter_config()
+Voice::update_resonance (bool now)
 {
-  /* FIXME: filter_.update_config (get_base_cutoff(), get_base_resonance()); */
+  resonance_smooth_.set (region_->resonance + synth_->get_cc_vec_value (channel_, region_->resonance_cc), now);
 }
 
 void
@@ -315,8 +314,12 @@ Voice::update_cc (int controller)
 
   if (region_->tune_cc.contains (controller))
     update_replay_speed (false);
-  if (region_->cutoff_cc.contains (controller) || region_->resonance_cc.contains (controller))
-    update_filter_config();
+
+  if (region_->cutoff_cc.contains (controller))
+    update_cutoff (false);
+
+  if (region_->resonance_cc.contains (controller))
+    update_resonance (false);
 }
 
 void
@@ -437,15 +440,13 @@ Voice::process (float **outputs, uint n_frames)
     }
 
   /* process filter */
-  float base_cutoff = get_base_cutoff();
-  float base_resonance = get_base_resonance();
   float depth_factor = region_->fileg_depth.base / 1200.;
   float mod_cutoff[n_frames];
   float mod_resonance[n_frames];
   for (uint i = dframes; i < n_frames; i++)
     {
-      mod_cutoff[i] = base_cutoff * exp2f (depth_factor * filter_envelope_.get_next()),
-      mod_resonance[i] = base_resonance;
+      mod_cutoff[i] = cutoff_smooth_.get_next() * exp2f (depth_factor * filter_envelope_.get_next()),
+      mod_resonance[i] = resonance_smooth_.get_next();
     }
   filter_.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
 
