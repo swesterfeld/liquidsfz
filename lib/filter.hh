@@ -56,6 +56,9 @@ public:
     return Type::NONE;
   }
 private:
+  bool first = false;
+  float last_cutoff = 0;
+
   /* 1 pole */
   float p = 0;
 
@@ -118,7 +121,24 @@ private:
   void
   update_config (float cutoff, float resonance)
   {
-    float norm_cutoff = std::clamp (cutoff / sample_rate_, 0.f, 0.49f);
+    /* smoothing wouldn't work properly if cutoff is (close to) zero */
+    cutoff = std::max (cutoff, 10.f);
+
+    if (first)
+      {
+        first = false;
+      }
+    else
+      {
+        /* parameter smoothing */
+
+        constexpr float high = 1.4;
+        constexpr float low = 1. / high;
+        cutoff = std::clamp (cutoff, last_cutoff * low, last_cutoff * high);
+      }
+    last_cutoff = cutoff;
+
+    float norm_cutoff = std::min (cutoff / sample_rate_, 0.49f);
 
     if (filter_type_ == Type::LPF_1P || filter_type_ == Type::HPF_1P) /* 1 pole filter design from DAFX, Zoelzer */
       {
@@ -221,6 +241,7 @@ public:
     tmp_r = 0;
     reset_biquad (b_state_l);
     reset_biquad (b_state_r);
+    first = true;
   }
   void
   process (float *left, float *right, float cutoff, float resonance, uint n_frames)
