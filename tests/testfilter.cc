@@ -179,14 +179,16 @@ main (int argc, char **argv)
       filter.reset();
 
       vector<float> in, out;
+      vector<float> cutoff_v;
+      vector<float> resonance_v;
       for (int i = 0; i < 480000; i++)
         {
           if (string (argv[3]) == "saw")
-            in.push_back (((i % 200) / 200.) * 2 - 1);
+            in.push_back (((i % 137) / 137.) * 2 - 1);
           else if (string (argv[3]) == "imp")
-            in.push_back (((i % 200) == 0) ? 1 : 0);
+            in.push_back (((i % 137) == 0) ? 1 : 0);
           else if (string (argv[3]) == "rect")
-            in.push_back (((i % 200) < 100) ? 1 : -1);
+            in.push_back (((i % 137) < 68) ? 1 : -1);
           else
             assert (false);
         }
@@ -194,10 +196,13 @@ main (int argc, char **argv)
       bool up = false;
       for (size_t i = 0; i < out.size(); i++)
         {
-          if ((rand() % 1000) == 0)
+          if ((rand() % 500) == 0)
             up = !up;
-          filter.process_mono (&out[i], up ? 12000 : 500, 1, 1);
+          cutoff_v.push_back (up ? 12000 : 500);
+          resonance_v.push_back (1);
         }
+      filter.process_mod_mono (&out[0], &cutoff_v[0], &resonance_v[0], out.size());
+
       for (size_t i = 0; i < out.size(); i++)
         printf ("%f\n", out[i]);
     }
