@@ -100,9 +100,9 @@ private:
   std::vector<Entry> entries_;
 };
 
-struct AmpParam
+struct EGParam
 {
-  explicit AmpParam (float b)
+  explicit EGParam (float b)
     : base (b)
   {
   }
@@ -162,22 +162,22 @@ struct Region
   std::vector<int> hicc = std::vector<int> (128, 127);
 
   /* amp envelope generator */
-  AmpParam ampeg_delay    { 0 };
-  AmpParam ampeg_attack   { 0 };
-  AmpParam ampeg_hold     { 0 };
-  AmpParam ampeg_decay    { 0 };
-  AmpParam ampeg_sustain  { 100 };
-  AmpParam ampeg_release  { 0 };
-  Curve    amp_velcurve;
+  EGParam ampeg_delay    { 0 };
+  EGParam ampeg_attack   { 0 };
+  EGParam ampeg_hold     { 0 };
+  EGParam ampeg_decay    { 0 };
+  EGParam ampeg_sustain  { 100 };
+  EGParam ampeg_release  { 0 };
+  Curve   amp_velcurve;
 
   /* fil envelope generator */
-  AmpParam fileg_depth    { 0 };
-  AmpParam fileg_delay    { 0 };
-  AmpParam fileg_attack   { 0 };
-  AmpParam fileg_hold     { 0 };
-  AmpParam fileg_decay    { 0 };
-  AmpParam fileg_sustain  { 100 };
-  AmpParam fileg_release  { 0 };
+  EGParam fileg_depth    { 0 };
+  EGParam fileg_delay    { 0 };
+  EGParam fileg_attack   { 0 };
+  EGParam fileg_hold     { 0 };
+  EGParam fileg_decay    { 0 };
+  EGParam fileg_sustain  { 100 };
+  EGParam fileg_release  { 0 };
 
   float volume = 0;
   float amplitude = 100;
@@ -283,9 +283,9 @@ class Loader
   std::set<std::string> preprocess_done;
   Synth *synth_ = nullptr;
 
-  bool parse_eg_param (const std::string& eg, AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
-  bool parse_ampeg_param (AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
-  bool parse_fileg_param (AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
+  bool parse_eg_param (const std::string& eg, EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
+  bool parse_ampeg_param (EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
+  bool parse_fileg_param (EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
 public:
   Loader (Synth *synth)
   {

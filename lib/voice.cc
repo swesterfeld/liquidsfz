@@ -164,7 +164,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 }
 
 float
-Voice::amp_value (float vnorm, const AmpParam& amp_param)
+Voice::amp_value (float vnorm, const EGParam& amp_param)
 {
   float value = amp_param.base + amp_param.vel2 * vnorm;
   value += synth_->get_cc_vec_value (channel_, amp_param.cc_vec);

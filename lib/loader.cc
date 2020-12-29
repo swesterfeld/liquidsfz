@@ -144,7 +144,7 @@ Loader::update_key_info (int key)
 }
 
 bool
-Loader::parse_eg_param (const string& eg, AmpParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str)
+Loader::parse_eg_param (const string& eg, EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str)
 {
   string prefix = eg + "_";
 
@@ -170,13 +170,13 @@ Loader::parse_eg_param (const string& eg, AmpParam& amp_param, const std::string
 }
 
 bool
-Loader::parse_ampeg_param (AmpParam& amp_param, const string& key, const string& value, const string& param_str)
+Loader::parse_ampeg_param (EGParam& amp_param, const string& key, const string& value, const string& param_str)
 {
   return parse_eg_param ("ampeg", amp_param, key, value, param_str);
 }
 
 bool
-Loader::parse_fileg_param (AmpParam& amp_param, const string& key, const string& value, const string& param_str)
+Loader::parse_fileg_param (EGParam& amp_param, const string& key, const string& value, const string& param_str)
 {
   return parse_eg_param ("fileg", amp_param, key, value, param_str);
 }
