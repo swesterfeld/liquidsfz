@@ -238,6 +238,7 @@ class JackStandalone
   Synth synth;
   std::mutex synth_mutex;
   std::vector<KeyInfo> keys;
+  std::vector<CCInfo> ccs;
 
 public:
   JackStandalone (jack_client_t *client) :
@@ -307,19 +308,7 @@ public:
   void
   run()
   {
-    auto ccs = synth.list_ccs();
-    if (ccs.size())
-      {
-        printf ("Supported Controls:\n");
-        for (const auto& cc_info : ccs)
-          {
-            printf (" - CC #%d", cc_info.cc());
-            if (cc_info.has_label())
-              printf (" - %s", cc_info.label().c_str());
-            printf (" [ default %d ]\n", cc_info.default_value());
-          }
-        printf ("\n");
-      }
+    show_ccs();
     if (jack_activate (client))
       {
         fprintf (stderr, "cannot activate client");
@@ -395,6 +384,7 @@ public:
         printf ("gain value          - set gain (0 <= value <= 5)\n");
         printf ("keys                - show keys supported by the sfz\n");
         printf ("switches            - show switches supported by the sfz\n");
+        printf ("ccs                 - show ccs supported by the sfz\n");
         printf ("voice_count         - print number of active synthesis voices\n");
         printf ("sleep time_ms       - sleep for some milliseconds\n");
         printf ("source filename     - load a file and execute each line as command\n");
@@ -443,6 +433,10 @@ public:
     else if (cli_parser.command ("switches"))
       {
         show_keys (true);
+      }
+    else if (cli_parser.command ("ccs"))
+      {
+        show_ccs();
       }
     else if (cli_parser.command ("voice_count"))
       {
@@ -493,6 +487,7 @@ public:
       return false;
 
     keys = synth.list_keys();
+    ccs = synth.list_ccs();
 
     printf ("%30s\r", ""); // overwrite progress message
     return true;
@@ -508,6 +503,22 @@ public:
 
         if (is_switch == k.is_switch())
           printf ("%d %s\n", k.key(), label.c_str());
+      }
+  }
+  void
+  show_ccs()
+  {
+    if (ccs.size())
+      {
+        printf ("Supported Controls:\n");
+        for (const auto& cc_info : ccs)
+          {
+            printf (" - CC #%d", cc_info.cc());
+            if (cc_info.has_label())
+              printf (" - %s", cc_info.label().c_str());
+            printf (" [ default %d ]\n", cc_info.default_value());
+          }
+        printf ("\n");
       }
   }
 };
