@@ -58,6 +58,7 @@ public:
 private:
   bool first = false;
   float last_cutoff = 0;
+  float last_resonance = 0;
 
   /* 1 pole */
   float p = 0;
@@ -134,9 +135,12 @@ private:
 
         constexpr float high = 1.4;
         constexpr float low = 1. / high;
+
         cutoff = std::clamp (cutoff, last_cutoff * low, last_cutoff * high);
+        resonance = std::clamp (resonance, last_resonance - 1, last_resonance + 1);
       }
     last_cutoff = cutoff;
+    last_resonance = resonance;
 
     float norm_cutoff = std::min (cutoff / sample_rate_, 0.49f);
 
