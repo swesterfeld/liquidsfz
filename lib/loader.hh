@@ -226,6 +226,10 @@ struct Region
   float resonance = 0;
   Filter::Type fil_type = Filter::Type::LPF_2P;
 
+  float cutoff2 = -1;
+  float resonance2 = 0;
+  Filter::Type fil2_type = Filter::Type::LPF_2P;
+
   CCParamVec pan_cc;
   CCParamVec gain_cc;
   CCParamVec amplitude_cc;
@@ -234,6 +238,8 @@ struct Region
   CCParamVec offset_cc;
   CCParamVec cutoff_cc;
   CCParamVec resonance_cc;
+  CCParamVec cutoff2_cc;
+  CCParamVec resonance2_cc;
 
   bool empty()
   {

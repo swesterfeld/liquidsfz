@@ -157,10 +157,19 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   filter_.set_type (region.fil_type);
   filter_.reset();
 
+  filter2_.set_sample_rate (sample_rate);
+  filter2_.set_type (region.fil2_type);
+  filter2_.reset();
+
   cutoff_smooth_.reset (sample_rate, 0.005);
   resonance_smooth_.reset (sample_rate, 0.005);
   update_cutoff (true);
   update_resonance (true);
+
+  cutoff2_smooth_.reset (sample_rate, 0.005);
+  resonance2_smooth_.reset (sample_rate, 0.005);
+  update_cutoff2 (true);
+  update_resonance2 (true);
 }
 
 float
@@ -268,14 +277,29 @@ Voice::update_cutoff (bool now)
 }
 
 void
+Voice::update_cutoff2 (bool now)
+{
+  /* FIXME: maybe smooth only cc value */
+  cutoff2_smooth_.set (region_->cutoff2 * exp2f (synth_->get_cc_vec_value (channel_, region_->cutoff2_cc) * (1 / 1200.f)), now);
+}
+
+void
 Voice::update_resonance (bool now)
 {
   resonance_smooth_.set (region_->resonance + synth_->get_cc_vec_value (channel_, region_->resonance_cc), now);
 }
 
 void
+Voice::update_resonance2 (bool now)
+{
+  resonance2_smooth_.set (region_->resonance2 + synth_->get_cc_vec_value (channel_, region_->resonance2_cc), now);
+}
+
+void
 Voice::stop (OffMode off_mode)
 {
+  /* FIXME: filter envelope */
+
   state_ = Voice::RELEASED;
   envelope_.stop (off_mode);
 }
@@ -316,8 +340,14 @@ Voice::update_cc (int controller)
   if (region_->cutoff_cc.contains (controller))
     update_cutoff (false);
 
+  if (region_->cutoff2_cc.contains (controller))
+    update_cutoff2 (false);
+
   if (region_->resonance_cc.contains (controller))
     update_resonance (false);
+
+  if (region_->resonance2_cc.contains (controller))
+    update_resonance2 (false);
 }
 
 void
@@ -439,6 +469,7 @@ Voice::process (float **outputs, uint n_frames)
 
   /* process filter */
   float depth_factor = region_->fileg_depth.base / 1200.;
+  // FIXME: filter/filter2 cutoff is uninitialized access if dframes > 0
   float mod_cutoff[n_frames];
   float mod_resonance[n_frames];
   for (uint i = dframes; i < n_frames; i++)
@@ -447,6 +478,14 @@ Voice::process (float **outputs, uint n_frames)
       mod_resonance[i] = resonance_smooth_.get_next();
     }
   filter_.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
+
+  /* process filter2 */
+  for (uint i = dframes; i < n_frames; i++)
+    {
+      mod_cutoff[i] = cutoff2_smooth_.get_next();
+      mod_resonance[i] = resonance2_smooth_.get_next();
+    }
+  filter2_.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
 
   /* add samples to output buffer */
   for (uint i = 0; i < n_frames; i++)

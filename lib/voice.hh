@@ -33,9 +33,12 @@ class Voice
   LinearSmooth right_gain_;
 
   Filter       filter_;
+  Filter       filter2_;
   Envelope     filter_envelope_;
   LinearSmooth cutoff_smooth_;
+  LinearSmooth cutoff2_smooth_;
   LinearSmooth resonance_smooth_;
+  LinearSmooth resonance2_smooth_;
 
   float volume_gain_ = 0;
   float amplitude_gain_ = 0;
@@ -55,7 +58,9 @@ class Voice
 
   float amp_value (float vnorm, const EGParam& amp_param);
   void  update_cutoff (bool now);
+  void  update_cutoff2 (bool now);
   void  update_resonance (bool now);
+  void  update_resonance2 (bool now);
 
   LinearSmooth replay_speed_;
   float        pitch_bend_value_ = 0; // [-1:1]
