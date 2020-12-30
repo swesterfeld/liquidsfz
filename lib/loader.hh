@@ -136,10 +136,12 @@ struct KeyInfo
 struct FilterParams
 {
   Filter::Type type = Filter::Type::LPF_2P;
-  float cutoff = -1;
-  float resonance = 0;
-  CCParamVec cutoff_cc;
-  CCParamVec resonance_cc;
+  float        cutoff = -1;
+  float        resonance = 0;
+  CCParamVec   cutoff_cc;
+  CCParamVec   resonance_cc;
+  int          keytrack = 0;
+  int          keycenter = 60;
 };
 
 struct Region

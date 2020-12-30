@@ -368,6 +368,14 @@ Loader::set_key_value (const string& key, const string& value)
     region.fil.type = convert_filter_type (value);
   else if (key == "fil2_type")
     region.fil2.type = convert_filter_type (value);
+  else if (key == "fil_keytrack")
+    region.fil.keytrack = convert_int (value);
+  else if (key == "fil2_keytrack")
+    region.fil2.keytrack = convert_int (value);
+  else if (key == "fil_keycenter")
+    region.fil.keycenter = convert_key (value);
+  else if (key == "fil2_keycenter")
+    region.fil2.keycenter = convert_key (value);
   else if (split_sub_key (key, "pan_cc", sub_key) /* sforzando supports both variants */
         || split_sub_key (key, "pan_oncc", sub_key))
     {

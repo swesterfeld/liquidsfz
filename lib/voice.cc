@@ -273,8 +273,13 @@ Voice::update_amplitude_gain()
 void
 Voice::update_cutoff (FImpl& fi, bool now)
 {
+  float delta_cent = synth_->get_cc_vec_value (channel_, fi.params->cutoff_cc);
+
+  // key tracking
+  delta_cent += (key_ - fi.params->keycenter) * fi.params->keytrack;
+
   /* FIXME: maybe smooth only cc value */
-  fi.cutoff_smooth.set (fi.params->cutoff * exp2f (synth_->get_cc_vec_value (channel_, fi.params->cutoff_cc) * (1 / 1200.f)), now);
+  fi.cutoff_smooth.set (fi.params->cutoff * exp2f (delta_cent * (1 / 1200.f)), now);
 }
 
 void
