@@ -357,17 +357,17 @@ Loader::set_key_value (const string& key, const string& value)
   else if (key == "bend_down")
     region.bend_down = convert_int (value);
   else if (key == "cutoff")
-    region.cutoff = convert_float (value);
+    region.fil.cutoff = convert_float (value);
   else if (key == "cutoff2")
-    region.cutoff2 = convert_float (value);
+    region.fil2.cutoff = convert_float (value);
   else if (key == "resonance")
-    region.resonance = convert_float (value);
+    region.fil.resonance = convert_float (value);
   else if (key == "resonance2")
-    region.resonance2 = convert_float (value);
+    region.fil2.resonance = convert_float (value);
   else if (key == "fil_type")
-    region.fil_type = convert_filter_type (value);
+    region.fil.type = convert_filter_type (value);
   else if (key == "fil2_type")
-    region.fil2_type = convert_filter_type (value);
+    region.fil2.type = convert_filter_type (value);
   else if (split_sub_key (key, "pan_cc", sub_key) /* sforzando supports both variants */
         || split_sub_key (key, "pan_oncc", sub_key))
     {
@@ -408,25 +408,25 @@ Loader::set_key_value (const string& key, const string& value)
   else if (split_sub_key (key, "cutoff_cc", sub_key)
        ||  split_sub_key (key, "cutoff_oncc", sub_key))
     {
-      region.cutoff_cc.set (sub_key, convert_float (value));
+      region.fil.cutoff_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (split_sub_key (key, "cutoff2_cc", sub_key)
        ||  split_sub_key (key, "cutoff2_oncc", sub_key))
     {
-      region.cutoff2_cc.set (sub_key, convert_float (value));
+      region.fil2.cutoff_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (split_sub_key (key, "resonance_cc", sub_key)
        ||  split_sub_key (key, "resonance_oncc", sub_key))
     {
-      region.resonance_cc.set (sub_key, convert_float (value));
+      region.fil.resonance_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (split_sub_key (key, "resonance2_cc", sub_key)
        ||  split_sub_key (key, "resonance2_oncc", sub_key))
     {
-      region.resonance2_cc.set (sub_key, convert_float (value));
+      region.fil2.resonance_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (key == "xfin_lovel")
@@ -839,11 +839,11 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
           if (!region.have_loop_end)
             region.loop_end = cached_sample->loop_end;
         }
-      if (region.cutoff < 0) /* filter defaults to lpf_2p, but only if cutoff was found */
-        region.fil_type = Filter::Type::NONE;
+      if (region.fil.cutoff < 0) /* filter defaults to lpf_2p, but only if cutoff was found */
+        region.fil.type = Filter::Type::NONE;
 
-      if (region.cutoff2 < 0) /* filter 2 defaults to lpf_2p, but only if cutoff2 was found */
-        region.fil2_type = Filter::Type::NONE;
+      if (region.fil2.cutoff < 0) /* filter 2 defaults to lpf_2p, but only if cutoff2 was found */
+        region.fil2.type = Filter::Type::NONE;
 
       if (region.sw_lolast >= 0)
         region.switch_match = (region.sw_lolast <= region.sw_default && region.sw_hilast >= region.sw_default);

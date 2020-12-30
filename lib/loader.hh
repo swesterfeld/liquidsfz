@@ -133,6 +133,15 @@ struct KeyInfo
   bool is_switch = false;
 };
 
+struct FilterParams
+{
+  Filter::Type type = Filter::Type::LPF_2P;
+  float cutoff = -1;
+  float resonance = 0;
+  CCParamVec cutoff_cc;
+  CCParamVec resonance_cc;
+};
+
 struct Region
 {
   std::string sample;
@@ -222,13 +231,7 @@ struct Region
   XFCurve xf_keycurve = XFCurve::POWER;
   XFCurve xf_cccurve = XFCurve::POWER;
 
-  float cutoff = -1;
-  float resonance = 0;
-  Filter::Type fil_type = Filter::Type::LPF_2P;
-
-  float cutoff2 = -1;
-  float resonance2 = 0;
-  Filter::Type fil2_type = Filter::Type::LPF_2P;
+  FilterParams fil, fil2;
 
   CCParamVec pan_cc;
   CCParamVec gain_cc;
@@ -236,10 +239,6 @@ struct Region
   CCParamVec tune_cc;
   CCParamVec delay_cc;
   CCParamVec offset_cc;
-  CCParamVec cutoff_cc;
-  CCParamVec resonance_cc;
-  CCParamVec cutoff2_cc;
-  CCParamVec resonance2_cc;
 
   bool empty()
   {

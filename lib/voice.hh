@@ -32,13 +32,14 @@ class Voice
   LinearSmooth left_gain_;
   LinearSmooth right_gain_;
 
-  Filter       filter_;
-  Filter       filter2_;
+  struct FImpl {
+    Filter              filter;
+    LinearSmooth        cutoff_smooth;
+    LinearSmooth        resonance_smooth;
+    const FilterParams *params;
+  } fimpl_, fimpl2_;
+
   Envelope     filter_envelope_;
-  LinearSmooth cutoff_smooth_;
-  LinearSmooth cutoff2_smooth_;
-  LinearSmooth resonance_smooth_;
-  LinearSmooth resonance2_smooth_;
 
   float volume_gain_ = 0;
   float amplitude_gain_ = 0;
@@ -57,10 +58,10 @@ class Voice
   void update_lr_gain (bool now);
 
   float amp_value (float vnorm, const EGParam& amp_param);
-  void  update_cutoff (bool now);
-  void  update_cutoff2 (bool now);
-  void  update_resonance (bool now);
-  void  update_resonance2 (bool now);
+
+  void  start_filter (FImpl& fi, const FilterParams *params);
+  void  update_cutoff (FImpl& fi, bool now);
+  void  update_resonance (FImpl& fi, bool now);
 
   LinearSmooth replay_speed_;
   float        pitch_bend_value_ = 0; // [-1:1]
