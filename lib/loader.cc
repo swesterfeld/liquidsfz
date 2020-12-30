@@ -68,7 +68,7 @@ Loader::convert_off_mode (const string& m)
     return OffMode::NORMAL;
   else if (m == "time")
     return OffMode::TIME;
-  synth_->warning ("%s unknown loop mode: %s\n", location().c_str(), m.c_str());
+  synth_->warning ("%s unknown off mode: %s\n", location().c_str(), m.c_str());
   return OffMode::FAST;
 }
 
@@ -90,7 +90,7 @@ Loader::convert_filter_type (const string& f)
   if (type != Filter::Type::NONE)
     return type;
 
-  synth_->warning ("%s unknown filter type: %s\n", location().c_str(), f.c_str());
+  synth_->warning ("%s unsupported filter type: %s\n", location().c_str(), f.c_str());
   return Filter::Type::NONE;
 }
 
@@ -839,10 +839,10 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
           if (!region.have_loop_end)
             region.loop_end = cached_sample->loop_end;
         }
-      if (region.cutoff < 0) /* filter defaults to lpf_2p, but only if cutoff was found  */
+      if (region.cutoff < 0) /* filter defaults to lpf_2p, but only if cutoff was found */
         region.fil_type = Filter::Type::NONE;
 
-      if (region.cutoff2 < 0) /* filter defaults to lpf_2p, but only if cutoff2 was found  */
+      if (region.cutoff2 < 0) /* filter 2 defaults to lpf_2p, but only if cutoff2 was found */
         region.fil2_type = Filter::Type::NONE;
 
       if (region.sw_lolast >= 0)
