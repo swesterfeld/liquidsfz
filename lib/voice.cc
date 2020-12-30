@@ -278,6 +278,9 @@ Voice::update_cutoff (FImpl& fi, bool now)
   // key tracking
   delta_cent += (key_ - fi.params->keycenter) * fi.params->keytrack;
 
+  // velocity tracking
+  delta_cent += velocity_ * (1 / 127.f) * fi.params->veltrack;
+
   /* FIXME: maybe smooth only cc value */
   fi.cutoff_smooth.set (fi.params->cutoff * exp2f (delta_cent * (1 / 1200.f)), now);
 }

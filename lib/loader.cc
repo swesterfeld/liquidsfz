@@ -376,6 +376,10 @@ Loader::set_key_value (const string& key, const string& value)
     region.fil.keycenter = convert_key (value);
   else if (key == "fil2_keycenter")
     region.fil2.keycenter = convert_key (value);
+  else if (key == "fil_veltrack")
+    region.fil.veltrack = convert_int (value);
+  else if (key == "fil2_veltrack")
+    region.fil2.veltrack = convert_int (value);
   else if (split_sub_key (key, "pan_cc", sub_key) /* sforzando supports both variants */
         || split_sub_key (key, "pan_oncc", sub_key))
     {

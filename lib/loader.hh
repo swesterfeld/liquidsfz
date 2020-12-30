@@ -142,6 +142,7 @@ struct FilterParams
   CCParamVec   resonance_cc;
   int          keytrack = 0;
   int          keycenter = 60;
+  int          veltrack = 0;
 };
 
 struct Region
