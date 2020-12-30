@@ -101,6 +101,7 @@ class Synth
   static Global global_;
   float gain_ = 1.0;
   std::array<bool, 128> is_key_switch_;
+  std::array<bool, 128> is_supported_cc_;
 
   static constexpr int CC_SUSTAIN       = 64;
   static constexpr int CC_ALL_SOUND_OFF = 120;
@@ -182,6 +183,11 @@ public:
         for (auto k : key_list_)
           if (k.is_switch && k.key >= 0 && uint (k.key) < is_key_switch_.size())
             is_key_switch_[k.key] = true;
+
+        is_supported_cc_.fill (false);
+        for (auto c : cc_list_)
+          if (c.cc >= 0 && uint (c.cc) < is_supported_cc_.size())
+            is_supported_cc_[c.cc] = true;
 
         init_channels();
         return true;
@@ -370,7 +376,7 @@ public:
         debug ("update_cc: bad channel controller %d\n", controller);
         return;
       }
-    if (controller == CC_ALL_SOUND_OFF || controller == CC_ALL_NOTES_OFF)
+    if (!is_supported_cc_[controller] && (controller == CC_ALL_SOUND_OFF || controller == CC_ALL_NOTES_OFF))
       {
         all_sound_off();
         return;
