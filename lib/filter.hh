@@ -105,6 +105,12 @@ private:
     state.y1 = out;
     return out;
   }
+  float
+  fast_db_to_factor (float db)
+  {
+    // usually less expensive than powf (10, db / 20)
+    return exp2f (db * 0.166096404744368f);
+  }
   void
   update_config (float cutoff, float resonance)
   {
@@ -151,7 +157,7 @@ private:
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
-        float q = M_SQRT1_2 * powf (10, resonance / 20.);
+        float q = M_SQRT1_2 * fast_db_to_factor (resonance);
         float div_factor = 1  / (1 + (k + 1 / q) * k);
 
         b0 = kk * div_factor;
@@ -164,7 +170,7 @@ private:
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
-        float q = M_SQRT1_2 * powf (10, resonance / 20.);
+        float q = M_SQRT1_2 * fast_db_to_factor (resonance);
         float div_factor = 1  / (1 + (k + 1 / q) * k);
 
         b0 = div_factor;
