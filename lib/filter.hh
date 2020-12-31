@@ -60,12 +60,6 @@ private:
   float last_cutoff = 0;
   float last_resonance = 0;
 
-  /* 1 pole */
-  float p = 0;
-
-  float tmp_l = 0;
-  float tmp_r = 0;
-
   /* biquad */
   float a1 = 0;
   float a2 = 0;
@@ -94,19 +88,11 @@ private:
     state.y2 = 0;
   }
   float
-  apply_hpf_1p (float in, float& tmp)
+  apply_biquad1p (float in, BiquadState& state) /* degenerate biquad with just one pole */
   {
-    float x_h = in - p * tmp;
-    float out = 0.5f * (in - p * x_h - tmp);
-    tmp = x_h;
-    return out;
-  }
-  float
-  apply_lpf_1p (float in, float& tmp)
-  {
-    float x_h = in - p * tmp;
-    float out = 0.5f * (in + p * x_h + tmp);
-    tmp = x_h;
+    float out = b0 * in + b1 * state.x1 - a1 * state.y1;
+    state.x1 = in;
+    state.y1 = out;
     return out;
   }
   float
@@ -144,10 +130,22 @@ private:
 
     float norm_cutoff = std::min (cutoff / sample_rate_, 0.49f);
 
-    if (filter_type_ == Type::LPF_1P || filter_type_ == Type::HPF_1P) /* 1 pole filter design from DAFX, Zoelzer */
+    if (filter_type_ == Type::LPF_1P) /* 1 pole filter design from DAFX, Zoelzer */
       {
-        float t = tanf (M_PI * norm_cutoff);
-        p = (t - 1) / (t + 1);
+        float k = tanf (M_PI * norm_cutoff);
+        float div_factor = 1 / (k + 1);
+
+        b1 = b0 = k * div_factor;
+        a1 = (k - 1) * div_factor;
+      }
+    else if (filter_type_ == Type::HPF_1P)
+      {
+        float k = tanf (M_PI * norm_cutoff);
+        float div_factor = 1 / (k + 1);
+
+        b0 = div_factor;
+        b1 = -div_factor;
+        a1 = (k - 1) * div_factor;
       }
     else if (filter_type_ == Type::LPF_2P)
       {
@@ -189,17 +187,11 @@ private:
         uint segment_end = std::min (i + segment_size, n_frames);
         while (i < segment_end)
           {
-            if constexpr (T == Type::LPF_1P)
+            if constexpr (T == Type::LPF_1P || T == Type::HPF_1P)
               {
-                left[i]  = apply_lpf_1p (left[i], tmp_l);
+                left[i]  = apply_biquad1p (left[i], b_state_l);
                 if constexpr (C == 2)
-                  right[i] = apply_lpf_1p (right[i], tmp_r);
-              }
-            if constexpr (T == Type::HPF_1P)
-              {
-                left[i]  = apply_hpf_1p (left[i], tmp_l);
-                if constexpr (C == 2)
-                  right[i] = apply_hpf_1p (right[i], tmp_r);
+                  right[i] = apply_biquad1p (right[i], b_state_r);
               }
             if constexpr (T == Type::LPF_2P || T == Type::HPF_2P)
               {
@@ -241,8 +233,6 @@ public:
   void
   reset()
   {
-    tmp_l = 0;
-    tmp_r = 0;
     reset_biquad (b_state_l);
     reset_biquad (b_state_r);
     first = true;
