@@ -463,24 +463,33 @@ Voice::process (float **outputs, uint n_frames)
     }
 
   /* process filter */
-  float depth_factor = region_->fileg_depth.base / 1200.;
   // FIXME: filter/filter2 cutoff is uninitialized access if dframes > 0
   float mod_cutoff[n_frames];
   float mod_resonance[n_frames];
-  for (uint i = dframes; i < n_frames; i++)
-    {
-      mod_cutoff[i] = fimpl_.cutoff_smooth.get_next() * exp2f (depth_factor * filter_envelope_.get_next()),
-      mod_resonance[i] = fimpl_.resonance_smooth.get_next();
-    }
-  fimpl_.filter.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
 
-  /* process filter2 */
-  for (uint i = dframes; i < n_frames; i++)
+  /* process filter */
+  if (fimpl_.params->type != Filter::Type::NONE)
     {
-      mod_cutoff[i] = fimpl2_.cutoff_smooth.get_next();
-      mod_resonance[i] = fimpl2_.resonance_smooth.get_next();
+      float depth_factor = region_->fileg_depth.base / 1200.;
+
+      for (uint i = dframes; i < n_frames; i++)
+        {
+          mod_cutoff[i] = fimpl_.cutoff_smooth.get_next() * exp2f (depth_factor * filter_envelope_.get_next()),
+          mod_resonance[i] = fimpl_.resonance_smooth.get_next();
+        }
+      fimpl_.filter.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
     }
-  fimpl2_.filter.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
+
+  /* process second filter */
+  if (fimpl2_.params->type != Filter::Type::NONE)
+    {
+      for (uint i = dframes; i < n_frames; i++)
+        {
+          mod_cutoff[i] = fimpl2_.cutoff_smooth.get_next();
+          mod_resonance[i] = fimpl2_.resonance_smooth.get_next();
+        }
+      fimpl2_.filter.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
+    }
 
   /* add samples to output buffer */
   for (uint i = 0; i < n_frames; i++)
