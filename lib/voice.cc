@@ -294,10 +294,9 @@ Voice::update_resonance (FImpl& fi, bool now)
 void
 Voice::stop (OffMode off_mode)
 {
-  /* FIXME: filter envelope */
-
   state_ = Voice::RELEASED;
   envelope_.stop (off_mode);
+  filter_envelope_.stop (OffMode::NORMAL);
 }
 
 void
