@@ -55,7 +55,7 @@ gen_sweep (vector<float>& left, vector<float>& right, vector<float>& freq)
 int
 main (int argc, char **argv)
 {
-  if (argc < 3)
+  if (argc < 2)
     {
       printf ("too few args\n");
       return 1;
@@ -79,6 +79,38 @@ main (int argc, char **argv)
 
       for (size_t i = 0; i < left.size(); i++)
         printf ("%f %.17g\n", freq[i], sqrt (left[i] * left[i] + right[i] * right[i]));
+
+      return 0;
+    }
+  else if (argc == 2 && cmd == "gen-sweep")
+    {
+      vector<float> left;
+      vector<float> right;
+      vector<float> freq;
+      gen_sweep (left, right, freq);
+
+      for (size_t i = 0; i < left.size(); i++)
+        printf ("%.17g %.17g\n", left[i], right[i]);
+
+      return 0;
+    }
+  else if (argc == 2 && cmd == "test-sweep")
+    {
+      vector<float> left;
+      vector<float> right;
+      vector<float> freq;
+      gen_sweep (left, right, freq);
+
+      for (size_t i = 0; i < left.size(); i++)
+        {
+          char buffer[100];
+          if (fgets (buffer, 100, stdin))
+            {
+              float l = atof (strtok (buffer, " "));
+              float r = atof (strtok (nullptr, "\n"));
+              printf ("%f %.17g\n", freq[i], sqrt (l * l + r * r));
+            }
+        }
 
       return 0;
     }
@@ -205,5 +237,10 @@ main (int argc, char **argv)
 
       for (size_t i = 0; i < out.size(); i++)
         printf ("%f\n", out[i]);
+    }
+  else
+    {
+      printf ("error parsing command line args\n");
+      return 1;
     }
 }
