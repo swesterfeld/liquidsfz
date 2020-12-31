@@ -431,8 +431,8 @@ Most applications will have one single real-time thread that generates the
 audio output. In this real-time thread, only some of the API functions provided
 by liquidsfz should be used, to avoid stalling the audio thread (for instance
 by waiting for a lock, allocating memory or doing file I/O). Each of the
-functions on this list is implemented wait-free (the function will never wait
-for any external condition during execution).
+functions on this list is implemented wait-free (which means there is an
+upper bound on the number of steps required).
 
 - \ref Synth::active_voice_count
 - \ref Synth::add_event_note_on
