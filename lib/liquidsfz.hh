@@ -159,7 +159,7 @@ public:
    *
    * @returns the number of currently active voices
    *
-   * <em>This function is RT safe and can be used from the audio thread.</em>
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   uint active_voice_count() const;
 
@@ -168,7 +168,7 @@ public:
    *
    * @param gain  gain (as a factor)
    *
-   * <em>This function is RT safe and can be used from the audio thread.</em>
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void set_gain (float gain);
 
@@ -218,7 +218,7 @@ public:
    * @param key         note that was pressed
    * @param velocity    velocity for note on
    *
-   * <em>This function is RT safe and can be used from the audio thread.</em>
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void add_event_note_on (uint time_frames, int channel, int key, int velocity);
 
@@ -234,7 +234,7 @@ public:
    * @param channel     midi channel
    * @param key         note that was pressed
    *
-   * <em>This function is RT safe and can be used from the audio thread.</em>
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void add_event_note_off (uint time_frames, int channel, int key);
 
@@ -251,7 +251,7 @@ public:
    * @param cc          the controller
    * @param value       new value for the controller
    *
-   * <em>This function is RT safe and can be used from the audio thread.</em>
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void add_event_cc (uint time_frames, int channel, int cc, int value);
 
@@ -268,7 +268,7 @@ public:
    * @param channel     midi channel
    * @param value       new value for the controller [0..16383]
    *
-   * <em>This function is RT safe and can be used from the audio thread.</em>
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void add_event_pitch_bend (uint time_frames, int channel, int value);
 
@@ -293,7 +293,7 @@ public:
    * @param outputs    buffers for the output of the synthesizer
    * @param n_frames   number of stereo frames to be written
    *
-   * <em>This function is RT safe and can be used from the audio thread.</em>
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void process (float **outputs, uint n_frames);
 
@@ -303,7 +303,7 @@ public:
    * Stop all active voices immediately. This may click because the voices are
    * not faded out.
    *
-   * <em>This function is RT safe and can be used from the audio thread.</em>
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void all_sound_off();
 
@@ -316,7 +316,7 @@ public:
    *
    * This may click because the voices are not faded out.
    *
-   * <em>This function is RT safe and can be used from the audio thread.</em>
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void system_reset();
 
@@ -430,7 +430,9 @@ from different threads.
 Most applications will have one single real-time thread that generates the
 audio output. In this real-time thread, only some of the API functions provided
 by liquidsfz should be used, to avoid stalling the audio thread (for instance
-by waiting for a lock, allocating memory or doing file I/O).
+by waiting for a lock, allocating memory or doing file I/O). Each of the
+functions on this list is implemented wait-free (the function will never wait
+for any external condition during execution).
 
 - \ref Synth::active_voice_count
 - \ref Synth::add_event_note_on
@@ -445,7 +447,7 @@ by waiting for a lock, allocating memory or doing file I/O).
 Typically these restrictions mean that at the beginning of your application,
 you setup the \ref Synth object by loading an .sfz file, setting the sample
 rate, number of voices and so forth. Eventually this is done, and you start a
-real time thread that does audio I/O. Since you must ensure that only one
+real-time thread that does audio I/O. Since you must ensure that only one
 thread at a time is using the \ref Synth object, you would then only use
 the functions of this list in the audio thread and no longer use any other
 function from any other thread.
@@ -471,7 +473,7 @@ thread you started load in.
 
 Messages that are <b>relevant to end users</b> are errors, warnings and info
 messages.  For these log levels, we guarantee that such log messages are never
-produced from functions that can be run in the audio thread (real time thread).
+produced from functions that can be run in the audio thread (real-time thread).
 These log messages are enabled by default.
 
 This means that the callback set by \ref Synth::set_log_function doesn't need
@@ -479,7 +481,7 @@ to be realtime safe, as these callbacks only occur in non-rt-safe functions
 such as \ref Synth::load.
 
 Messages that are <b>relevant to developers</b> use the log level debug. These
-can occur from any thread, including real time safe functions like \ref
+can occur from any thread, including real-time safe functions like \ref
 Synth::process. Debug messages are only relevant for developers, so in almost
 every case you should keep them disabled, which is the default. If you enable
 debug messages using \ref Synth::set_log_level, you either need to provide an
