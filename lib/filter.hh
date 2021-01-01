@@ -157,7 +157,7 @@ private:
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
-        float q = M_SQRT1_2 * fast_db_to_factor (resonance);
+        float q = fast_db_to_factor (resonance);
         float div_factor = 1  / (1 + (k + 1 / q) * k);
 
         b0 = kk * div_factor;
@@ -170,7 +170,7 @@ private:
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
-        float q = M_SQRT1_2 * fast_db_to_factor (resonance);
+        float q = fast_db_to_factor (resonance);
         float div_factor = 1  / (1 + (k + 1 / q) * k);
 
         b0 = div_factor;
