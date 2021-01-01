@@ -364,7 +364,7 @@ Voice::update_pitch_bend (int bend)
 }
 
 void
-Voice::process (float **outputs, uint n_frames)
+Voice::process (float **orig_outputs, uint orig_n_frames)
 {
   const auto csample = region_->cached_sample;
   const auto channels = csample->channels;
@@ -411,8 +411,16 @@ Voice::process (float **outputs, uint n_frames)
         }
     };
   /* delay start of voice for delay_samples_ frames */
-  uint dframes = std::min (n_frames, delay_samples_);
+  uint dframes = std::min (orig_n_frames, delay_samples_);
   delay_samples_ -= dframes;
+
+  /* compute n_frames / outputs according to delay */
+  uint n_frames = orig_n_frames - dframes;
+  float *outputs[2] =
+    {
+      orig_outputs[0] + dframes,
+      orig_outputs[1] + dframes
+    };
 
   float out_l[n_frames];
   float out_r[n_frames];
@@ -420,7 +428,7 @@ Voice::process (float **outputs, uint n_frames)
   std::fill_n (out_r, n_frames, 0.0);
 
   /* render voice */
-  for (uint i = dframes; i < n_frames; i++)
+  for (uint i = 0; i < n_frames; i++)
     {
       const uint ii = ppos_;
       const uint x = ii * channels;
@@ -462,7 +470,6 @@ Voice::process (float **outputs, uint n_frames)
     }
 
   /* process filter */
-  // FIXME: filter/filter2 cutoff is uninitialized access if dframes > 0
   float mod_cutoff[n_frames];
   float mod_resonance[n_frames];
 
@@ -471,7 +478,7 @@ Voice::process (float **outputs, uint n_frames)
     {
       float depth_factor = region_->fileg_depth.base / 1200.;
 
-      for (uint i = dframes; i < n_frames; i++)
+      for (uint i = 0; i < n_frames; i++)
         {
           mod_cutoff[i] = fimpl_.cutoff_smooth.get_next() * exp2f (depth_factor * filter_envelope_.get_next()),
           mod_resonance[i] = fimpl_.resonance_smooth.get_next();
@@ -482,7 +489,7 @@ Voice::process (float **outputs, uint n_frames)
   /* process second filter */
   if (fimpl2_.params->type != Filter::Type::NONE)
     {
-      for (uint i = dframes; i < n_frames; i++)
+      for (uint i = 0; i < n_frames; i++)
         {
           mod_cutoff[i] = fimpl2_.cutoff_smooth.get_next();
           mod_resonance[i] = fimpl2_.resonance_smooth.get_next();
