@@ -37,6 +37,8 @@ public:
     HPF_1P,
     LPF_2P,
     HPF_2P,
+    BPF_2P,
+    BRF_2P,
     LPF_4P,
     HPF_4P,
     LPF_6P,
@@ -56,6 +58,12 @@ public:
 
     if (s == "hpf_2p")
       return Type::HPF_2P;
+
+    if (s == "bpf_2p")
+      return Type::BPF_2P;
+
+    if (s == "brf_2p")
+      return Type::BRF_2P;
 
     if (s == "lpf_4p")
       return Type::LPF_4P;
@@ -172,7 +180,7 @@ private:
         b1 = -div_factor;
         a1 = (k - 1) * div_factor;
       }
-    else if (filter_type_ == Type::LPF_2P || filter_type_ == Type::LPF_4P || filter_type_ == Type::LPF_6P)
+    else if (filter_type_ == Type::LPF_2P || filter_type_ == Type::LPF_4P || filter_type_ == Type::LPF_6P) /* 2 pole design DAFX 2nd ed., Zoelzer */
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
@@ -198,6 +206,32 @@ private:
         a1 = 2 * (kk - 1) * div_factor;
         a2 = (1 - k / q + kk) * div_factor;
       }
+    else if (filter_type_ == Type::BPF_2P)
+      {
+        float k = tanf (M_PI * norm_cutoff);
+        float kk = k * k;
+        float q = fast_db_to_factor (resonance);
+        float div_factor = 1  / (1 + (k + 1 / q) * k);
+
+        b0 = k / q * div_factor;
+        b1 = 0;
+        b2 = -b0;
+        a1 = 2 * (kk - 1) * div_factor;
+        a2 = (1 - k / q + kk) * div_factor;
+      }
+    else if (filter_type_ == Type::BRF_2P)
+      {
+        float k = tanf (M_PI * norm_cutoff);
+        float kk = k * k;
+        float q = fast_db_to_factor (resonance);
+        float div_factor = 1  / (1 + (k + 1 / q) * k);
+
+        b0 = (1 + kk) * div_factor;
+        b1 = 2 * (kk - 1) * div_factor;
+        b2 = b0;
+        a1 = 2 * (kk - 1) * div_factor;
+        a2 = (1 - k / q + kk) * div_factor;
+      }
   }
   template<Type T, int C> void
   process_internal (float *left, float *right, float *cutoff, float *resonance, uint n_frames, uint segment_size)
@@ -218,7 +252,7 @@ private:
                 if constexpr (C == 2)
                   right[i] = apply_biquad1p (right[i], b_state_a[1]);
               }
-            if constexpr (T == Type::LPF_2P || T == Type::HPF_2P)
+            if constexpr (T == Type::LPF_2P || T == Type::HPF_2P || T == Type::BPF_2P || T == Type::BRF_2P)
               {
                 left[i]  = apply_biquad (left[i], b_state_a[0]);
                 if constexpr (C == 2)
@@ -252,6 +286,10 @@ private:
       case Type::LPF_2P:  process_internal<Type::LPF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
                           break;
       case Type::HPF_2P:  process_internal<Type::HPF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+                          break;
+      case Type::BPF_2P:  process_internal<Type::BPF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+                          break;
+      case Type::BRF_2P:  process_internal<Type::BRF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
                           break;
       case Type::LPF_4P:  process_internal<Type::LPF_4P, C> (left, right, cutoff, resonance, n_frames, segment_size);
                           break;
