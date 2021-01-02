@@ -36,7 +36,11 @@ public:
     LPF_1P,
     HPF_1P,
     LPF_2P,
-    HPF_2P
+    HPF_2P,
+    LPF_4P,
+    HPF_4P,
+    LPF_6P,
+    HPF_6P
   };
   static Type
   type_from_string (const std::string& s)
@@ -52,6 +56,18 @@ public:
 
     if (s == "hpf_2p")
       return Type::HPF_2P;
+
+    if (s == "lpf_4p")
+      return Type::LPF_4P;
+
+    if (s == "hpf_4p")
+      return Type::HPF_4P;
+
+    if (s == "lpf_6p")
+      return Type::LPF_6P;
+
+    if (s == "hpf_6p")
+      return Type::HPF_6P;
 
     return Type::NONE;
   }
@@ -73,7 +89,10 @@ private:
     float x2 = 0;
     float y1 = 0;
     float y2 = 0;
-  } b_state_l, b_state_r;
+  };
+  BiquadState b_state_a[2];   // 2 pole filter
+  BiquadState b_state_b[2];   // 4 pole filter
+  BiquadState b_state_z[2];   // 6 pole filter
 
   Type  filter_type_ = Type::NONE;
   int   channels_    = 1;
@@ -153,7 +172,7 @@ private:
         b1 = -div_factor;
         a1 = (k - 1) * div_factor;
       }
-    else if (filter_type_ == Type::LPF_2P)
+    else if (filter_type_ == Type::LPF_2P || filter_type_ == Type::LPF_4P || filter_type_ == Type::LPF_6P)
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
@@ -166,7 +185,7 @@ private:
         a1 = 2 * (kk - 1) * div_factor;
         a2 = (1 - k / q + kk) * div_factor;
       }
-    else if (filter_type_ == Type::HPF_2P)
+    else if (filter_type_ == Type::HPF_2P || filter_type_ == Type::HPF_4P || filter_type_ == Type::HPF_6P)
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
@@ -195,15 +214,27 @@ private:
           {
             if constexpr (T == Type::LPF_1P || T == Type::HPF_1P)
               {
-                left[i]  = apply_biquad1p (left[i], b_state_l);
+                left[i]  = apply_biquad1p (left[i], b_state_a[0]);
                 if constexpr (C == 2)
-                  right[i] = apply_biquad1p (right[i], b_state_r);
+                  right[i] = apply_biquad1p (right[i], b_state_a[1]);
               }
             if constexpr (T == Type::LPF_2P || T == Type::HPF_2P)
               {
-                left[i]  = apply_biquad (left[i], b_state_l);
+                left[i]  = apply_biquad (left[i], b_state_a[0]);
                 if constexpr (C == 2)
-                  right[i] = apply_biquad (right[i], b_state_r);
+                  right[i] = apply_biquad (right[i], b_state_a[1]);
+              }
+            if constexpr (T == Type::LPF_4P || T == Type::HPF_4P)
+              {
+                left[i]  = apply_biquad (apply_biquad (left[i], b_state_a[0]), b_state_b[0]);
+                if constexpr (C == 2)
+                  right[i] = apply_biquad (apply_biquad (right[i], b_state_a[1]), b_state_b[1]);
+              }
+            if constexpr (T == Type::LPF_6P || T == Type::HPF_6P)
+              {
+                left[i]  = apply_biquad (apply_biquad (apply_biquad (left[i], b_state_a[0]), b_state_b[0]), b_state_z[0]);
+                if constexpr (C == 2)
+                  right[i] = apply_biquad (apply_biquad (apply_biquad (right[i], b_state_a[1]), b_state_b[1]), b_state_z[1]);
               }
             i++;
           }
@@ -222,6 +253,14 @@ private:
                           break;
       case Type::HPF_2P:  process_internal<Type::HPF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
                           break;
+      case Type::LPF_4P:  process_internal<Type::LPF_4P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+                          break;
+      case Type::HPF_4P:  process_internal<Type::HPF_4P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+                          break;
+      case Type::LPF_6P:  process_internal<Type::LPF_6P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+                          break;
+      case Type::HPF_6P:  process_internal<Type::HPF_6P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+                          break;
       case Type::NONE:    ;
     }
   }
@@ -239,8 +278,12 @@ public:
   void
   reset()
   {
-    reset_biquad (b_state_l);
-    reset_biquad (b_state_r);
+    for (int c = 0; c < 2; c++)
+      {
+        reset_biquad (b_state_a[c]);
+        reset_biquad (b_state_b[c]);
+        reset_biquad (b_state_z[c]);
+      }
     first = true;
   }
   void
