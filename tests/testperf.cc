@@ -48,7 +48,7 @@ main (int argc, char **argv)
   synth.add_event_note_on (0, 0, 60, 127);
   const double time_start = get_time();
   uint samples = 0;
-  for (int pos = 0; pos < 1000; pos++)
+  for (int pos = 0; pos < 10000; pos++)
     {
       synth.process (outputs, 1024);
       samples += 1024;
