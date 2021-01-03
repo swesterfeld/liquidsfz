@@ -1,7 +1,7 @@
 /*
  * liquidsfz - sfz sampler
  *
- * Copyright (C) 2019  Stefan Westerfeld
+ * Copyright (C) 2019-2021  Stefan Westerfeld
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -23,6 +23,8 @@
 
 #include <memory>
 #include <functional>
+#include <vector>
+#include <string>
 
 /** \file liquidsfz.hh
  * \brief This header contains the public API for liquidsfz
