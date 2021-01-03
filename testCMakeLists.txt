@@ -1,0 +1,26 @@
+# since on some platforms (windows) automake is not easy to use, this is an
+# experimental file to use cmake as build system
+#
+#  - this just builds the shared library (no jack client, no lv2 plugin)
+#  - shared library version is probably not compatible with automake
+#
+# do not use this on Linux/macOS/*BSD
+
+cmake_minimum_required (VERSION 3.9)
+project (liquidsfz VERSION 0.2.2 DESCRIPTION "sfz sampler")
+
+# need libsndfile
+find_package (PkgConfig REQUIRED)
+pkg_search_module (LIBSNDFILE REQUIRED sndfile>=1.0.0)
+
+# shared library
+file (GLOB SOURCES lib/*.cc)
+add_library (liquidsfz SHARED ${SOURCES})
+target_compile_features (liquidsfz PUBLIC cxx_std_17)
+target_link_libraries (liquidsfz ${LIBSNDFILE_LIBRARIES})
+set_target_properties (liquidsfz PROPERTIES
+    PUBLIC_HEADER lib/liquidsfz.hh)
+
+install (TARGETS liquidsfz
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
