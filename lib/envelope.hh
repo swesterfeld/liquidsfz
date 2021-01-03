@@ -186,6 +186,11 @@ public:
       }
   }
 
+  bool
+  is_constant()
+  {
+    return state_ == State::SUSTAIN || state_ == State::DONE;
+  }
   float
   get_next()
   {

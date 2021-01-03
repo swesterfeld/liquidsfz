@@ -516,29 +516,56 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
 
   if (envelope)
     {
-      for (uint i = 0; i < n_frames; i++)
-        {
-          mod_cutoff[i]    = fi.cutoff_smooth.get_next();
-          mod_env[i]       = filter_envelope_.get_next();
-          mod_resonance[i] = fi.resonance_smooth.get_next();
-        }
       const float depth_factor = region_->fileg_depth.base / 1200.;
 
-      run_filter ([&] (int i)
+      if (fi.cutoff_smooth.is_constant() && filter_envelope_.is_constant() && fi.resonance_smooth.is_constant())
         {
-          return Filter::CR (mod_cutoff[i] * exp2f (mod_env[i] * depth_factor), mod_resonance[i]);
-        });
+          float cutoff = fi.cutoff_smooth.get_next() * exp2f (filter_envelope_.get_next() * depth_factor);
+          float resonance = fi.resonance_smooth.get_next();
+
+          run_filter ([&] (int i)
+            {
+              return Filter::CR (cutoff, resonance);
+            });
+        }
+      else
+        {
+          for (uint i = 0; i < n_frames; i++)
+            {
+              mod_cutoff[i]    = fi.cutoff_smooth.get_next();
+              mod_env[i]       = filter_envelope_.get_next();
+              mod_resonance[i] = fi.resonance_smooth.get_next();
+            }
+
+          run_filter ([&] (int i)
+            {
+              return Filter::CR (mod_cutoff[i] * exp2f (mod_env[i] * depth_factor), mod_resonance[i]);
+            });
+        }
     }
   else
     {
-      for (uint i = 0; i < n_frames; i++)
+      if (fi.cutoff_smooth.is_constant() && fi.resonance_smooth.is_constant())
         {
-          mod_cutoff[i]    = fi.cutoff_smooth.get_next();
-          mod_resonance[i] = fi.resonance_smooth.get_next();
+          float cutoff    = fi.cutoff_smooth.get_next();
+          float resonance = fi.resonance_smooth.get_next();
+
+          run_filter ([&] (int i)
+            {
+              return Filter::CR (cutoff, resonance);
+            });
         }
-      run_filter ([&] (int i)
+      else
         {
-          return Filter::CR (mod_cutoff[i], mod_resonance[i]);
-        });
+          for (uint i = 0; i < n_frames; i++)
+            {
+              mod_cutoff[i]    = fi.cutoff_smooth.get_next();
+              mod_resonance[i] = fi.resonance_smooth.get_next();
+            }
+          run_filter ([&] (int i)
+            {
+              return Filter::CR (mod_cutoff[i], mod_resonance[i]);
+            });
+        }
     }
 }
