@@ -424,8 +424,6 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
 
   float out_l[n_frames];
   float out_r[n_frames];
-  std::fill_n (out_l, n_frames, 0.0);
-  std::fill_n (out_r, n_frames, 0.0);
 
   /* render voice */
   for (uint i = 0; i < n_frames; i++)
@@ -461,7 +459,10 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
       else
         {
           state_ = IDLE;
-          break;
+
+          /* output memory is uninitialized, so we need to explicitely write every sampl when done */
+          out_l[i] = 0;
+          out_r[i] = 0;
         }
       ppos_ += replay_speed_.get_next();
       if (loop_enabled_)
