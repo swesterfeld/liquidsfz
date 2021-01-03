@@ -472,18 +472,24 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   /* process filter */
   float mod_cutoff[n_frames];
   float mod_resonance[n_frames];
+  float mod_env[n_frames];
 
   /* process filter */
   if (fimpl_.params->type != Filter::Type::NONE)
     {
-      float depth_factor = region_->fileg_depth.base / 1200.;
-
       for (uint i = 0; i < n_frames; i++)
         {
-          mod_cutoff[i] = fimpl_.cutoff_smooth.get_next() * exp2f (depth_factor * filter_envelope_.get_next()),
+          mod_cutoff[i]    = fimpl_.cutoff_smooth.get_next();
+          mod_env[i]       = filter_envelope_.get_next();
           mod_resonance[i] = fimpl_.resonance_smooth.get_next();
         }
-      fimpl_.filter.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
+
+      const float depth_factor = region_->fileg_depth.base / 1200.;
+      fimpl_.filter.process_mod (out_l, out_r,
+                                 [&] (int i)
+                                   {
+                                     return Filter::CR (mod_cutoff[i] * exp2f (mod_env[i] * depth_factor), mod_resonance[i]);
+                                   }, n_frames);
     }
 
   /* process second filter */

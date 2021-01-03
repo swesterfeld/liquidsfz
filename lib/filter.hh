@@ -79,6 +79,16 @@ public:
 
     return Type::NONE;
   }
+  struct CR
+  {
+    float cutoff;
+    float resonance;
+    CR (float cutoff, float resonance) :
+      cutoff (cutoff),
+      resonance (resonance)
+    {
+    }
+  };
 private:
   bool first = false;
   float last_cutoff = 0;
@@ -233,15 +243,17 @@ private:
         a2 = (1 - k / q + kk) * div_factor;
       }
   }
-  template<Type T, int C> void
-  process_internal (float *left, float *right, float *cutoff, float *resonance, uint n_frames, uint segment_size)
+  template<Type T, class CRFunc, int C> void
+  process_internal (float *left, float *right, const CRFunc& cr_func, uint n_frames)
   {
     static_assert (C == 1 || C == 2);
 
+    constexpr uint segment_size = 16;
     uint i = 0;
     while (i < n_frames)
       {
-        update_config (cutoff[i], resonance[i]);
+        CR cr = cr_func (i);
+        update_config (cr.cutoff, cr.resonance);
 
         uint segment_end = std::min (i + segment_size, n_frames);
         while (i < segment_end)
@@ -274,30 +286,30 @@ private:
           }
       }
   }
-  template<int C> void
-  process_type (float *left, float *right, float *cutoff, float *resonance, uint n_frames, uint segment_size)
+  template<int C, class CRFunc> void
+  process_type (float *left, float *right, const CRFunc& cr_func, uint n_frames)
   {
     switch (filter_type_)
     {
-      case Type::LPF_1P:  process_internal<Type::LPF_1P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::LPF_1P:  process_internal<Type::LPF_1P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
-      case Type::HPF_1P:  process_internal<Type::HPF_1P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::HPF_1P:  process_internal<Type::HPF_1P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
-      case Type::LPF_2P:  process_internal<Type::LPF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::LPF_2P:  process_internal<Type::LPF_2P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
-      case Type::HPF_2P:  process_internal<Type::HPF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::HPF_2P:  process_internal<Type::HPF_2P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
-      case Type::BPF_2P:  process_internal<Type::BPF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::BPF_2P:  process_internal<Type::BPF_2P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
-      case Type::BRF_2P:  process_internal<Type::BRF_2P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::BRF_2P:  process_internal<Type::BRF_2P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
-      case Type::LPF_4P:  process_internal<Type::LPF_4P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::LPF_4P:  process_internal<Type::LPF_4P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
-      case Type::HPF_4P:  process_internal<Type::HPF_4P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::HPF_4P:  process_internal<Type::HPF_4P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
-      case Type::LPF_6P:  process_internal<Type::LPF_6P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::LPF_6P:  process_internal<Type::LPF_6P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
-      case Type::HPF_6P:  process_internal<Type::HPF_6P, C> (left, right, cutoff, resonance, n_frames, segment_size);
+      case Type::HPF_6P:  process_internal<Type::HPF_6P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
       case Type::NONE:    ;
     }
@@ -327,26 +339,36 @@ public:
   void
   process (float *left, float *right, float cutoff, float resonance, uint n_frames)
   {
-    process_type<2> (left, right, &cutoff, &resonance, n_frames, /* just one segment */ n_frames);
+    CR cr (cutoff, resonance);
+
+    process_type<2> (left, right, [cr] (int i) { return cr; }, n_frames);
   }
   void
   process_mono (float *left, float cutoff, float resonance, uint n_frames)
   {
-    process_type<1> (left, nullptr, &cutoff, &resonance, n_frames, /* just one segment */ n_frames);
+    CR cr (cutoff, resonance);
+
+    process_type<1> (left, nullptr, [cr] (int i) { return cr; }, n_frames);
   }
   void
   process_mod (float *left, float *right, float *cutoff, float *resonance, uint n_frames)
   {
-    constexpr uint segment_size = 16; /* subsample control inputs to avoid some of the filter redesign cost */
-
-    process_type<2> (left, right, cutoff, resonance, n_frames, segment_size);
+    process_type<2> (left, right, [cutoff, resonance] (int i) { return CR (cutoff[i], resonance[i]); }, n_frames);
   }
   void
   process_mod_mono (float *left, float *cutoff, float *resonance, uint n_frames)
   {
-    constexpr uint segment_size = 16; /* subsample control inputs to avoid some of the filter redesign cost */
-
-    process_type<1> (left, nullptr, cutoff, resonance, n_frames, segment_size);
+    process_type<1> (left, nullptr, [cutoff, resonance] (int i) { return CR (cutoff[i], resonance[i]); }, n_frames);
+  }
+  template<class CRFunc> void
+  process_mod (float *left, float *right, const CRFunc& cr_func, uint n_frames)
+  {
+    process_type<2> (left, right, cr_func, n_frames);
+  }
+  template<class CRFunc> void
+  process_mod_mono (float *left, float *right, const CRFunc& cr_func, uint n_frames)
+  {
+    process_type<2> (left, nullptr, cr_func, n_frames);
   }
 };
 
