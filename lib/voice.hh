@@ -101,7 +101,8 @@ public:
   void start (const Region& region, int channel, int key, int velocity, double time_since_note_on, uint64_t global_frame_count, uint sample_rate);
   void stop (OffMode off_mode);
   void kill();
-  void process (float **outputs, uint nframes);
+  void process (float **outputs, uint n_frames);
+  void process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames);
   uint off_by();
   void update_cc (int controller);
   void update_gain();

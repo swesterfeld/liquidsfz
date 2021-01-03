@@ -470,46 +470,9 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           ppos_ -= (region_->loop_end - region_->loop_start);
     }
 
-  /* process filter */
-  float mod_cutoff[n_frames];
-  float mod_resonance[n_frames];
-  float mod_env[n_frames];
-
-  /* process filter */
-  if (fimpl_.params->type != Filter::Type::NONE)
-    {
-      for (uint i = 0; i < n_frames; i++)
-        {
-          mod_cutoff[i]    = fimpl_.cutoff_smooth.get_next();
-          mod_env[i]       = filter_envelope_.get_next();
-          mod_resonance[i] = fimpl_.resonance_smooth.get_next();
-        }
-
-      const float depth_factor = region_->fileg_depth.base / 1200.;
-      const auto cr_func = [&] (int i)
-        {
-          return Filter::CR (mod_cutoff[i] * exp2f (mod_env[i] * depth_factor), mod_resonance[i]);
-        };
-
-      if (channels == 2)
-        fimpl_.filter.process_mod (out_l, out_r, cr_func, n_frames);
-      else
-        fimpl_.filter.process_mod_mono (out_l, cr_func, n_frames);
-    }
-
-  /* process second filter */
-  if (fimpl2_.params->type != Filter::Type::NONE)
-    {
-      for (uint i = 0; i < n_frames; i++)
-        {
-          mod_cutoff[i] = fimpl2_.cutoff_smooth.get_next();
-          mod_resonance[i] = fimpl2_.resonance_smooth.get_next();
-        }
-      if (channels == 2)
-        fimpl2_.filter.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
-      else
-        fimpl2_.filter.process_mod_mono (out_l, mod_cutoff, mod_resonance, n_frames);
-    }
+  /* process filters */
+  process_filter (fimpl_, true, out_l, out_r, n_frames);
+  process_filter (fimpl2_, false, out_l, out_r, n_frames);
 
   /* add samples to output buffer */
   if (channels == 2)
@@ -527,5 +490,55 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           outputs[0][i] += out_l[i] * left_gain_.get_next();
           outputs[1][i] += out_l[i] * right_gain_.get_next();
         }
+    }
+}
+
+void
+Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames)
+{
+  if (fi.params->type == Filter::Type::NONE)
+    return;
+
+  float mod_cutoff[n_frames];
+  float mod_resonance[n_frames];
+  float mod_env[n_frames];
+
+  auto run_filter = [&] (const auto& cr_func)
+    {
+      const auto csample = region_->cached_sample;
+      const auto channels = csample->channels;
+
+      if (channels == 2)
+        fi.filter.process_mod (left, right, cr_func, n_frames);
+      else
+        fi.filter.process_mod_mono (left, cr_func, n_frames);
+    };
+
+  if (envelope)
+    {
+      for (uint i = 0; i < n_frames; i++)
+        {
+          mod_cutoff[i]    = fi.cutoff_smooth.get_next();
+          mod_env[i]       = filter_envelope_.get_next();
+          mod_resonance[i] = fi.resonance_smooth.get_next();
+        }
+      const float depth_factor = region_->fileg_depth.base / 1200.;
+
+      run_filter ([&] (int i)
+        {
+          return Filter::CR (mod_cutoff[i] * exp2f (mod_env[i] * depth_factor), mod_resonance[i]);
+        });
+    }
+  else
+    {
+      for (uint i = 0; i < n_frames; i++)
+        {
+          mod_cutoff[i]    = fi.cutoff_smooth.get_next();
+          mod_resonance[i] = fi.resonance_smooth.get_next();
+        }
+      run_filter ([&] (int i)
+        {
+          return Filter::CR (mod_cutoff[i], mod_resonance[i]);
+        });
     }
 }
