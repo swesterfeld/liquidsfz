@@ -371,9 +371,9 @@ public:
     process_type<2> (left, right, cr_func, n_frames);
   }
   template<class CRFunc> void
-  process_mod_mono (float *left, float *right, const CRFunc& cr_func, uint n_frames)
+  process_mod_mono (float *left, const CRFunc& cr_func, uint n_frames)
   {
-    process_type<2> (left, nullptr, cr_func, n_frames);
+    process_type<1> (left, nullptr, cr_func, n_frames);
   }
 };
 

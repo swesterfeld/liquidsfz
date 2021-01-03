@@ -440,16 +440,16 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
               get_samples_mono (x, fsamples);
 
               const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
-              out_l[i] = interp * amp_gain * left_gain_.get_next();
-              out_r[i] = interp * amp_gain * right_gain_.get_next();
+              out_l[i] = interp * amp_gain;
+              out_r[i] = interp * amp_gain;
             }
           else if (channels == 2)
             {
               std::array<float, 4> fsamples;
               get_samples_stereo (x, fsamples);
 
-              out_l[i] = (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain * left_gain_.get_next();
-              out_r[i] = (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain * right_gain_.get_next();
+              out_l[i] = (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain;
+              out_r[i] = (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain;
             }
           else
             {
@@ -486,11 +486,15 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
         }
 
       const float depth_factor = region_->fileg_depth.base / 1200.;
-      fimpl_.filter.process_mod (out_l, out_r,
-                                 [&] (int i)
-                                   {
-                                     return Filter::CR (mod_cutoff[i] * exp2f (mod_env[i] * depth_factor), mod_resonance[i]);
-                                   }, n_frames);
+      const auto cr_func = [&] (int i)
+        {
+          return Filter::CR (mod_cutoff[i] * exp2f (mod_env[i] * depth_factor), mod_resonance[i]);
+        };
+
+      if (channels == 2)
+        fimpl_.filter.process_mod (out_l, out_r, cr_func, n_frames);
+      else
+        fimpl_.filter.process_mod_mono (out_l, cr_func, n_frames);
     }
 
   /* process second filter */
@@ -501,13 +505,27 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           mod_cutoff[i] = fimpl2_.cutoff_smooth.get_next();
           mod_resonance[i] = fimpl2_.resonance_smooth.get_next();
         }
-      fimpl2_.filter.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
+      if (channels == 2)
+        fimpl2_.filter.process_mod (out_l, out_r, mod_cutoff, mod_resonance, n_frames);
+      else
+        fimpl2_.filter.process_mod_mono (out_l, mod_cutoff, mod_resonance, n_frames);
     }
 
   /* add samples to output buffer */
-  for (uint i = 0; i < n_frames; i++)
+  if (channels == 2)
     {
-      outputs[0][i] += out_l[i];
-      outputs[1][i] += out_r[i];
+      for (uint i = 0; i < n_frames; i++)
+        {
+          outputs[0][i] += out_l[i] * left_gain_.get_next();
+          outputs[1][i] += out_r[i] * right_gain_.get_next();
+        }
+    }
+  else
+    {
+      for (uint i = 0; i < n_frames; i++)
+        {
+          outputs[0][i] += out_l[i] * left_gain_.get_next();
+          outputs[1][i] += out_l[i] * right_gain_.get_next();
+        }
     }
 }
