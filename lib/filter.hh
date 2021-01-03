@@ -158,6 +158,11 @@ private:
       {
         first = false;
       }
+    else if (cutoff == last_cutoff && resonance == last_resonance)
+      {
+        /* fast case: no need to redesign if parameters didn't change */
+        return;
+      }
     else
       {
         /* parameter smoothing */
