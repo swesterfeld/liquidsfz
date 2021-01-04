@@ -41,6 +41,8 @@
 
 #include <string>
 
+typedef unsigned int uint;
+
 namespace LiquidSFZInternal
 {
 

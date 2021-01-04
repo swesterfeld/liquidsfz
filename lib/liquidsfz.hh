@@ -26,6 +26,8 @@
 #include <vector>
 #include <string>
 
+typedef unsigned int uint;
+
 /** \file liquidsfz.hh
  * \brief This header contains the public API for liquidsfz
  */
