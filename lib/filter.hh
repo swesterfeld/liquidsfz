@@ -79,6 +79,30 @@ public:
 
     return Type::NONE;
   }
+  static constexpr int
+  filter_order (Type t)
+  {
+    switch (t)
+    {
+      case Type::NONE:
+        return 0;
+      case Type::LPF_1P:
+      case Type::HPF_1P:
+        return 1;
+      case Type::LPF_2P:
+      case Type::HPF_2P:
+      case Type::BPF_2P:
+      case Type::BRF_2P:
+        return 2;
+      case Type::LPF_4P:
+      case Type::HPF_4P:
+        return 4;
+      case Type::LPF_6P:
+      case Type::HPF_6P:
+        return 6;
+    }
+    return 0;
+  }
   struct CR
   {
     float cutoff;
@@ -148,6 +172,7 @@ private:
     // usually less expensive than powf (10, db / 20)
     return exp2f (db * 0.166096404744368f);
   }
+  template<Type T>
   void
   update_config (float cutoff, float resonance)
   {
@@ -167,18 +192,35 @@ private:
       {
         /* parameter smoothing */
 
-        constexpr float high = 1.4;
-        constexpr float low = 1. / high;
+        float cutoff_smooth;
+        float reso_smooth;
+        if constexpr (filter_order (T) == 6)
+          {
+            cutoff_smooth = 1.05;
+            reso_smooth   = 0.33;
+          }
+        else if constexpr (filter_order (T) == 4)
+          {
+            cutoff_smooth = 1.1;
+            reso_smooth   = 0.5;
+          }
+        else // order 2 or lower
+          {
+            cutoff_smooth = 1.2;
+            reso_smooth   = 1;
+          }
+        const float high = cutoff_smooth;
+        const float low = 1. / high;
 
         cutoff = std::clamp (cutoff, last_cutoff * low, last_cutoff * high);
-        resonance = std::clamp (resonance, last_resonance - 1, last_resonance + 1);
+        resonance = std::clamp (resonance, last_resonance - reso_smooth, last_resonance + reso_smooth);
       }
     last_cutoff = cutoff;
     last_resonance = resonance;
 
     float norm_cutoff = std::min (cutoff / sample_rate_, 0.49f);
 
-    if (filter_type_ == Type::LPF_1P) /* 1 pole filter design from DAFX, Zoelzer */
+    if (T == Type::LPF_1P) /* 1 pole filter design from DAFX, Zoelzer */
       {
         float k = tanf (M_PI * norm_cutoff);
         float div_factor = 1 / (k + 1);
@@ -186,7 +228,7 @@ private:
         b1 = b0 = k * div_factor;
         a1 = (k - 1) * div_factor;
       }
-    else if (filter_type_ == Type::HPF_1P)
+    else if (T == Type::HPF_1P)
       {
         float k = tanf (M_PI * norm_cutoff);
         float div_factor = 1 / (k + 1);
@@ -195,7 +237,7 @@ private:
         b1 = -div_factor;
         a1 = (k - 1) * div_factor;
       }
-    else if (filter_type_ == Type::LPF_2P || filter_type_ == Type::LPF_4P || filter_type_ == Type::LPF_6P) /* 2 pole design DAFX 2nd ed., Zoelzer */
+    else if (T == Type::LPF_2P || T == Type::LPF_4P || T == Type::LPF_6P) /* 2 pole design DAFX 2nd ed., Zoelzer */
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
@@ -208,7 +250,7 @@ private:
         a1 = 2 * (kk - 1) * div_factor;
         a2 = (1 - k / q + kk) * div_factor;
       }
-    else if (filter_type_ == Type::HPF_2P || filter_type_ == Type::HPF_4P || filter_type_ == Type::HPF_6P)
+    else if (T == Type::HPF_2P || T == Type::HPF_4P || T == Type::HPF_6P)
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
@@ -221,7 +263,7 @@ private:
         a1 = 2 * (kk - 1) * div_factor;
         a2 = (1 - k / q + kk) * div_factor;
       }
-    else if (filter_type_ == Type::BPF_2P)
+    else if (T == Type::BPF_2P)
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
@@ -234,7 +276,7 @@ private:
         a1 = 2 * (kk - 1) * div_factor;
         a2 = (1 - k / q + kk) * div_factor;
       }
-    else if (filter_type_ == Type::BRF_2P)
+    else if (T == Type::BRF_2P)
       {
         float k = tanf (M_PI * norm_cutoff);
         float kk = k * k;
@@ -258,7 +300,7 @@ private:
     while (i < n_frames)
       {
         CR cr = cr_func (i);
-        update_config (cr.cutoff, cr.resonance);
+        update_config<T> (cr.cutoff, cr.resonance);
 
         uint segment_end = std::min (i + segment_size, n_frames);
         while (i < segment_end)
