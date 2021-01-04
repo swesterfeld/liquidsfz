@@ -132,9 +132,7 @@ private:
     float y1 = 0;
     float y2 = 0;
   };
-  BiquadState b_state_a[2];   // 2 pole filter
-  BiquadState b_state_b[2];   // 4 pole filter
-  BiquadState b_state_z[2];   // 6 pole filter
+  BiquadState b_state[3][2];
 
   Type  filter_type_ = Type::NONE;
   int   channels_    = 1;
@@ -290,6 +288,31 @@ private:
         a2 = (1 - k / q + kk) * div_factor;
       }
   }
+  template<Type T, int S, int C>
+  void
+  process_biquad (float *left, float *right, uint n_frames)
+  {
+    BiquadState sl = b_state[S][0], sr = b_state[S][1];
+
+    for (uint i = 0; i < n_frames; i++)
+      {
+        if (filter_order (T) == 1)
+          {
+            left[i]  = apply_biquad1p (left[i], sl);
+            if constexpr (C == 2)
+              right[i] = apply_biquad1p (right[i], sr);
+          }
+        else
+          {
+            left[i] = apply_biquad (left[i], sl);
+            if constexpr (C == 2)
+              right[i] = apply_biquad (right[i], sr);
+          }
+      }
+
+    b_state[S][0] = sl;
+    b_state[S][1] = sr;
+  }
   template<Type T, class CRFunc, int C> void
   process_internal (float *left, float *right, const CRFunc& cr_func, uint n_frames)
   {
@@ -303,34 +326,27 @@ private:
         update_config<T> (cr.cutoff, cr.resonance);
 
         uint segment_end = std::min (i + segment_size, n_frames);
-        while (i < segment_end)
+        uint todo = segment_end - i;
+        if (filter_order (T) == 1)
           {
-            if constexpr (T == Type::LPF_1P || T == Type::HPF_1P)
-              {
-                left[i]  = apply_biquad1p (left[i], b_state_a[0]);
-                if constexpr (C == 2)
-                  right[i] = apply_biquad1p (right[i], b_state_a[1]);
-              }
-            if constexpr (T == Type::LPF_2P || T == Type::HPF_2P || T == Type::BPF_2P || T == Type::BRF_2P)
-              {
-                left[i]  = apply_biquad (left[i], b_state_a[0]);
-                if constexpr (C == 2)
-                  right[i] = apply_biquad (right[i], b_state_a[1]);
-              }
-            if constexpr (T == Type::LPF_4P || T == Type::HPF_4P)
-              {
-                left[i]  = apply_biquad (apply_biquad (left[i], b_state_a[0]), b_state_b[0]);
-                if constexpr (C == 2)
-                  right[i] = apply_biquad (apply_biquad (right[i], b_state_a[1]), b_state_b[1]);
-              }
-            if constexpr (T == Type::LPF_6P || T == Type::HPF_6P)
-              {
-                left[i]  = apply_biquad (apply_biquad (apply_biquad (left[i], b_state_a[0]), b_state_b[0]), b_state_z[0]);
-                if constexpr (C == 2)
-                  right[i] = apply_biquad (apply_biquad (apply_biquad (right[i], b_state_a[1]), b_state_b[1]), b_state_z[1]);
-              }
-            i++;
+            process_biquad<T, 0, C> (left + i, right + i, todo);
           }
+        if (filter_order (T) == 2)
+          {
+            process_biquad<T, 0, C> (left + i, right + i, todo);
+          }
+        if (filter_order (T) == 4)
+          {
+            process_biquad<T, 0, C> (left + i, right + i, todo);
+            process_biquad<T, 1, C> (left + i, right + i, todo);
+          }
+        if (filter_order (T) == 6)
+          {
+            process_biquad<T, 0, C> (left + i, right + i, todo);
+            process_biquad<T, 1, C> (left + i, right + i, todo);
+            process_biquad<T, 2, C> (left + i, right + i, todo);
+          }
+        i = segment_end;
       }
   }
   template<int C, class CRFunc> void
@@ -375,11 +391,14 @@ public:
   void
   reset()
   {
-    for (int c = 0; c < 2; c++)
+    for (int s = 0; s < 3; s++)
       {
-        reset_biquad (b_state_a[c]);
-        reset_biquad (b_state_b[c]);
-        reset_biquad (b_state_z[c]);
+        for (int c = 0; c < 2; c++)
+          {
+            reset_biquad (b_state[s][c]);
+            reset_biquad (b_state[s][c]);
+            reset_biquad (b_state[s][c]);
+          }
       }
     first = true;
   }
