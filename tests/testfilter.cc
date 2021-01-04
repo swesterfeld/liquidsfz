@@ -203,7 +203,7 @@ main (int argc, char **argv)
         printf ("MOD   - time %f, samples %zd, ns/sample %f bogo_voices %f\n", time_total, samples, time_total * 1e9 / samples, (samples / 48000.) / time_total);
       }
     }
-  else if (argc == 4 && cmd == "jump")
+  else if (argc == 4 && (cmd == "jumpc" || cmd == "jumpr"))
     {
       Filter filter;
       filter.set_type (Filter::type_from_string (argv[2]));
@@ -230,8 +230,16 @@ main (int argc, char **argv)
         {
           if ((rand() % 500) == 0)
             up = !up;
-          cutoff_v.push_back (up ? 12000 : 500);
-          resonance_v.push_back (1);
+          if (cmd == "jumpc")
+            {
+              cutoff_v.push_back (up ? 12000 : 500);
+              resonance_v.push_back (1);
+            }
+          else
+            {
+              cutoff_v.push_back (500);
+              resonance_v.push_back (up ? 12 : 0);
+            }
         }
       filter.process_mod_mono (&out[0], &cutoff_v[0], &resonance_v[0], out.size());
 
