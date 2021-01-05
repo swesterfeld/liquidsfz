@@ -202,6 +202,32 @@ main (int argc, char **argv)
 
         printf ("MOD   - time %f, samples %zd, ns/sample %f bogo_voices %f\n", time_total, samples, time_total * 1e9 / samples, (samples / 48000.) / time_total);
       }
+
+      {
+        size_t samples = 0;
+        const double time_start = get_time();
+        for (int i = 0; i < 10000; i++)
+          {
+            filter.process_mono (&left[0], cutoff, resonance, left.size());
+            samples += left.size();
+          }
+        const double time_total = get_time() - time_start;
+
+        printf ("CMONO - time %f, samples %zd, ns/sample %f bogo_voices %f\n", time_total, samples, time_total * 1e9 / samples, (samples / 48000.) / time_total);
+      }
+
+      {
+        size_t samples = 0;
+        const double time_start = get_time();
+        for (int i = 0; i < 10000; i++)
+          {
+            filter.process_mod_mono (&left[0], &mod_cutoff[0], &mod_reso[0], left.size());
+            samples += left.size();
+          }
+        const double time_total = get_time() - time_start;
+
+        printf ("MMONO - time %f, samples %zd, ns/sample %f bogo_voices %f\n", time_total, samples, time_total * 1e9 / samples, (samples / 48000.) / time_total);
+      }
     }
   else if (argc == 4 && (cmd == "jumpc" || cmd == "jumpr"))
     {
