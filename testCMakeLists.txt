@@ -10,14 +10,20 @@ cmake_minimum_required (VERSION 3.9)
 project (liquidsfz VERSION 0.2.2 DESCRIPTION "sfz sampler")
 
 # need libsndfile
-find_package (PkgConfig REQUIRED)
-pkg_search_module (LIBSNDFILE REQUIRED sndfile>=1.0.0)
+IF (WIN32)
+  find_package (SndFile REQUIRED)
+ELSE()
+  find_package (PkgConfig REQUIRED)
+  pkg_search_module (SNDFILE REQUIRED sndfile>=1.0.0)
+ENDIF()
+link_directories (${SNDFILE_LIBRARY_DIRS})
 
 # shared library
 file (GLOB SOURCES lib/*.cc)
 add_library (liquidsfz SHARED ${SOURCES})
 target_compile_features (liquidsfz PUBLIC cxx_std_17)
-target_link_libraries (liquidsfz ${LIBSNDFILE_LIBRARIES})
+target_link_libraries (liquidsfz ${SNDFILE_LIBRARIES})
+target_include_directories (liquidsfz PRIVATE ${SNDFILE_INCLUDE_DIRS})
 set_target_properties (liquidsfz PROPERTIES
     PUBLIC_HEADER lib/liquidsfz.hh)
 
