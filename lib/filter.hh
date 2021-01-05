@@ -117,6 +117,7 @@ private:
   bool first = false;
   float last_cutoff = 0;
   float last_resonance = 0;
+  uint config_count_down = 0;
 
   /* biquad */
   float a1 = 0;
@@ -302,35 +303,39 @@ private:
   {
     static_assert (C == 1 || C == 2);
 
-    constexpr uint segment_size = 16;
     uint i = 0;
     while (i < n_frames)
       {
-        CR cr = cr_func (i);
-        update_config<T> (cr.cutoff, cr.resonance);
+        if (config_count_down == 0)
+          {
+            CR cr = cr_func (i);
+            update_config<T> (cr.cutoff, cr.resonance);
 
-        uint segment_end = std::min (i + segment_size, n_frames);
-        uint todo = segment_end - i;
-        if (filter_order (T) == 1)
+            config_count_down = 16;
+          }
+
+        uint todo = std::min (config_count_down, n_frames - i);
+        if constexpr (filter_order (T) == 1)
           {
             process_biquad<T, 0, C> (left + i, right + i, todo);
           }
-        if (filter_order (T) == 2)
+        if constexpr (filter_order (T) == 2)
           {
             process_biquad<T, 0, C> (left + i, right + i, todo);
           }
-        if (filter_order (T) == 4)
+        if constexpr (filter_order (T) == 4)
           {
             process_biquad<T, 0, C> (left + i, right + i, todo);
             process_biquad<T, 1, C> (left + i, right + i, todo);
           }
-        if (filter_order (T) == 6)
+        if constexpr (filter_order (T) == 6)
           {
             process_biquad<T, 0, C> (left + i, right + i, todo);
             process_biquad<T, 1, C> (left + i, right + i, todo);
             process_biquad<T, 2, C> (left + i, right + i, todo);
           }
-        i = segment_end;
+        i += todo;
+        config_count_down -= todo;
       }
   }
   template<int C, class CRFunc> void
@@ -385,6 +390,7 @@ public:
           }
       }
     first = true;
+    config_count_down = 0;
   }
   void
   process (float *left, float *right, float cutoff, float resonance, uint n_frames)
