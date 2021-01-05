@@ -218,74 +218,58 @@ private:
 
     float norm_cutoff = std::min (cutoff / sample_rate_, 0.49f);
 
-    if (T == Type::LPF_1P) /* 1 pole filter design from DAFX, Zoelzer */
+    if (filter_order (T) == 1) /* 1 pole filter design from DAFX, Zoelzer */
       {
-        float k = tanf (M_PI * norm_cutoff);
-        float div_factor = 1 / (k + 1);
+        const float k = tanf (M_PI * norm_cutoff);
+        const float div_factor = 1 / (k + 1);
 
-        b1 = b0 = k * div_factor;
         a1 = (k - 1) * div_factor;
-      }
-    else if (T == Type::HPF_1P)
-      {
-        float k = tanf (M_PI * norm_cutoff);
-        float div_factor = 1 / (k + 1);
 
-        b0 = div_factor;
-        b1 = -div_factor;
-        a1 = (k - 1) * div_factor;
+        if (T == Type::LPF_1P)
+          {
+            b0 = k * div_factor;
+            b1 = b0;
+          }
+        else if (T == Type::HPF_1P)
+          {
+            b0 = div_factor;
+            b1 = -div_factor;
+          }
       }
-    else if (T == Type::LPF_2P || T == Type::LPF_4P || T == Type::LPF_6P) /* 2 pole design DAFX 2nd ed., Zoelzer */
+    else /* 2 pole design DAFX 2nd ed., Zoelzer */
       {
-        float k = tanf (M_PI * norm_cutoff);
-        float kk = k * k;
-        float q = fast_db_to_factor (resonance);
-        float div_factor = 1  / (1 + (k + 1 / q) * k);
+        const float k = tanf (M_PI * norm_cutoff);
+        const float kk = k * k;
+        const float q = fast_db_to_factor (resonance);
+        const float div_factor = 1  / (1 + (k + 1 / q) * k);
 
-        b0 = kk * div_factor;
-        b1 = 2 * kk * div_factor;
-        b2 = kk * div_factor;
         a1 = 2 * (kk - 1) * div_factor;
         a2 = (1 - k / q + kk) * div_factor;
-      }
-    else if (T == Type::HPF_2P || T == Type::HPF_4P || T == Type::HPF_6P)
-      {
-        float k = tanf (M_PI * norm_cutoff);
-        float kk = k * k;
-        float q = fast_db_to_factor (resonance);
-        float div_factor = 1  / (1 + (k + 1 / q) * k);
 
-        b0 = div_factor;
-        b1 = -2 * div_factor;
-        b2 = div_factor;
-        a1 = 2 * (kk - 1) * div_factor;
-        a2 = (1 - k / q + kk) * div_factor;
-      }
-    else if (T == Type::BPF_2P)
-      {
-        float k = tanf (M_PI * norm_cutoff);
-        float kk = k * k;
-        float q = fast_db_to_factor (resonance);
-        float div_factor = 1  / (1 + (k + 1 / q) * k);
-
-        b0 = k / q * div_factor;
-        b1 = 0;
-        b2 = -b0;
-        a1 = 2 * (kk - 1) * div_factor;
-        a2 = (1 - k / q + kk) * div_factor;
-      }
-    else if (T == Type::BRF_2P)
-      {
-        float k = tanf (M_PI * norm_cutoff);
-        float kk = k * k;
-        float q = fast_db_to_factor (resonance);
-        float div_factor = 1  / (1 + (k + 1 / q) * k);
-
-        b0 = (1 + kk) * div_factor;
-        b1 = 2 * (kk - 1) * div_factor;
-        b2 = b0;
-        a1 = 2 * (kk - 1) * div_factor;
-        a2 = (1 - k / q + kk) * div_factor;
+        if (T == Type::LPF_2P || T == Type::LPF_4P || T == Type::LPF_6P)
+          {
+            b0 = kk * div_factor;
+            b1 = 2 * b0;
+            b2 = b0;
+          }
+        else if (T == Type::HPF_2P || T == Type::HPF_4P || T == Type::HPF_6P)
+          {
+            b0 = div_factor;
+            b1 = -2 * div_factor;
+            b2 = div_factor;
+          }
+        else if (T == Type::BPF_2P)
+          {
+            b0 = k / q * div_factor;
+            b1 = 0;
+            b2 = -b0;
+          }
+        else if (T == Type::BRF_2P)
+          {
+            b0 = (1 + kk) * div_factor;
+            b1 = 2 * (kk - 1) * div_factor;
+            b2 = b0;
+          }
       }
   }
   template<Type T, int S, int C>
