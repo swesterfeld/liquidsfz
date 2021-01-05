@@ -153,6 +153,8 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   filter_envelope_.set_release (amp_value (vnorm, region.fileg_release));
   filter_envelope_.start (region, sample_rate_);
 
+  filter_envelope_depth_ = amp_value (vnorm, region.fileg_depth);
+
   start_filter (fimpl_, &region.fil);
   start_filter (fimpl2_, &region.fil2);
 }
@@ -514,7 +516,7 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
 
   if (envelope)
     {
-      const float depth_factor = region_->fileg_depth.base / 1200.;
+      const float depth_factor = filter_envelope_depth_ / 1200.;
 
       if (fi.cutoff_smooth.is_constant() && filter_envelope_.is_constant() && fi.resonance_smooth.is_constant())
         {

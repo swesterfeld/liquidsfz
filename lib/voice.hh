@@ -39,7 +39,8 @@ class Voice
     const FilterParams *params;
   } fimpl_, fimpl2_;
 
-  Envelope     filter_envelope_;
+  Envelope filter_envelope_;
+  float    filter_envelope_depth_ = 0;
 
   float volume_gain_ = 0;
   float amplitude_gain_ = 0;
