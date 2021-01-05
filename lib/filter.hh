@@ -368,17 +368,7 @@ private:
   }
 public:
   void
-  set_type (Type filter_type)
-  {
-    filter_type_ = filter_type;
-  }
-  void
-  set_sample_rate (int sample_rate)
-  {
-    sample_rate_ = sample_rate;
-  }
-  void
-  reset()
+  reset (Type filter_type, int sample_rate)
   {
     for (int s = 0; s < 3; s++)
       {
@@ -391,6 +381,8 @@ public:
       }
     first = true;
     config_count_down = 0;
+    filter_type_ = filter_type;
+    sample_rate_ = sample_rate;
   }
   void
   process (float *left, float *right, float cutoff, float resonance, uint n_frames)

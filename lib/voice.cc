@@ -162,9 +162,7 @@ Voice::start_filter (FImpl& fi, const FilterParams *params)
 {
   fi.params = params;
 
-  fi.filter.set_sample_rate (sample_rate_);
-  fi.filter.set_type (params->type);
-  fi.filter.reset();
+  fi.filter.reset (params->type, sample_rate_);
 
   fi.cutoff_smooth.reset (sample_rate_, 0.005);
   fi.resonance_smooth.reset (sample_rate_, 0.005);
