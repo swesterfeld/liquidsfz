@@ -72,9 +72,7 @@ main (int argc, char **argv)
       gen_sweep (left, right, freq);
 
       Filter filter;
-      filter.set_type (Filter::type_from_string (argv[2]));
-      filter.set_sample_rate (48000);
-      filter.reset();
+      filter.reset (Filter::type_from_string (argv[2]), 48000);
       filter.process (&left[0], &right[0], cutoff, resonance, left.size());
 
       for (size_t i = 0; i < left.size(); i++)
@@ -125,9 +123,7 @@ main (int argc, char **argv)
       right.resize (48000);
 
       Filter filter;
-      filter.set_type (Filter::type_from_string (argv[2]));
-      filter.set_sample_rate (48000);
-      filter.reset();
+      filter.reset (Filter::type_from_string (argv[2]), 48000);
       filter.process (&left[0], &right[0], cutoff, resonance, left.size());
 
       for (size_t i = 0; i < left.size(); i++)
@@ -140,8 +136,7 @@ main (int argc, char **argv)
       float cutoff = atof (argv[3]);
       float resonance = atof (argv[4]);
       Filter filter;
-      filter.set_type (Filter::type_from_string (argv[2]));
-      filter.set_sample_rate (48000);
+      Filter::Type type = Filter::type_from_string (argv[2]);
 
       double phase = 0;
       for (double f = 20; f < 24000; f *= 1.04)
@@ -154,7 +149,7 @@ main (int argc, char **argv)
               right.push_back (cos (phase));
               phase += f / 48000 * 2 * M_PI;
             }
-          filter.reset();
+          filter.reset (type, 48000);
           filter.process (&left[0], &right[0], cutoff, resonance, left.size());
 
           printf ("%f %.17g\n", f, sqrt (left.back() * left.back() + right.back() * right.back()));
@@ -165,9 +160,7 @@ main (int argc, char **argv)
       float cutoff = 500;
       float resonance = 1;
       Filter filter;
-      filter.set_type (Filter::type_from_string (argv[2]));
-      filter.set_sample_rate (48000);
-      filter.reset();
+      filter.reset (Filter::type_from_string (argv[2]), 48000);
       vector<float> left (1024, 1);
       vector<float> right (1024, -1);
       vector<float> mod_cutoff (1024, 500);
@@ -232,9 +225,7 @@ main (int argc, char **argv)
   else if (argc == 4 && (cmd == "jumpc" || cmd == "jumpr"))
     {
       Filter filter;
-      filter.set_type (Filter::type_from_string (argv[2]));
-      filter.set_sample_rate (48000);
-      filter.reset();
+      filter.reset (Filter::type_from_string (argv[2]), 48000);
 
       vector<float> in, out;
       vector<float> cutoff_v;
