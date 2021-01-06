@@ -52,17 +52,17 @@ private:
   int off_time_len_ = 0;
   float sustain_level_ = 0;
 
-  enum class State { DELAY, ATTACK, HOLD, DECAY, SUSTAIN, RELEASE, DONE };
+  enum class State { START, DELAY, ATTACK, HOLD, DECAY, SUSTAIN, RELEASE, DONE };
 
   State state_ = State::DONE;
   Shape shape_ = Shape::EXPONENTIAL;
 
   struct SlopeParams {
-    int len;
+    int len       = 0;
 
-    double factor;
-    double delta;
-    double end;
+    double factor = 0;
+    double delta  = 0;
+    double end    = 0;
   } params_;
 
   double level_ = 0;
@@ -106,19 +106,70 @@ public:
   void
   start (const Region& r, int sample_rate)
   {
-    delay_len_ = std::max (int (sample_rate * delay_), 1);
-    attack_len_ = std::max (int (sample_rate * attack_), 1);
-    hold_len_ = std::max (int (sample_rate * hold_), 1);
-    decay_len_ = std::max (int (sample_rate * decay_), 1);
+    delay_len_ = std::max (int (sample_rate * delay_), 0);
+    attack_len_ = std::max (int (sample_rate * attack_), 0);
+    hold_len_ = std::max (int (sample_rate * hold_), 0);
+    decay_len_ = std::max (int (sample_rate * decay_), 0);
     sustain_level_ = std::clamp<float> (sustain_ * 0.01, 0, 1); // percent->level
     release_len_ = std::max (int (sample_rate * release_), 1);
     stop_len_ = std::max (int (sample_rate * 0.030), 1);
     off_time_len_ = std::max (int (sample_rate * r.off_time), 1);
 
     level_ = 0;
-    state_ = State::DELAY;
+    state_ = State::START;
+    next_state();
+  }
 
-    compute_slope_params (delay_len_, 0, 0, State::DELAY);
+  void
+  next_state()
+  {
+    /* this funnction allows skipping stages - for instance if the delay and
+     * hold time is zero, we would only have the stages A D S R
+     */
+    if (state_ == State::START)
+      {
+        state_ = State::DELAY;
+        if (delay_len_)
+          {
+            compute_slope_params (delay_len_, 0, 0, State::DELAY);
+            return;
+          }
+        level_ = 0;
+      }
+    if (state_ == State::DELAY)
+      {
+        state_ = State::ATTACK;
+        if (attack_len_)
+          {
+            compute_slope_params (attack_len_, 0, 1, State::ATTACK);
+            return;
+          }
+        level_ = 1;
+      }
+    if (state_ == State::ATTACK)
+      {
+        state_ = State::HOLD;
+        if (hold_len_)
+          {
+            compute_slope_params (hold_len_, 1, 1, State::HOLD);
+            return;
+          }
+       level_ = 1;
+     }
+   if (state_ == State::HOLD)
+      {
+        state_ = State::DECAY;
+        if (decay_len_)
+          {
+            compute_slope_params (decay_len_, 1, sustain_level_, State::DECAY);
+            return;
+          }
+        level_ = sustain_level_;
+      }
+   if (state_ == State::DECAY)
+      {
+        state_ = State::SUSTAIN;
+      }
   }
   void
   stop (OffMode off_mode)
@@ -202,29 +253,13 @@ public:
     if (!params_.len)
       {
         level_ = params_.end;
-
-        if (state_ == State::DELAY)
-          {
-            compute_slope_params (attack_len_, 0, 1, State::ATTACK);
-            state_ = State::ATTACK;
-          }
-        else if (state_ == State::ATTACK)
-          {
-            compute_slope_params (hold_len_, 1, 1, State::HOLD);
-            state_ = State::HOLD;
-          }
-        else if (state_ == State::HOLD)
-          {
-            compute_slope_params (decay_len_, 1, sustain_level_, State::DECAY);
-            state_ = State::DECAY;
-          }
-        else if (state_ == State::DECAY)
-          {
-            state_ = State::SUSTAIN;
-          }
-        else if (state_ == State::RELEASE)
+        if (state_ == State::RELEASE)
           {
             state_ = State::DONE;
+          }
+        else
+          {
+            next_state();
           }
       }
     return level_;
