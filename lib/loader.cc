@@ -596,7 +596,7 @@ Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& line
   std::smatch sm;
 
   // handle #define
-  static const regex define_re ("\\s*#\\s*define\\s+(\\$\\S+*)\\s([^$]*)");
+  static const regex define_re ("\\s*#\\s*define\\s+(\\$\\S+)\\s([^$]*)");
   if (regex_match (line, sm, define_re))
     {
       // by our regex, values cannot contain $, to prevent problems in replace_defines() later on
