@@ -26,6 +26,8 @@
 #include <algorithm>
 #include <array>
 
+typedef unsigned int uint;
+
 namespace LiquidSFZInternal
 {
 
