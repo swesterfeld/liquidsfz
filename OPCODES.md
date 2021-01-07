@@ -2,7 +2,7 @@
 
 ## SUPPORTED OPCODES
 
-The following SFZ opcodes are supported in liquidsfz-0.2.1:
+The following SFZ opcodes are supported in liquidsfz-0.2.2:
 
 * amp_random
 * amp_velcurve_N
@@ -11,14 +11,19 @@ The following SFZ opcodes are supported in liquidsfz-0.2.1:
 * ampeg_attack_onccN
 * ampeg_attackccN
 * ampeg_decay
+* ampeg_decay_onccN
 * ampeg_decayccN
 * ampeg_delay
+* ampeg_delay_onccN
 * ampeg_delayccN
 * ampeg_hold
+* ampeg_hold_onccN
 * ampeg_holdccN
 * ampeg_release
+* ampeg_release_onccN
 * ampeg_releaseccN
 * ampeg_sustain
+* ampeg_sustain_onccN
 * ampeg_sustainccN
 * ampeg_vel2attack
 * ampeg_vel2decay
@@ -31,9 +36,48 @@ The following SFZ opcodes are supported in liquidsfz-0.2.1:
 * amplitude_onccN
 * bend_down
 * bend_up
+* cutoff
+* cutoff2
+* cutoff2_onccN
+* cutoff_ccN
+* cutoff_onccN
 * default_path
 * delay
 * delay_onccN
+* fil2_keycenter
+* fil2_keytrack
+* fil2_veltrack
+* fil_keycenter
+* fil_keytrack
+* fil_veltrack
+* fileg_attack
+* fileg_attack_onccN
+* fileg_attackccN
+* fileg_decay
+* fileg_decay_onccN
+* fileg_decayccN
+* fileg_delay
+* fileg_delay_onccN
+* fileg_delayccN
+* fileg_depth
+* fileg_depth_onccN
+* fileg_depthccN
+* fileg_hold
+* fileg_hold_onccN
+* fileg_holdccN
+* fileg_release
+* fileg_release_onccN
+* fileg_releaseccN
+* fileg_sustain
+* fileg_sustain_onccN
+* fileg_sustainccN
+* fileg_vel2attack
+* fileg_vel2decay
+* fileg_vel2delay
+* fileg_vel2depth
+* fileg_vel2hold
+* fileg_vel2release
+* fileg_vel2sustain
 * gain_ccN
 * group
 * hiccN
@@ -42,6 +86,7 @@ The following SFZ opcodes are supported in liquidsfz-0.2.1:
 * hivel
 * key
 * label_ccN
+* label_keyN
 * loccN
 * lokey
 * loop_end
@@ -65,6 +110,12 @@ The following SFZ opcodes are supported in liquidsfz-0.2.1:
 * pitch_keytrack
 * pitch_onccN
 * pitch_random
+* resonance
+* resonance2
+* resonance2_ccN
+* resonance2_onccN
+* resonance_ccN
+* resonance_onccN
 * rt_decay
 * sample
 * seq_length
@@ -73,6 +124,7 @@ The following SFZ opcodes are supported in liquidsfz-0.2.1:
 * sw_default
 * sw_hikey
 * sw_hilast
+* sw_label
 * sw_last
 * sw_lokey
 * sw_lolast
