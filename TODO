@@ -8,3 +8,16 @@ maybe:
 - aria xml index
 - maintain active voice list
 - implement sustain loop
+
+------------ NEW RELEASE ------------
+
+- make distcheck
+- update NEWS
+- update opcode list
+- make rebuild-api-docs
+- update README.md
+- upload static build
+- upload tarball
+- git tag
+
+------------------------------------
