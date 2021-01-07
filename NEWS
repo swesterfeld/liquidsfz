@@ -1,3 +1,19 @@
+Overview of Changes in liquidsfz-0.2.2:
+
+* Implement filters (fil_type, cutoff, resonance, ...)
+  - all SFZ1 filter types (lpf_1p, lpf_2p, hpf_1p...)
+  - some SFZ2 filter types (lpf_4p, lpf_6p, hpf_4p, hpf_6p)
+  - filter envelope (fileg_attack, fileg_depth, ...)
+* Support midnam for LV2 to provide controller/key/switch information
+* Key/Key Switch information:
+  - API: provide key and key switch information (Synth::list_keys)
+  - opcodes: implement key and keyswitch names (sw_label, label_keyN)
+  - hydrogen loader: provide key names for each mapped key
+  - add keys/switches/ccs command in liquidsfz jack client
+* Improve key switch handling to fix problems with some sfzs #20
+* Fix problems with clang++ using libc++ (for instance on macOS) #19
+* Minor fixes and cleanups
+
 Overview of Changes in liquidsfz-0.2.1:
 
 * New opcodes: offset / offset_random / offset_ccN / offset_onccN
