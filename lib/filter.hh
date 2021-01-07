@@ -24,6 +24,7 @@
 #include <cmath>
 #include <string>
 #include <algorithm>
+#include <array>
 
 namespace LiquidSFZInternal
 {
@@ -136,7 +137,6 @@ private:
   BiquadState b_state[3][2];
 
   Type  filter_type_ = Type::NONE;
-  int   channels_    = 1;
   int   sample_rate_ = 44100;
 
   void
