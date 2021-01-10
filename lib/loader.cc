@@ -189,6 +189,11 @@ Loader::set_key_value (const string& key, const string& value)
       set_key_value_control (key, value);
       return;
     }
+  else if (in_curve)
+    {
+      set_key_value_curve (key, value);
+      return;
+    }
   /* handle global, group and region levels */
   Region *region_ptr = nullptr;
   switch (region_type)
@@ -386,6 +391,11 @@ Loader::set_key_value (const string& key, const string& value)
       region.pan_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
+  else if (split_sub_key (key, "pan_curvecc", sub_key))
+    {
+      region.pan_cc.set_curvecc (sub_key, convert_int (value));
+      update_cc_info (sub_key);
+    }
   else if (split_sub_key (key, "gain_cc", sub_key)
        ||  split_sub_key (key, "volume_cc", sub_key)
        ||  split_sub_key (key, "volume_oncc", sub_key))
@@ -524,6 +534,28 @@ Loader::set_key_value_control (const string& key, const string& value)
 }
 
 void
+Loader::set_key_value_curve (const string& key, const string& value)
+{
+  int sub_key;
+
+  if (key == "curve_index")
+    {
+      int i = convert_int (value);
+
+      if (i >= 0 && i < 256)
+        active_curve_section.curve_index = convert_int (value);
+      else
+        synth_->warning ("%s bad curve_index '%d' (should be in range [0,255])\n", location().c_str(), i);
+    }
+  else if (split_sub_key (key, "v", sub_key))
+    {
+      active_curve_section.curve.set (sub_key, convert_float (value));
+    }
+  else
+    synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
+}
+
+void
 Loader::handle_tag (const std::string& tag)
 {
   synth_->debug ("+++ TAG %s\n", tag.c_str());
@@ -536,11 +568,23 @@ Loader::handle_tag (const std::string& tag)
         active_region = Region();
       }
 
+  if (!active_curve_section.empty())
+    {
+      add_curve (active_curve_section);
+      active_curve_section = CurveSection();
+    }
+
   in_control = false;
+  in_curve = false;
   if (tag == "control")
     {
       in_control = true;
       control = Control();
+    }
+  else if (tag == "curve")
+    {
+      in_curve = true;
+      active_curve_section = CurveSection();
     }
   else if (tag == "region")
     {
@@ -584,6 +628,18 @@ Loader::handle_tag (const std::string& tag)
     }
   else
     synth_->warning ("%s unsupported tag '<%s>'\n", location().c_str(), tag.c_str());
+}
+
+void
+Loader::add_curve (const CurveSection& c)
+{
+  if (c.curve_index < 0 || c.curve_index > 255)
+    return;
+
+  if (curves.size() <= uint (c.curve_index))
+    curves.resize (c.curve_index + 1);
+
+  curves[c.curve_index] = c.curve;
 }
 
 bool
@@ -826,6 +882,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   if (!active_region.empty())
     regions.push_back (active_region);
 
+  if (!active_curve_section.empty())
+    add_curve (active_curve_section);
+
   synth_->progress (0);
   for (size_t i = 0; i < regions.size(); i++)
     {
@@ -891,6 +950,11 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
     [] (const CCInfo& a, const CCInfo& b) {
       return a.cc < b.cc;
     });
+
+  // finalize curves
+  for (auto& c : curves)
+    curve_table.expand_curve (c);
+
   synth_->debug ("*** regions: %zd\n", regions.size());
   return true;
 }

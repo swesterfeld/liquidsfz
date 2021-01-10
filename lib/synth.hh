@@ -97,6 +97,7 @@ class Synth
   std::vector<CCInfo> cc_list_;
   std::vector<KeyInfo> key_list_;
   CurveTable curve_table_;
+  std::vector<Curve> curves_;
   Log log_level_ = Log::INFO;
   static Global global_;
   float gain_ = 1.0;
@@ -178,6 +179,7 @@ public:
         cc_list_      = loader.cc_list;
         key_list_     = loader.key_list;
         curve_table_  = std::move (loader.curve_table);
+        curves_       = std::move (loader.curves);
 
         is_key_switch_.fill (false);
         for (auto k : key_list_)
@@ -417,11 +419,22 @@ public:
     return ch.cc_values[controller];
   }
   float
+  get_cc_curve (int channel, const CCParamVec::Entry& entry) const
+  {
+    int curvecc = entry.curvecc;
+    if (curvecc >= 0 && curvecc < int (curves_.size()))
+      {
+        if (!curves_[curvecc].empty())
+          return curves_[entry.curvecc].get (get_cc (channel, entry.cc));
+      }
+    return get_cc (channel, entry.cc) * (1 / 127.f);
+  }
+  float
   get_cc_vec_value (int channel, const CCParamVec& cc_param_vec) const
   {
     float value = 0.0;
     for (const auto& entry : cc_param_vec)
-      value += get_cc (channel, entry.cc) * (1 / 127.f) * entry.value;
+      value += get_cc_curve (channel, entry) * entry.value;
     return value;
   }
   void

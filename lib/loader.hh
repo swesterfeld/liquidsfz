@@ -61,6 +61,7 @@ class CCParamVec
 public:
   struct Entry
   {
+    int curvecc = 0;
     int cc = -1;
     float value = 0;
   };
@@ -86,7 +87,27 @@ public:
             return;
           }
       }
-    entries_.push_back ({cc, value});
+    Entry entry;
+    entry.cc = cc;
+    entry.value = value;
+    entries_.push_back (entry);
+  }
+  void
+  set_curvecc (int cc, int curvecc)
+  {
+    for (auto& entry : entries_)
+      {
+        if (entry.cc == cc)
+          {
+            /* overwrite old value */
+            entry.curvecc = curvecc;
+            return;
+          }
+      }
+    Entry entry;
+    entry.cc = cc;
+    entry.curvecc = curvecc;
+    entries_.push_back (entry);
   }
   bool
   contains (int cc) const
@@ -143,6 +164,18 @@ struct FilterParams
   int          keytrack = 0;
   int          keycenter = 60;
   int          veltrack = 0;
+};
+
+struct CurveSection
+{
+  int   curve_index = -1;
+  Curve curve;
+
+  bool
+  empty()
+  {
+    return curve_index < 0;
+  }
 };
 
 struct Region
@@ -300,6 +333,8 @@ public:
     synth_ = synth;
   }
   bool in_control = false;
+  bool in_curve = false;
+  CurveSection active_curve_section;
   enum class RegionType { NONE, GLOBAL, MASTER, GROUP, REGION };
   RegionType region_type = RegionType::NONE;
   Region active_global;
@@ -309,6 +344,7 @@ public:
   bool   have_master = false;
   bool   have_group = false;
   std::vector<Region> regions;
+  std::vector<Curve>  curves;
   Control control;
   std::vector<CCInfo> cc_list;
   std::map<int, KeyInfo> key_map;
@@ -389,7 +425,9 @@ public:
   KeyInfo& update_key_info (int key);
   void set_key_value (const std::string& key, const std::string& value);
   void set_key_value_control (const std::string& key, const std::string& value);
+  void set_key_value_curve (const std::string& key, const std::string& value);
   void handle_tag (const std::string& tag);
+  void add_curve (const CurveSection& curve);
   std::string
   location()
   {
