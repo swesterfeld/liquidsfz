@@ -194,7 +194,13 @@ Loader::parse_cc (const std::string& key, const std::string& value, CCParamVec& 
     {
       int sub_key;
 
-      if (split_sub_key (key, opcode, sub_key))
+      if (ends_with (opcode, "_*"))
+        {
+          opcode.pop_back();
+          if (parse_cc (key, value, ccvec, opcode + "cc", opcode + "oncc", opcode + "curvecc"))
+            return true;
+        }
+      else if (split_sub_key (key, opcode, sub_key))
         {
           if (ends_with (opcode, "_cc") || ends_with (opcode, "_oncc"))
             {
@@ -418,54 +424,27 @@ Loader::set_key_value (const string& key, const string& value)
   else if (key == "fil2_veltrack")
     region.fil2.veltrack = convert_int (value);
   else if (parse_cc (key, value, region.pan_cc,
-                     "pan_cc",
-                     "pan_oncc",
-                     "pan_curvecc")
-
+                     "pan_*")
        ||  parse_cc (key, value, region.gain_cc,
-                     "gain_cc",
-                     "volume_cc",
-                     "volume_oncc",
-                     "volume_curvecc")
-
+                     "gain_cc", // acts as alias
+                     "volume_*")
        ||  parse_cc (key, value, region.amplitude_cc,
-                     "amplitude_cc",
-                     "amplitude_oncc",
-                     "amplitude_curvecc")
-
+                     "amplitude_*")
        ||  parse_cc (key, value, region.tune_cc,
-                     "tune_cc",
-                     "tune_oncc",
-                     "pitch_oncc", /* sforzando supports 3 variants */
-                     "pitch_curvecc")
-
+                     "pitch_*", // sforzando supports both
+                     "tune_*")
        ||  parse_cc (key, value, region.delay_cc,
-                     "delay_oncc",
-                     "delay_curvecc")
-
+                     "delay_*")
        ||  parse_cc (key, value, region.fil.cutoff_cc,
-                     "cutoff_cc",
-                     "cutoff_oncc",
-                     "cutoff_curvecc")
-
+                     "cutoff_*")
        ||  parse_cc (key, value, region.fil2.cutoff_cc,
-                     "cutoff2_cc",
-                     "cutoff2_oncc",
-                     "cutoff2_curvecc")
-
+                     "cutoff2_*")
        ||  parse_cc (key, value, region.fil.resonance_cc,
-                     "resonance_cc",
-                     "resonance_oncc",
-                     "resonance_curvecc")
-
+                     "resonance_*")
        ||  parse_cc (key, value, region.fil2.resonance_cc,
-                     "resonance2_cc",
-                     "resonance2_oncc",
-                     "resonance2_curvecc")
-
+                     "resonance2_*")
        ||  parse_cc (key, value, region.offset_cc,
-                     "offset_cc",
-                     "offset_oncc"))
+                     "offset_*"))
     {
       // actual value conversion is performed by parse_cc
     }
