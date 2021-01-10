@@ -166,6 +166,12 @@ Loader::parse_eg_param (const string& eg, EGParam& amp_param, const std::string&
       update_cc_info (sub_key);
       return true;
     }
+  if (split_sub_key (key, prefix + param_str + "_curvecc", sub_key)) // *eg_attack_curveccN,...
+    {
+      amp_param.cc_vec.set_curvecc (sub_key, convert_int (value));
+      update_cc_info (sub_key);
+      return true;
+    }
   return false;
 }
 
