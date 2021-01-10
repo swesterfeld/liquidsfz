@@ -19,5 +19,6 @@ maybe:
 - upload static build
 - upload tarball
 - git tag
+- push tag/sources to github
 
 ------------------------------------
