@@ -181,6 +181,32 @@ Loader::parse_fileg_param (EGParam& amp_param, const string& key, const string& 
   return parse_eg_param ("fileg", amp_param, key, value, param_str);
 }
 
+bool
+Loader::parse_cc (const std::string& key, const std::string& value, CCParamVec& ccvec, const std::vector<std::string>& opcodes)
+{
+  for (auto opcode : opcodes)
+    {
+      int sub_key;
+
+      if (split_sub_key (key, opcode, sub_key))
+        {
+          if (ends_with (opcode, "_cc") || ends_with (opcode, "_oncc"))
+            {
+              ccvec.set (sub_key, convert_float (value));
+              update_cc_info (sub_key);
+              return true;
+            }
+          else if (ends_with (opcode, "_curvecc"))
+            {
+              ccvec.set_curvecc (sub_key, convert_int (value));
+              update_cc_info (sub_key);
+              return true;
+            }
+        }
+    }
+  return false;
+}
+
 void
 Loader::set_key_value (const string& key, const string& value)
 {
@@ -385,71 +411,57 @@ Loader::set_key_value (const string& key, const string& value)
     region.fil.veltrack = convert_int (value);
   else if (key == "fil2_veltrack")
     region.fil2.veltrack = convert_int (value);
-  else if (split_sub_key (key, "pan_cc", sub_key) /* sforzando supports both variants */
-        || split_sub_key (key, "pan_oncc", sub_key))
+  else if (parse_cc (key, value, region.pan_cc,
+                     "pan_cc",
+                     "pan_oncc",
+                     "pan_curvecc")
+
+       ||  parse_cc (key, value, region.gain_cc,
+                     "gain_cc",
+                     "volume_cc",
+                     "volume_oncc",
+                     "volume_curvecc")
+
+       ||  parse_cc (key, value, region.amplitude_cc,
+                     "amplitude_cc",
+                     "amplitude_oncc",
+                     "amplitude_curvecc")
+
+       ||  parse_cc (key, value, region.tune_cc,
+                     "tune_cc",
+                     "tune_oncc",
+                     "pitch_oncc", /* sforzando supports 3 variants */
+                     "pitch_curvecc")
+
+       ||  parse_cc (key, value, region.delay_cc,
+                     "delay_oncc",
+                     "delay_curvecc")
+
+       ||  parse_cc (key, value, region.fil.cutoff_cc,
+                     "cutoff_cc",
+                     "cutoff_oncc",
+                     "cutoff_curvecc")
+
+       ||  parse_cc (key, value, region.fil2.cutoff_cc,
+                     "cutoff2_cc",
+                     "cutoff2_oncc",
+                     "cutoff2_curvecc")
+
+       ||  parse_cc (key, value, region.fil.resonance_cc,
+                     "resonance_cc",
+                     "resonance_oncc",
+                     "resonance_curvecc")
+
+       ||  parse_cc (key, value, region.fil2.resonance_cc,
+                     "resonance2_cc",
+                     "resonance2_oncc",
+                     "resonance2_curvecc")
+
+       ||  parse_cc (key, value, region.offset_cc,
+                     "offset_cc",
+                     "offset_oncc"))
     {
-      region.pan_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "pan_curvecc", sub_key))
-    {
-      region.pan_cc.set_curvecc (sub_key, convert_int (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "gain_cc", sub_key)
-       ||  split_sub_key (key, "volume_cc", sub_key)
-       ||  split_sub_key (key, "volume_oncc", sub_key))
-    {
-      region.gain_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "amplitude_cc", sub_key) /* sforzando supports both variants */
-       ||  split_sub_key (key, "amplitude_oncc", sub_key))
-    {
-      region.amplitude_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "tune_cc", sub_key) /* sforzando supports 3 variants */
-       ||  split_sub_key (key, "tune_oncc", sub_key)
-       ||  split_sub_key (key, "pitch_oncc", sub_key))
-    {
-      region.tune_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "delay_oncc", sub_key))
-    {
-      region.delay_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "offset_cc", sub_key)
-       ||  split_sub_key (key, "offset_oncc", sub_key))
-    {
-      region.offset_cc.set (sub_key, convert_uint (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "cutoff_cc", sub_key)
-       ||  split_sub_key (key, "cutoff_oncc", sub_key))
-    {
-      region.fil.cutoff_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "cutoff2_cc", sub_key)
-       ||  split_sub_key (key, "cutoff2_oncc", sub_key))
-    {
-      region.fil2.cutoff_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "resonance_cc", sub_key)
-       ||  split_sub_key (key, "resonance_oncc", sub_key))
-    {
-      region.fil.resonance_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
-    }
-  else if (split_sub_key (key, "resonance2_cc", sub_key)
-       ||  split_sub_key (key, "resonance2_oncc", sub_key))
-    {
-      region.fil2.resonance_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
+      // actual value conversion is performed by parse_cc
     }
   else if (key == "xfin_lovel")
     region.xfin_lovel = convert_int (value);

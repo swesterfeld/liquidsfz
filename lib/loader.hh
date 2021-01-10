@@ -327,6 +327,15 @@ class Loader
   bool parse_eg_param (const std::string& eg, EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
   bool parse_ampeg_param (EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
   bool parse_fileg_param (EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
+  bool parse_cc (const std::string& key, const std::string& value, CCParamVec& ccvec, const std::vector<std::string>& opcodes);
+  template <class ... Args>
+  bool parse_cc (const std::string& key, const std::string& value, CCParamVec& ccvec, Args ... args) /* make it possible to pass any number of strings here */
+  {
+    std::vector<std::string> opcodes;
+    for (auto s : {args...})
+      opcodes.push_back (s);
+    return parse_cc (key, value, ccvec, opcodes);
+  }
 public:
   Loader (Synth *synth)
   {
@@ -418,6 +427,11 @@ public:
   starts_with (const std::string& key, const std::string& start)
   {
     return key.substr (0, start.size()) == start;
+  }
+  bool
+  ends_with (const std::string& key, const std::string& end)
+  {
+    return (key.length() >= end.length()) && key.compare (key.length() - end.length(), end.length(), end) == 0;
   }
   bool split_sub_key (const std::string& key, const std::string& start, int& sub_key);
   XFCC& search_xfcc (std::vector<XFCC>& xfcc_vec, int cc, int def);
