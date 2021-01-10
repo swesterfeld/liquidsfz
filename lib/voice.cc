@@ -265,7 +265,7 @@ Voice::update_amplitude_gain()
 
   /* for CCs modulating amplitude, the amplitudes of the individual CCs are multiplied (not added) */
   for (const auto& entry : region_->amplitude_cc)
-    gain *= synth_->get_cc (channel_, entry.cc) * (1 / 127.f) * entry.value * 0.01f;
+    gain *= synth_->get_cc_curve (channel_, entry) * entry.value * 0.01f;
 
   amplitude_gain_ = gain;
 }
