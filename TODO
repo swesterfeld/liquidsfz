@@ -4,6 +4,7 @@
 - allow #include on the same line
 - *silence
 - lfo
+- don't crash if process() is called with large n_samples
 - key switches (details: sw_down, sw_up)
 - envelope minimum times (prevent clicks)
 - C++ style block comments
