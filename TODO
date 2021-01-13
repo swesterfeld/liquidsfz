@@ -1,6 +1,3 @@
-- define default curves
-- double-check parse_cc doesn't allow non-existent opcodes
-- use depth limit for #include (rather than deciding on filename alone)
 - allow #include on the same line
 - *silence
 - lfo
