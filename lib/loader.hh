@@ -442,6 +442,7 @@ public:
   void set_key_value_curve (const std::string& key, const std::string& value);
   void handle_tag (const std::string& tag);
   void add_curve (const CurveSection& curve);
+  void init_default_curves();
   std::string
   location()
   {

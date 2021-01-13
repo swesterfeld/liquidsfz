@@ -553,6 +553,31 @@ Loader::set_key_value_curve (const string& key, const string& value)
 }
 
 void
+Loader::init_default_curves()
+{
+  curves.resize (7);
+
+  curves[0].set (0,   0);
+  curves[0].set (127, 1);
+
+  curves[1].set (0,  -1);
+  curves[1].set (127, 1);
+
+  curves[2].set (0,   1);
+  curves[2].set (127, 0);
+
+  curves[3].set (0,    1);
+  curves[3].set (127, -1);
+
+  for (int v = 0; v < 128; v++)
+    {
+      curves[4].set (v, (v * v) / (127.0 * 127.0));   // volume curve
+      curves[5].set (v, sqrt (v / 127.0));            // xfin power curve
+      curves[6].set (v, sqrt ((127 - v) / 127.0));    // xfout power curve
+    }
+}
+
+void
 Loader::handle_tag (const std::string& tag)
 {
   synth_->debug ("+++ TAG %s\n", tag.c_str());
@@ -783,6 +808,8 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, c
 bool
 Loader::parse (const string& filename, SampleCache& sample_cache)
 {
+  init_default_curves();
+
   sample_path = path_dirname (filename);
 
   // read file
