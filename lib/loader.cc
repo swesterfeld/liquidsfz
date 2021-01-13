@@ -728,8 +728,6 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
   line_info.filename = filename;
   line_info.number = 1;
 
-  enum { TEXT, BLOCK_COMMENT } state = TEXT;
-
   size_t i = 0;
   while (i < contents.size())
     {
@@ -742,30 +740,36 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
       std::smatch sm;
       Control::Define define;
 
-      if (state == TEXT && ch == '/' && next == '*')
+      if (ch == '/' && next == '*') /* block comment */
         {
           lines.push_back (line_info);
           line_info.line = "";
 
-          state = BLOCK_COMMENT;
-          i += 2;
+          size_t j = i, end = 0;
+          while (j + 1 < contents.size()) /* search end of comment */
+            {
+              if (contents[j] == '\n')
+                line_info.number++;
+
+              if (contents[j] == '*' && contents[j + 1] == '/')
+                {
+                  end = j + 2;
+                  break;
+                }
+              j++;
+            }
+          if (!end)
+            {
+              synth_->error ("%s unterminated block comment\n", line_info.location().c_str());
+              return false;
+            }
+          i = end;
         }
-      else if (state == TEXT && ch == '/' && next == '/')
+      else if (ch == '/' && next == '/') /* line comment */
         {
           i += line.size();
         }
-      else if (state == BLOCK_COMMENT && ch == '*' && next == '/')
-        {
-          state = TEXT;
-          i += 2;
-        }
-      else if (state == BLOCK_COMMENT)
-        {
-          if (ch == '\n')
-            line_info.number++;
-          i++; /* skip over comment */
-        }
-      else if (state == TEXT && ch == '#' && regex_match (line, sm, define_re))
+      else if (ch == '#' && regex_match (line, sm, define_re))
         {
           // by our regex, values cannot contain $, to prevent problems in replace_defines() later on
 
@@ -788,7 +792,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
 
           i += sm.length() - sm[3].length();
         }
-      else if (state == TEXT && regex_match (line, sm, include_re))
+      else if (ch == '#' && regex_match (line, sm, include_re))
         {
           /* if there is text before the #include statement, this needs to
            * written to lines to preserve the order of the opcodes
@@ -818,28 +822,22 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
             }
           i += sm.length() - sm[2].length();
         }
-      else if (state == TEXT && ch == '$' && find_variable (line, define))
+      else if (ch == '$' && find_variable (line, define))
         {
           line_info.line += define.value;
           i += define.variable.size();
         }
-      else
+      else if (ch != '\r' && ch != '\n')
         {
-          if (ch != '\r' && ch != '\n')
-            {
-              line_info.line += ch;
-              i++;
-            }
-          else
-            {
-              if (ch == '\n')
-                {
-                  lines.push_back (line_info);
-                  line_info.number++;
-                  line_info.line = "";
-                }
-              i++;
-            }
+          line_info.line += ch;
+          i++;
+        }
+      else if (ch == '\n')
+        {
+          lines.push_back (line_info);
+          line_info.number++;
+          line_info.line = "";
+          i++;
         }
     }
   if (!line_info.line.empty())
