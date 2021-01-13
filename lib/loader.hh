@@ -323,6 +323,7 @@ class Loader
   LineInfo current_line_info;
   Synth *synth_ = nullptr;
 
+  bool find_variable (const std::string& line, Control::Define& out_define);
   bool parse_eg_param (const std::string& eg, EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
   bool parse_ampeg_param (EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
   bool parse_fileg_param (EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
@@ -448,8 +449,6 @@ public:
   {
     return string_printf ("%s: line %d:", current_line_info.filename.c_str(), current_line_info.number);
   }
-  void replace_defines (std::string& line);
-  bool preprocess_line (const LineInfo& input_line_info, std::vector<LineInfo>& lines, int level);
   bool preprocess_file (const std::string& filename, std::vector<LineInfo>& lines, int level, const std::string& content_str = "");
   bool parse (const std::string& filename, SampleCache& sample_cache);
 };

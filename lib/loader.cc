@@ -664,83 +664,6 @@ Loader::add_curve (const CurveSection& c)
   curves[c.curve_index] = c.curve;
 }
 
-bool
-Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& lines, int level)
-{
-  // strip comments
-  static const regex comment_re ("//.*$");
-  string line = regex_replace (input_line_info.line, comment_re, "");
-
-  std::smatch sm;
-
-  // handle #define
-  static const regex define_re ("\\s*#\\s*define\\s+(\\$\\S+)\\s([^$]*)");
-  if (regex_match (line, sm, define_re))
-    {
-      // by our regex, values cannot contain $, to prevent problems in replace_defines() later on
-
-      Control::Define define;
-      define.variable = sm[1];
-      define.value    = strip_spaces (sm[2]);
-      control.defines.push_back (define);
-
-      line = "";
-    }
-
-  // perform variable substitution as required by #define
-  replace_defines (line);
-
-  // detect #include
-  static const regex include_re ("\\s*#\\s*include\\s+[\"<](.*)[\">]\\s*");
-  if (regex_match (line, sm, include_re))
-    {
-      string include_filename = path_absolute (path_join (sample_path, sm[1].str()));
-
-      if (level < MAX_INCLUDE_DEPTH) // prevent infinite recursion for buggy .sfz
-        {
-          bool inc_ok = preprocess_file (path_absolute (path_join (sample_path, sm[1].str())), lines, level + 1);
-          if (!inc_ok)
-            synth_->error ("%s unable to read #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
-
-          return inc_ok;
-        }
-      else
-        {
-          synth_->error ("%s exceeded maximum include depth (%d) while processing #include '%s'\n",
-                         input_line_info.location().c_str(), MAX_INCLUDE_DEPTH, include_filename.c_str());
-          return false;
-        }
-    }
-  else
-    {
-      auto linfo = input_line_info;
-      linfo.line = line;
-      lines.push_back (linfo);
-    }
-  return true;
-}
-
-void
-Loader::replace_defines (string& line)
-{
-  size_t start_pos = 0;
-
-  while ((start_pos = line.find ('$', start_pos)) != string::npos)
-    {
-      const string test_var = line.substr (start_pos);
-
-      for (const auto& define : control.defines)
-        {
-          if (starts_with (test_var, define.variable))
-            {
-              line.replace (start_pos, define.variable.length(), define.value);
-              break;
-            }
-        }
-      start_pos++;
-    }
-}
-
 static bool
 load_file (FILE *file, vector<char>& contents)
 {
@@ -754,6 +677,29 @@ load_file (FILE *file, vector<char>& contents)
     contents.insert (contents.end(), buffer, buffer + l);
 
   return !ferror (file);
+}
+
+static string
+line_lookahead (vector<char>& contents, size_t pos)
+{
+  string result;
+  while (pos < contents.size() && (contents[pos] != '\n' && contents[pos] != '\r'))
+    result += contents[pos++];
+  return result;
+}
+
+bool
+Loader::find_variable (const string& line, Control::Define& out_define)
+{
+  for (const auto& define : control.defines)
+    {
+      if (starts_with (line, define.variable))
+        {
+          out_define = define;
+          return true;
+        }
+    }
+  return false;
 }
 
 bool
@@ -782,28 +728,123 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
   line_info.filename = filename;
   line_info.number = 1;
 
-  for (char ch : contents)
+  enum { TEXT, BLOCK_COMMENT } state = TEXT;
+
+  size_t i = 0;
+  while (i < contents.size())
     {
-      if (ch != '\r' && ch != '\n')
+      char ch = contents[i];
+      char next = i + 1 < contents.size() ? contents[i + 1] : 0;
+      string line = line_lookahead (contents, i);
+
+      static const regex define_re ("#define\\s+(\\$\\S+)\\s+(\\S+)(.*)");
+      static const regex include_re ("#include\\s+\"([^\"]*)\"(.*)");
+      std::smatch sm;
+      Control::Define define;
+
+      if (state == TEXT && ch == '/' && next == '*')
         {
-          line_info.line += ch;
+          lines.push_back (line_info);
+          line_info.line = "";
+
+          state = BLOCK_COMMENT;
+          i += 2;
+        }
+      else if (state == TEXT && ch == '/' && next == '/')
+        {
+          i += line.size();
+        }
+      else if (state == BLOCK_COMMENT && ch == '*' && next == '/')
+        {
+          state = TEXT;
+          i += 2;
+        }
+      else if (state == BLOCK_COMMENT)
+        {
+          if (ch == '\n')
+            line_info.number++;
+          i++; /* skip over comment */
+        }
+      else if (state == TEXT && ch == '#' && regex_match (line, sm, define_re))
+        {
+          // by our regex, values cannot contain $, to prevent problems in replace_defines() later on
+
+          bool overwrite = false;
+          for (auto& old_def : control.defines)
+            {
+              if (old_def.variable == sm[1])
+                {
+                  old_def.value = strip_spaces (sm[2]);
+                  overwrite = true;
+                }
+            }
+          if (!overwrite)
+            {
+              Control::Define define;
+              define.variable = sm[1];
+              define.value    = strip_spaces (sm[2]);
+              control.defines.push_back (define);
+            }
+
+          i += sm.length() - sm[3].length();
+        }
+      else if (state == TEXT && regex_match (line, sm, include_re))
+        {
+          /* if there is text before the #include statement, this needs to
+           * written to lines to preserve the order of the opcodes
+           *
+           * we don't bump the line number to allow text after the include
+           * to be on the same line
+           */
+          lines.push_back (line_info);
+          line_info.line = "";
+
+          string include_filename = path_absolute (path_join (sample_path, sm[1].str()));
+
+          if (level < MAX_INCLUDE_DEPTH) // prevent infinite recursion for buggy .sfz
+            {
+              bool inc_ok = preprocess_file (include_filename, lines, level + 1);
+              if (!inc_ok)
+                {
+                  synth_->error ("%s unable to read #include '%s'\n", line_info.location().c_str(), include_filename.c_str());
+                  return false;
+                }
+            }
+          else
+            {
+              synth_->error ("%s exceeded maximum include depth (%d) while processing #include '%s'\n",
+                             line_info.location().c_str(), MAX_INCLUDE_DEPTH, include_filename.c_str());
+              return false;
+            }
+          i += sm.length() - sm[2].length();
+        }
+      else if (state == TEXT && ch == '$' && find_variable (line, define))
+        {
+          line_info.line += define.value;
+          i += define.variable.size();
         }
       else
         {
-          if (ch == '\n')
+          if (ch != '\r' && ch != '\n')
             {
-              if (!preprocess_line (line_info, lines, level))
-                return false;
-
-              line_info.number++;
-              line_info.line = "";
+              line_info.line += ch;
+              i++;
+            }
+          else
+            {
+              if (ch == '\n')
+                {
+                  lines.push_back (line_info);
+                  line_info.number++;
+                  line_info.line = "";
+                }
+              i++;
             }
         }
     }
   if (!line_info.line.empty())
     {
-      if (!preprocess_line (line_info, lines, level))
-        return false;
+      lines.push_back (line_info);
     }
   return true;
 }
