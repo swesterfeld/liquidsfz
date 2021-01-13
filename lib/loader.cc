@@ -785,8 +785,6 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
         }
       else if (ch == '#' && regex_match (line, sm, define_re))
         {
-          // by our regex, values cannot contain $, to prevent problems in replace_defines() later on
-
           bool overwrite = false;
           for (auto& old_def : control.defines)
             {
@@ -841,16 +839,20 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
           line_info.line += define.value;
           i += define.variable.size();
         }
-      else if (ch != '\r' && ch != '\n')
+      else if (ch == '\r')
         {
-          line_info.line += ch;
-          i++;
+          i++; // ignore
         }
       else if (ch == '\n')
         {
           lines.push_back (line_info);
           line_info.number++;
           line_info.line = "";
+          i++;
+        }
+      else
+        {
+          line_info.line += ch;
           i++;
         }
     }
