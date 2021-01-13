@@ -321,7 +321,6 @@ class Loader
     }
   };
   LineInfo current_line_info;
-  std::set<std::string> preprocess_done;
   Synth *synth_ = nullptr;
 
   bool parse_eg_param (const std::string& eg, EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
@@ -336,6 +335,7 @@ class Loader
       opcodes.push_back (s);
     return parse_cc (key, value, ccvec, opcodes);
   }
+  static constexpr int MAX_INCLUDE_DEPTH = 25;
 public:
   Loader (Synth *synth)
   {
@@ -449,8 +449,8 @@ public:
     return string_printf ("%s: line %d:", current_line_info.filename.c_str(), current_line_info.number);
   }
   void replace_defines (std::string& line);
-  bool preprocess_line (const LineInfo& input_line_info, std::vector<LineInfo>& lines);
-  bool preprocess_file (const std::string& filename, std::vector<LineInfo>& lines, const std::string& content_str = "");
+  bool preprocess_line (const LineInfo& input_line_info, std::vector<LineInfo>& lines, int level);
+  bool preprocess_file (const std::string& filename, std::vector<LineInfo>& lines, int level, const std::string& content_str = "");
   bool parse (const std::string& filename, SampleCache& sample_cache);
 };
 

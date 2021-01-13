@@ -665,7 +665,7 @@ Loader::add_curve (const CurveSection& c)
 }
 
 bool
-Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& lines)
+Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& lines, int level)
 {
   // strip comments
   static const regex comment_re ("//.*$");
@@ -696,16 +696,20 @@ Loader::preprocess_line (const LineInfo& input_line_info, vector<LineInfo>& line
     {
       string include_filename = path_absolute (path_join (sample_path, sm[1].str()));
 
-      if (!preprocess_done.count (include_filename)) // prevent infinite recursion for buggy .sfz
+      if (level < MAX_INCLUDE_DEPTH) // prevent infinite recursion for buggy .sfz
         {
-          bool inc_ok = preprocess_file (path_absolute (path_join (sample_path, sm[1].str())), lines);
+          bool inc_ok = preprocess_file (path_absolute (path_join (sample_path, sm[1].str())), lines, level + 1);
           if (!inc_ok)
             synth_->error ("%s unable to read #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
 
           return inc_ok;
         }
       else
-        synth_->warning ("%s skipping duplicate #include '%s'\n", input_line_info.location().c_str(), include_filename.c_str());
+        {
+          synth_->error ("%s exceeded maximum include depth (%d) while processing #include '%s'\n",
+                         input_line_info.location().c_str(), MAX_INCLUDE_DEPTH, include_filename.c_str());
+          return false;
+        }
     }
   else
     {
@@ -753,7 +757,7 @@ load_file (FILE *file, vector<char>& contents)
 }
 
 bool
-Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, const std::string& content_str)
+Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, int level, const std::string& content_str)
 {
   vector<char> contents;
 
@@ -773,7 +777,6 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, c
       if (!read_ok)
         return false;
     }
-  preprocess_done.insert (filename);
 
   LineInfo line_info;
   line_info.filename = filename;
@@ -789,7 +792,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, c
         {
           if (ch == '\n')
             {
-              if (!preprocess_line (line_info, lines))
+              if (!preprocess_line (line_info, lines, level))
                 return false;
 
               line_info.number++;
@@ -799,7 +802,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, c
     }
   if (!line_info.line.empty())
     {
-      if (!preprocess_line (line_info, lines))
+      if (!preprocess_line (line_info, lines, level))
         return false;
     }
   return true;
@@ -821,7 +824,7 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
       string out;
       if (himport.parse (filename, out))
         {
-          if (!preprocess_file (filename, lines, out))
+          if (!preprocess_file (filename, lines, 0, out))
             {
               synth_->error ("error reading converted hydrogen drumkit '%s'\n", filename.c_str());
               return false;
@@ -835,7 +838,7 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
     }
   else
     {
-      if (!preprocess_file (filename, lines))
+      if (!preprocess_file (filename, lines, 0))
         {
           synth_->error ("error reading file '%s'\n", filename.c_str());
           return false;
