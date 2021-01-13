@@ -516,6 +516,20 @@ Loader::set_key_value_control (const string& key, const string& value)
       CCInfo& cc_info = update_cc_info (set_cc.cc);
       cc_info.default_value = set_cc.value;
     }
+  else if (split_sub_key (key, "set_hdcc", sub_key)
+       ||  split_sub_key (key, "set_realcc", sub_key))
+    {
+      /* we don't really support floating point CCs
+       * however we convert to ensure sane defaults for .sfz files using this opcode
+       */
+      SetCC set_cc;
+      set_cc.cc = sub_key;
+      set_cc.value = std::clamp<int> (lrint (convert_float (value) * 127), 0, 127);
+      control.set_cc.push_back (set_cc);
+
+      CCInfo& cc_info = update_cc_info (set_cc.cc);
+      cc_info.default_value = set_cc.value;
+    }
   else if (split_sub_key (key, "label_cc", sub_key))
     {
       CCInfo& cc_info = update_cc_info (sub_key);
