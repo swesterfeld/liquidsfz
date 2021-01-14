@@ -157,6 +157,13 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 
   start_filter (fimpl_, &region.fil);
   start_filter (fimpl2_, &region.fil2);
+
+  lfo_gen.lfos.resize (region.lfos.size()); // FIXME: not RT safe
+  for (size_t i = 0; i < region.lfos.size(); i++)
+    {
+      lfo_gen.lfos[i].params = &region.lfos[i];
+      lfo_gen.lfos[i].phase = 0;
+    }
 }
 
 void
@@ -425,6 +432,22 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   float out_l[n_frames];
   float out_r[n_frames];
 
+  float speed[n_frames];
+  for (uint i = 0; i < n_frames; i++)
+    speed[i] = 1;
+
+  for (auto& lfo : lfo_gen.lfos)
+    {
+      double pitch = synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc) + lfo.params->pitch;
+      double freq = synth_->get_cc_vec_value (channel_, lfo.params->freq_cc) + lfo.params->freq;
+
+      for (uint i = 0; i < n_frames; i++)
+        {
+          speed[i] *= exp2f (sin (lfo.phase) * pitch / 1200.);
+          lfo.phase += (freq * 2 * M_PI) / sample_rate_;
+        }
+    }
+
   /* render voice */
   for (uint i = 0; i < n_frames; i++)
     {
@@ -464,7 +487,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           out_l[i] = 0;
           out_r[i] = 0;
         }
-      ppos_ += replay_speed_.get_next();
+      ppos_ += replay_speed_.get_next() * speed[i];
       if (loop_enabled_)
         while (ppos_ > region_->loop_end)
           ppos_ -= (region_->loop_end - region_->loop_start);

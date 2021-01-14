@@ -42,6 +42,14 @@ class Voice
   Envelope filter_envelope_;
   float    filter_envelope_depth_ = 0;
 
+  struct LFOGen {
+    struct State {
+      const LFOParams *params = nullptr;
+      double phase = 0;
+    };
+    std::vector<State> lfos;
+  } lfo_gen;
+
   float volume_gain_ = 0;
   float amplitude_gain_ = 0;
   float velocity_gain_ = 0;
