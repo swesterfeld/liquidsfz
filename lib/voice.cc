@@ -436,14 +436,20 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   for (uint i = 0; i < n_frames; i++)
     speed[i] = 1;
 
+  float lfo_volume_factor[n_frames];
+  for (uint i = 0; i < n_frames; i++)
+    lfo_volume_factor[i] = 1;
+
   for (auto& lfo : lfo_gen.lfos)
     {
       double pitch = synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc) + lfo.params->pitch;
       double freq = synth_->get_cc_vec_value (channel_, lfo.params->freq_cc) + lfo.params->freq;
+      double volume = synth_->get_cc_vec_value (channel_, lfo.params->volume_cc) + lfo.params->volume;
 
       for (uint i = 0; i < n_frames; i++)
         {
           speed[i] *= exp2f (sin (lfo.phase) * pitch / 1200.);
+          lfo_volume_factor[i] *= db_to_factor (sin (lfo.phase) * volume);
           lfo.phase += (freq * 2 * M_PI) / sample_rate_;
         }
     }
@@ -502,16 +508,16 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
     {
       for (uint i = 0; i < n_frames; i++)
         {
-          outputs[0][i] += out_l[i] * left_gain_.get_next();
-          outputs[1][i] += out_r[i] * right_gain_.get_next();
+          outputs[0][i] += out_l[i] * lfo_volume_factor[i] * left_gain_.get_next();
+          outputs[1][i] += out_r[i] * lfo_volume_factor[i] * right_gain_.get_next();
         }
     }
   else
     {
       for (uint i = 0; i < n_frames; i++)
         {
-          outputs[0][i] += out_l[i] * left_gain_.get_next();
-          outputs[1][i] += out_l[i] * right_gain_.get_next();
+          outputs[0][i] += out_l[i] * lfo_volume_factor[i] * left_gain_.get_next();
+          outputs[1][i] += out_l[i] * lfo_volume_factor[i] * right_gain_.get_next();
         }
     }
 }

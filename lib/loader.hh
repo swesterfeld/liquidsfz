@@ -171,9 +171,11 @@ struct LFOParams
   int   id = -1;
   float freq = 0;
   float pitch = 0;
+  float volume = 0;
 
   CCParamVec freq_cc;
   CCParamVec pitch_cc;
+  CCParamVec volume_cc;
 };
 
 struct CurveSection

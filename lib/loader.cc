@@ -216,10 +216,11 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
     lfo_params.freq = convert_float (value);
   else if (lfo_key == "pitch")
     lfo_params.pitch = convert_float (value);
-  else if (parse_cc (lfo_key, value, lfo_params.freq_cc,
-                     "freq_*")
-       ||  parse_cc (lfo_key, value, lfo_params.pitch_cc,
-                     "pitch_*"))
+  else if (lfo_key == "volume")
+    lfo_params.volume = convert_float (value);
+  else if (parse_cc (lfo_key, value, lfo_params.freq_cc,    "freq_*")
+       ||  parse_cc (lfo_key, value, lfo_params.pitch_cc,   "pitch_*")
+       ||  parse_cc (lfo_key, value, lfo_params.volume_cc,  "volume_*"))
     {
       // actual value conversion is performed by parse_cc
     }
