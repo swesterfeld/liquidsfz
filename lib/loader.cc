@@ -705,15 +705,19 @@ line_lookahead (vector<char>& contents, size_t pos)
 bool
 Loader::find_variable (const string& line, Control::Define& out_define)
 {
+  size_t best_len = string::npos;
   for (const auto& define : control.defines)
     {
-      if (starts_with (line, define.variable))
+      if (starts_with (line, define.variable) && (define.variable.length() < best_len))
         {
+          /* if there are multiple variable names that match, use the shortest one
+           * this seems to be what ARIA does in this case
+           */
+          best_len = define.variable.length();
           out_define = define;
-          return true;
         }
     }
-  return false;
+  return (best_len != string::npos);
 }
 
 bool
