@@ -166,6 +166,16 @@ struct FilterParams
   int          veltrack = 0;
 };
 
+struct LFOParams
+{
+  int   id = -1;
+  float freq = 0;
+  float pitch = 0;
+
+  CCParamVec freq_cc;
+  CCParamVec pitch_cc;
+};
+
 struct CurveSection
 {
   int   curve_index = -1;
@@ -269,6 +279,8 @@ struct Region
 
   FilterParams fil, fil2;
 
+  std::vector<LFOParams> lfos;
+
   CCParamVec pan_cc;
   CCParamVec gain_cc;
   CCParamVec amplitude_cc;
@@ -336,6 +348,7 @@ class Loader
       opcodes.push_back (s);
     return parse_cc (key, value, ccvec, opcodes);
   }
+  bool parse_lfo_param (Region& region, const std::string& key, const std::string& value);
   static constexpr int MAX_INCLUDE_DEPTH = 25;
 public:
   Loader (Synth *synth)

@@ -188,6 +188,56 @@ Loader::parse_fileg_param (EGParam& amp_param, const string& key, const string& 
 }
 
 bool
+Loader::parse_lfo_param (Region& region, const string& key, const string& value)
+{
+  if (!starts_with (key, "lfo"))
+    return false;
+
+  static const regex lfo_re ("lfo([0-9]+)_(\\S+)");
+  std::smatch sm;
+  if (!regex_match (key, sm, lfo_re))
+    return false;
+
+  int    lfo_id = convert_int (sm[1].str());
+  string lfo_key = sm[2].str();
+  printf ("got lfo opcode [%d][%s][%s]\n", lfo_id, sm[2].str().c_str(), value.c_str());
+
+
+  LFOParams lfo_params;
+  lfo_params.id = lfo_id;
+
+  /* if lfo is already defined in region, use it */
+  for (const auto& lfo : region.lfos)
+    if (lfo.id == lfo_id)
+      lfo_params = lfo;
+
+  /* process opcodes */
+  if (lfo_key == "freq")
+    lfo_params.freq = convert_float (value);
+  else if (lfo_key == "pitch")
+    lfo_params.pitch = convert_float (value);
+  else if (parse_cc (lfo_key, value, lfo_params.freq_cc,
+                     "freq_*")
+       ||  parse_cc (lfo_key, value, lfo_params.pitch_cc,
+                     "pitch_*"))
+    {
+      // actual value conversion is performed by parse_cc
+    }
+  else
+    return false;
+
+  /* store lfo to region */
+  for (auto& lfo : region.lfos)
+    if (lfo.id == lfo_id)
+      {
+        lfo = lfo_params;
+        return true;
+      }
+  region.lfos.push_back (lfo_params);
+  return true;
+}
+
+bool
 Loader::parse_cc (const std::string& key, const std::string& value, CCParamVec& ccvec, const std::vector<std::string>& opcodes)
 {
   for (auto opcode : opcodes)
@@ -490,6 +540,10 @@ Loader::set_key_value (const string& key, const string& value)
     region.xf_keycurve = convert_xfcurve (value);
   else if (key == "xf_cccurve")
     region.xf_cccurve = convert_xfcurve (value);
+  else if (parse_lfo_param (region, key, value))
+    {
+      // actual value conversion is performed by parse_lfo_param
+    }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }
