@@ -1,5 +1,11 @@
 - *silence
 - lfo
+ - filter lfo is not completely implemented
+ - lfo phase increment is not pretty
+ - lfo intermodulation
+ - lfo phase
+ - lfo wave
+ - compat code for amplfo/fillfo/pitchlfo
 - don't crash if process() is called with large n_samples
 - key switches (details: sw_down, sw_up)
 - envelope minimum times (prevent clicks)
