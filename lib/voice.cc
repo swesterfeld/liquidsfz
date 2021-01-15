@@ -440,10 +440,15 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   float target_speed = 1;
   float target_volume = 1;
   float target_cutoff = 1;
+
   for (uint i = 0; i < n_frames; i++)
     {
       if ((i & 31) == 0)
         {
+          target_speed = 1;
+          target_volume = 1;
+          target_cutoff = 1;
+
           for (auto& lfo : lfo_gen.lfos)
             {
               double pitch = synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc) + lfo.params->pitch;
