@@ -172,10 +172,12 @@ struct LFOParams
   float freq = 0;
   float pitch = 0;
   float volume = 0;
+  float cutoff = 0;
 
   CCParamVec freq_cc;
   CCParamVec pitch_cc;
   CCParamVec volume_cc;
+  CCParamVec cutoff_cc;
 };
 
 struct CurveSection

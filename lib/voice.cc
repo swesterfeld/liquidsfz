@@ -163,6 +163,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
     {
       lfo_gen.lfos[i].params = &region.lfos[i];
       lfo_gen.lfos[i].phase = 0;
+      lfo_gen.first = true;
     }
 }
 
@@ -432,24 +433,47 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   float out_l[n_frames];
   float out_r[n_frames];
 
-  float speed[n_frames];
-  for (uint i = 0; i < n_frames; i++)
-    speed[i] = 1;
-
+  float lfo_speed_factor[n_frames];
   float lfo_volume_factor[n_frames];
+  float lfo_cutoff_factor[n_frames];
+
+  float target_speed = 1;
+  float target_volume = 1;
+  float target_cutoff = 1;
   for (uint i = 0; i < n_frames; i++)
-    lfo_volume_factor[i] = 1;
-
-  for (auto& lfo : lfo_gen.lfos)
     {
-      double pitch = synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc) + lfo.params->pitch;
-      double freq = synth_->get_cc_vec_value (channel_, lfo.params->freq_cc) + lfo.params->freq;
-      double volume = synth_->get_cc_vec_value (channel_, lfo.params->volume_cc) + lfo.params->volume;
-
-      for (uint i = 0; i < n_frames; i++)
+      if ((i & 31) == 0)
         {
-          speed[i] *= exp2f (sin (lfo.phase) * pitch / 1200.);
-          lfo_volume_factor[i] *= db_to_factor (sin (lfo.phase) * volume);
+          for (auto& lfo : lfo_gen.lfos)
+            {
+              double pitch = synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc) + lfo.params->pitch;
+              double volume = synth_->get_cc_vec_value (channel_, lfo.params->volume_cc) + lfo.params->volume;
+              double cutoff = synth_->get_cc_vec_value (channel_, lfo.params->cutoff_cc) + lfo.params->cutoff;
+
+              target_speed *= exp2f (sin (lfo.phase) * pitch / 1200.);
+              target_volume *= db_to_factor (sin (lfo.phase) * volume);
+              target_cutoff *= exp2f (sin (lfo.phase) * cutoff / 1200.);
+            }
+        }
+      if (lfo_gen.first)
+        {
+          lfo_gen.last_speed_factor = target_speed;
+          lfo_gen.last_volume_factor = target_volume;
+          lfo_gen.last_cutoff_factor = target_cutoff;
+          lfo_gen.first = false;
+        }
+      lfo_gen.last_speed_factor  = target_speed * 0.01 + 0.99 * lfo_gen.last_speed_factor;
+      lfo_speed_factor[i] = lfo_gen.last_speed_factor;
+
+      lfo_gen.last_volume_factor = target_volume * 0.01 + 0.99 * lfo_gen.last_volume_factor;
+      lfo_volume_factor[i] = lfo_gen.last_volume_factor;
+
+      lfo_gen.last_cutoff_factor = target_cutoff * 0.01 + 0.99 * lfo_gen.last_cutoff_factor;
+      lfo_cutoff_factor[i] = lfo_gen.last_cutoff_factor;
+
+      for (auto& lfo : lfo_gen.lfos)
+        {
+          double freq = synth_->get_cc_vec_value (channel_, lfo.params->freq_cc) + lfo.params->freq;
           lfo.phase += (freq * 2 * M_PI) / sample_rate_;
         }
     }
@@ -493,15 +517,15 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           out_l[i] = 0;
           out_r[i] = 0;
         }
-      ppos_ += replay_speed_.get_next() * speed[i];
+      ppos_ += replay_speed_.get_next() * lfo_speed_factor[i];
       if (loop_enabled_)
         while (ppos_ > region_->loop_end)
           ppos_ -= (region_->loop_end - region_->loop_start);
     }
 
   /* process filters */
-  process_filter (fimpl_, true, out_l, out_r, n_frames);
-  process_filter (fimpl2_, false, out_l, out_r, n_frames);
+  process_filter (fimpl_, true, out_l, out_r, n_frames, lfo_cutoff_factor);
+  process_filter (fimpl2_, false, out_l, out_r, n_frames, nullptr);
 
   /* add samples to output buffer */
   if (channels == 2)
@@ -523,7 +547,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
 }
 
 void
-Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames)
+Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames, float *lfo_cutoff_factor)
 {
   if (fi.params->type == Filter::Type::NONE)
     return;
@@ -547,7 +571,7 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
     {
       const float depth_factor = filter_envelope_depth_ / 1200.;
 
-      if (fi.cutoff_smooth.is_constant() && filter_envelope_.is_constant() && fi.resonance_smooth.is_constant())
+      if (fi.cutoff_smooth.is_constant() && filter_envelope_.is_constant() && fi.resonance_smooth.is_constant() && !lfo_cutoff_factor)
         {
           float cutoff = fi.cutoff_smooth.get_next() * exp2f (filter_envelope_.get_next() * depth_factor);
           float resonance = fi.resonance_smooth.get_next();
@@ -568,7 +592,11 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
 
           run_filter ([&] (int i)
             {
-              return Filter::CR (mod_cutoff[i] * exp2f (mod_env[i] * depth_factor), mod_resonance[i]);
+              float cutoff = mod_cutoff[i] * exp2f (mod_env[i] * depth_factor);
+              if (lfo_cutoff_factor)
+                cutoff *= lfo_cutoff_factor[i];
+
+              return Filter::CR (cutoff, mod_resonance[i]);
             });
         }
     }

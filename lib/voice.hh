@@ -47,6 +47,10 @@ class Voice
       const LFOParams *params = nullptr;
       double phase = 0;
     };
+    bool first = false;
+    float last_speed_factor  = 0;
+    float last_volume_factor = 0;
+    float last_cutoff_factor = 0;
     std::vector<State> lfos;
   } lfo_gen;
 
@@ -111,7 +115,7 @@ public:
   void stop (OffMode off_mode);
   void kill();
   void process (float **outputs, uint n_frames);
-  void process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames);
+  void process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames, float *lfo_cutoff_factor);
   uint off_by();
   void update_cc (int controller);
   void update_gain();
