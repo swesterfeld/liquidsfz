@@ -441,6 +441,13 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   float target_volume = 1;
   float target_cutoff = 1;
 
+  for (auto& lfo : lfo_gen.lfos)
+    {
+      lfo.to_pitch  = (synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
+      lfo.to_volume = (synth_->get_cc_vec_value (channel_, lfo.params->volume_cc) + lfo.params->volume);
+      lfo.to_cutoff = (synth_->get_cc_vec_value (channel_, lfo.params->cutoff_cc) + lfo.params->cutoff) / 1200.;
+    }
+
   for (uint i = 0; i < n_frames; i++)
     {
       if ((i & 31) == 0)
@@ -451,13 +458,16 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
 
           for (auto& lfo : lfo_gen.lfos)
             {
-              double pitch = synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc) + lfo.params->pitch;
-              double volume = synth_->get_cc_vec_value (channel_, lfo.params->volume_cc) + lfo.params->volume;
-              double cutoff = synth_->get_cc_vec_value (channel_, lfo.params->cutoff_cc) + lfo.params->cutoff;
+              const float value = sinf (lfo.phase);
 
-              target_speed *= exp2f (sin (lfo.phase) * pitch / 1200.);
-              target_volume *= db_to_factor (sin (lfo.phase) * volume);
-              target_cutoff *= exp2f (sin (lfo.phase) * cutoff / 1200.);
+              if (lfo.to_pitch != 0)
+                target_speed *= exp2f (value * lfo.to_pitch);
+
+              if (lfo.to_volume != 0)
+                target_volume *= db_to_factor (value * lfo.to_volume);
+
+              if (lfo.to_cutoff != 0)
+                target_cutoff *= exp2f (value * lfo.to_cutoff);
             }
         }
       if (lfo_gen.first)
@@ -467,13 +477,13 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           lfo_gen.last_cutoff_factor = target_cutoff;
           lfo_gen.first = false;
         }
-      lfo_gen.last_speed_factor  = target_speed * 0.01 + 0.99 * lfo_gen.last_speed_factor;
+      lfo_gen.last_speed_factor  = target_speed * 0.01f + 0.99f * lfo_gen.last_speed_factor;
       lfo_speed_factor[i] = lfo_gen.last_speed_factor;
 
-      lfo_gen.last_volume_factor = target_volume * 0.01 + 0.99 * lfo_gen.last_volume_factor;
+      lfo_gen.last_volume_factor = target_volume * 0.01f + 0.99f * lfo_gen.last_volume_factor;
       lfo_volume_factor[i] = lfo_gen.last_volume_factor;
 
-      lfo_gen.last_cutoff_factor = target_cutoff * 0.01 + 0.99 * lfo_gen.last_cutoff_factor;
+      lfo_gen.last_cutoff_factor = target_cutoff * 0.01f + 0.99f * lfo_gen.last_cutoff_factor;
       lfo_cutoff_factor[i] = lfo_gen.last_cutoff_factor;
 
       for (auto& lfo : lfo_gen.lfos)

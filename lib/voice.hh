@@ -46,6 +46,9 @@ class Voice
     struct State {
       const LFOParams *params = nullptr;
       double phase = 0;
+      float to_pitch = 0;
+      float to_volume = 0;
+      float to_cutoff = 0;
     };
     bool first = false;
     float last_speed_factor  = 0;
