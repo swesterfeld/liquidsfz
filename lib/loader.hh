@@ -170,11 +170,17 @@ struct LFOParams
 {
   int   id = -1;
   float freq = 0;
+  float delay = 0;
+  float fade = 0;
+
   float pitch = 0;
   float volume = 0;
   float cutoff = 0;
 
   CCParamVec freq_cc;
+  CCParamVec delay_cc;
+  CCParamVec fade_cc;
+
   CCParamVec pitch_cc;
   CCParamVec volume_cc;
   CCParamVec cutoff_cc;

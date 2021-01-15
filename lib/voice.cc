@@ -163,6 +163,16 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
     {
       lfo_gen.lfos[i].params = &region.lfos[i];
       lfo_gen.lfos[i].phase = 0;
+
+      double delay = region_->lfos[i].delay;
+      delay += synth_->get_cc_vec_value (channel_, region_->lfos[i].delay_cc);
+      lfo_gen.lfos[i].delay_len = std::max (delay * sample_rate, 0.0);
+
+      double fade = region_->lfos[i].fade;
+      fade += synth_->get_cc_vec_value (channel_, region_->lfos[i].fade_cc);
+      lfo_gen.lfos[i].fade_len = std::max (fade * sample_rate, 0.0);
+      lfo_gen.lfos[i].fade_pos = 0;
+
       lfo_gen.first = true;
     }
 }
@@ -458,7 +468,13 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
 
           for (auto& lfo : lfo_gen.lfos)
             {
-              const float value = sinf (lfo.phase);
+              if (lfo.delay_len)
+                continue;
+
+              float value = sin (lfo.phase);
+
+              if (lfo.fade_pos < lfo.fade_len)
+                value *= float (lfo.fade_pos) / lfo.fade_len;
 
               if (lfo.to_pitch != 0)
                 target_speed *= exp2f (value * lfo.to_pitch);
@@ -490,6 +506,11 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
         {
           double freq = synth_->get_cc_vec_value (channel_, lfo.params->freq_cc) + lfo.params->freq;
           lfo.phase += (freq * 2 * M_PI) / sample_rate_;
+
+          if (lfo.delay_len)
+            lfo.delay_len--;
+          if (lfo.fade_pos < lfo.fade_len)
+            lfo.fade_pos++;
         }
     }
 

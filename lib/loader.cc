@@ -214,6 +214,10 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
   /* process opcodes */
   if (lfo_key == "freq")
     lfo_params.freq = convert_float (value);
+  else if (lfo_key == "delay")
+    lfo_params.delay = convert_float (value);
+  else if (lfo_key == "fade")
+    lfo_params.fade = convert_float (value);
   else if (lfo_key == "pitch")
     lfo_params.pitch = convert_float (value);
   else if (lfo_key == "volume")
@@ -221,6 +225,8 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
   else if (lfo_key == "cutoff")
     lfo_params.cutoff = convert_float (value);
   else if (parse_cc (lfo_key, value, lfo_params.freq_cc,    "freq_*")
+       ||  parse_cc (lfo_key, value, lfo_params.delay_cc,   "delay_*")
+       ||  parse_cc (lfo_key, value, lfo_params.fade_cc,    "fade_*")
        ||  parse_cc (lfo_key, value, lfo_params.pitch_cc,   "pitch_*")
        ||  parse_cc (lfo_key, value, lfo_params.volume_cc,  "volume_*")
        ||  parse_cc (lfo_key, value, lfo_params.cutoff_cc,  "cutoff_*"))

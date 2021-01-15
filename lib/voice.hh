@@ -49,6 +49,9 @@ class Voice
       float to_pitch = 0;
       float to_volume = 0;
       float to_cutoff = 0;
+      int   delay_len = 0;
+      int   fade_len = 0;
+      int   fade_pos = 0;
     };
     bool first = false;
     float last_speed_factor  = 0;
