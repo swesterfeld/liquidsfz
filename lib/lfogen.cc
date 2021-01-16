@@ -54,10 +54,6 @@ LFOGen::process (float *lfo_speed_factor,
                  float *lfo_cutoff_factor,
                  uint   n_frames)
 {
-  float target_speed = 0;
-  float target_volume = 0;
-  float target_cutoff = 0;
-
   for (auto& lfo : lfos)
     {
       lfo.to_pitch  = (synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
@@ -67,19 +63,18 @@ LFOGen::process (float *lfo_speed_factor,
 
       lfo.targets.clear(); // RT problem: should reserve()
       if (lfo.to_pitch)
-        lfo.targets.push_back ({ &target_speed,  lfo.to_pitch });
+        lfo.targets.push_back ({ &outputs[PITCH].value,  lfo.to_pitch });
       if (lfo.to_volume)
-        lfo.targets.push_back ({ &target_volume, lfo.to_volume });
+        lfo.targets.push_back ({ &outputs[VOLUME].value, lfo.to_volume });
       if (lfo.to_cutoff)
-        lfo.targets.push_back ({ &target_cutoff, lfo.to_cutoff });
+        lfo.targets.push_back ({ &outputs[CUTOFF].value, lfo.to_cutoff });
     }
 
   uint i = 0;
   while (i < n_frames)
     {
-      target_speed = 0;
-      target_volume = 0;
-      target_cutoff = 0;
+      for (auto& output : outputs)
+        output.value = 0;
 
       for (auto& lfo : lfos)
         {
@@ -94,24 +89,24 @@ LFOGen::process (float *lfo_speed_factor,
           for (auto& t : lfo.targets)
             *t.target += value * t.multiply;
         }
-      target_speed = (target_speed != 0) ? exp2f (target_speed) : 1;
-      target_volume = (target_volume != 0) ? db_to_factor (target_volume) : 1;
-      target_cutoff = (target_cutoff != 0) ? exp2f (target_cutoff) : 1;
+      outputs[PITCH].value  = (outputs[PITCH].value != 0) ? exp2f (outputs[PITCH].value) : 1;
+      outputs[VOLUME].value = (outputs[VOLUME].value != 0) ? db_to_factor (outputs[VOLUME].value) : 1;
+      outputs[CUTOFF].value = (outputs[CUTOFF].value != 0) ? exp2f (outputs[CUTOFF].value) : 1;
 
       if (first)
         {
-          last_speed_factor = target_speed;
-          last_volume_factor = target_volume;
-          last_cutoff_factor = target_cutoff;
+          for (auto& output : outputs)
+            output.last_value = output.value;
+
           first = false;
         }
 
       constexpr uint block_size = 32;
       uint todo = std::min (block_size, n_frames - i);
 
-      smooth (&last_speed_factor, lfo_speed_factor + i, target_speed,    todo);
-      smooth (&last_volume_factor, lfo_volume_factor + i, target_volume, todo);
-      smooth (&last_cutoff_factor, lfo_cutoff_factor + i, target_cutoff, todo);
+      smooth (PITCH,  lfo_speed_factor + i,  todo);
+      smooth (VOLUME, lfo_volume_factor + i, todo);
+      smooth (CUTOFF, lfo_cutoff_factor + i, todo);
 
       for (auto& lfo : lfos)
         {

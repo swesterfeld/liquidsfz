@@ -49,22 +49,31 @@ class LFOGen
     };
     std::vector<Target> targets;
   };
+  enum OutputType {
+    PITCH  = 0,
+    VOLUME = 1,
+    CUTOFF = 2
+  };
+  struct Output
+  {
+    float last_value = 0;
+    float value      = 0;
+  };
+  std::array<Output, 3> outputs;
   bool first = false;
-  float last_speed_factor  = 0;
-  float last_volume_factor = 0;
-  float last_cutoff_factor = 0;
   std::vector<State> lfos;
 
   void
-  smooth (float *last, float *out, float target, uint n_values)
+  smooth (OutputType type, float *out, uint n_values)
   {
-    float last_factor = *last;
+    float last_value = outputs[type].last_value;
+    float value      = outputs[type].value;
     for (uint k = 0; k < n_values; k++)
       {
-        last_factor = target * 0.01f + 0.99f * last_factor;
-        out[k] = last_factor;
+        last_value = value * 0.01f + 0.99f * last_value;
+        out[k] = last_value;
       }
-    *last = last_factor;
+    outputs[type].last_value = last_value;
   }
 
 public:
