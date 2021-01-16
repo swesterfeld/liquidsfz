@@ -456,15 +456,23 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
       lfo.to_pitch  = (synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
       lfo.to_volume = (synth_->get_cc_vec_value (channel_, lfo.params->volume_cc) + lfo.params->volume);
       lfo.to_cutoff = (synth_->get_cc_vec_value (channel_, lfo.params->cutoff_cc) + lfo.params->cutoff) / 1200.;
+
+      lfo.targets.clear();
+      if (lfo.to_pitch)
+        lfo.targets.push_back ({ &target_speed,  lfo.to_pitch });
+      if (lfo.to_volume)
+        lfo.targets.push_back ({ &target_volume, lfo.to_volume });
+      if (lfo.to_cutoff)
+        lfo.targets.push_back ({ &target_cutoff, lfo.to_cutoff });
     }
 
   for (uint i = 0; i < n_frames; i++)
     {
       if ((i & 31) == 0)
         {
-          target_speed = 1;
-          target_volume = 1;
-          target_cutoff = 1;
+          target_speed = 0;
+          target_volume = 0;
+          target_cutoff = 0;
 
           for (auto& lfo : lfo_gen.lfos)
             {
@@ -476,15 +484,12 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
               if (lfo.fade_pos < lfo.fade_len)
                 value *= float (lfo.fade_pos) / lfo.fade_len;
 
-              if (lfo.to_pitch != 0)
-                target_speed *= exp2f (value * lfo.to_pitch);
-
-              if (lfo.to_volume != 0)
-                target_volume *= db_to_factor (value * lfo.to_volume);
-
-              if (lfo.to_cutoff != 0)
-                target_cutoff *= exp2f (value * lfo.to_cutoff);
+              for (auto& t : lfo.targets)
+                *t.target += value * t.multiply;
             }
+          target_speed = (target_speed != 0) ? exp2f (target_speed) : 1;
+          target_volume = (target_volume != 0) ? db_to_factor (target_volume) : 1;
+          target_cutoff = (target_cutoff != 0) ? exp2f (target_cutoff) : 1;
         }
       if (lfo_gen.first)
         {

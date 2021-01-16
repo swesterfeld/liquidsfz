@@ -52,6 +52,12 @@ class Voice
       int   delay_len = 0;
       int   fade_len = 0;
       int   fade_pos = 0;
+      struct Target
+      {
+        float *target;
+        float  multiply;
+      };
+      std::vector<Target> targets;
     };
     bool first = false;
     float last_speed_factor  = 0;
