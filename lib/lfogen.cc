@@ -109,17 +109,9 @@ LFOGen::process (float *lfo_speed_factor,
       constexpr uint block_size = 32;
       uint todo = std::min (block_size, n_frames - i);
 
-      for (uint k = 0; k < todo; k++)
-        {
-          last_speed_factor  = target_speed * 0.01f + 0.99f * last_speed_factor;
-          lfo_speed_factor[i+k] = last_speed_factor;
-
-          last_volume_factor = target_volume * 0.01f + 0.99f * last_volume_factor;
-          lfo_volume_factor[i+k] = last_volume_factor;
-
-          last_cutoff_factor = target_cutoff * 0.01f + 0.99f * last_cutoff_factor;
-          lfo_cutoff_factor[i+k] = last_cutoff_factor;
-        }
+      smooth (&last_speed_factor, lfo_speed_factor + i, target_speed,    todo);
+      smooth (&last_volume_factor, lfo_volume_factor + i, target_volume, todo);
+      smooth (&last_cutoff_factor, lfo_cutoff_factor + i, target_cutoff, todo);
 
       for (auto& lfo : lfos)
         {
@@ -140,7 +132,7 @@ LFOGen::process (float *lfo_speed_factor,
             }
           if (lfo.fade_pos < lfo.fade_len)
             {
-              lfo.fade_pos = std::min<int> (lfo.fade_len, lfo.fade_pos + todo);
+              lfo.fade_pos = std::min (lfo.fade_len, lfo.fade_pos + todo);
             }
         }
       i += todo;

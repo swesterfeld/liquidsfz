@@ -55,6 +55,18 @@ class LFOGen
   float last_cutoff_factor = 0;
   std::vector<State> lfos;
 
+  void
+  smooth (float *last, float *out, float target, uint n_values)
+  {
+    float last_factor = *last;
+    for (uint k = 0; k < n_values; k++)
+      {
+        last_factor = target * 0.01f + 0.99f * last_factor;
+        out[k] = last_factor;
+      }
+    *last = last_factor;
+  }
+
 public:
   LFOGen (Synth *synth) :
     synth_ (synth)
