@@ -158,23 +158,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   start_filter (fimpl_, &region.fil);
   start_filter (fimpl2_, &region.fil2);
 
-  lfo_gen.lfos.resize (region.lfos.size()); // FIXME: not RT safe
-  for (size_t i = 0; i < region.lfos.size(); i++)
-    {
-      lfo_gen.lfos[i].params = &region.lfos[i];
-      lfo_gen.lfos[i].phase = 0;
-
-      double delay = region_->lfos[i].delay;
-      delay += synth_->get_cc_vec_value (channel_, region_->lfos[i].delay_cc);
-      lfo_gen.lfos[i].delay_len = std::max (delay * sample_rate, 0.0);
-
-      double fade = region_->lfos[i].fade;
-      fade += synth_->get_cc_vec_value (channel_, region_->lfos[i].fade_cc);
-      lfo_gen.lfos[i].fade_len = std::max (fade * sample_rate, 0.0);
-      lfo_gen.lfos[i].fade_pos = 0;
-
-      lfo_gen.first = true;
-    }
+  lfo_gen_.start (region, channel_, sample_rate_);
 }
 
 void
@@ -440,86 +424,20 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
       orig_outputs[1] + dframes
     };
 
-  float out_l[n_frames];
-  float out_r[n_frames];
-
+  /* provide lfo buffers */
   float lfo_speed_factor[n_frames];
   float lfo_volume_factor[n_frames];
   float lfo_cutoff_factor[n_frames];
 
-  float target_speed = 1;
-  float target_volume = 1;
-  float target_cutoff = 1;
-
-  for (auto& lfo : lfo_gen.lfos)
-    {
-      lfo.to_pitch  = (synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
-      lfo.to_volume = (synth_->get_cc_vec_value (channel_, lfo.params->volume_cc) + lfo.params->volume);
-      lfo.to_cutoff = (synth_->get_cc_vec_value (channel_, lfo.params->cutoff_cc) + lfo.params->cutoff) / 1200.;
-
-      lfo.targets.clear();
-      if (lfo.to_pitch)
-        lfo.targets.push_back ({ &target_speed,  lfo.to_pitch });
-      if (lfo.to_volume)
-        lfo.targets.push_back ({ &target_volume, lfo.to_volume });
-      if (lfo.to_cutoff)
-        lfo.targets.push_back ({ &target_cutoff, lfo.to_cutoff });
-    }
-
-  for (uint i = 0; i < n_frames; i++)
-    {
-      if ((i & 31) == 0)
-        {
-          target_speed = 0;
-          target_volume = 0;
-          target_cutoff = 0;
-
-          for (auto& lfo : lfo_gen.lfos)
-            {
-              if (lfo.delay_len)
-                continue;
-
-              float value = sin (lfo.phase);
-
-              if (lfo.fade_pos < lfo.fade_len)
-                value *= float (lfo.fade_pos) / lfo.fade_len;
-
-              for (auto& t : lfo.targets)
-                *t.target += value * t.multiply;
-            }
-          target_speed = (target_speed != 0) ? exp2f (target_speed) : 1;
-          target_volume = (target_volume != 0) ? db_to_factor (target_volume) : 1;
-          target_cutoff = (target_cutoff != 0) ? exp2f (target_cutoff) : 1;
-        }
-      if (lfo_gen.first)
-        {
-          lfo_gen.last_speed_factor = target_speed;
-          lfo_gen.last_volume_factor = target_volume;
-          lfo_gen.last_cutoff_factor = target_cutoff;
-          lfo_gen.first = false;
-        }
-      lfo_gen.last_speed_factor  = target_speed * 0.01f + 0.99f * lfo_gen.last_speed_factor;
-      lfo_speed_factor[i] = lfo_gen.last_speed_factor;
-
-      lfo_gen.last_volume_factor = target_volume * 0.01f + 0.99f * lfo_gen.last_volume_factor;
-      lfo_volume_factor[i] = lfo_gen.last_volume_factor;
-
-      lfo_gen.last_cutoff_factor = target_cutoff * 0.01f + 0.99f * lfo_gen.last_cutoff_factor;
-      lfo_cutoff_factor[i] = lfo_gen.last_cutoff_factor;
-
-      for (auto& lfo : lfo_gen.lfos)
-        {
-          double freq = synth_->get_cc_vec_value (channel_, lfo.params->freq_cc) + lfo.params->freq;
-          lfo.phase += (freq * 2 * M_PI) / sample_rate_;
-
-          if (lfo.delay_len)
-            lfo.delay_len--;
-          if (lfo.fade_pos < lfo.fade_len)
-            lfo.fade_pos++;
-        }
-    }
+  lfo_gen_.process (lfo_speed_factor,
+                    lfo_volume_factor,
+                    lfo_cutoff_factor,
+                    n_frames);
 
   /* render voice */
+  float out_l[n_frames];
+  float out_r[n_frames];
+
   for (uint i = 0; i < n_frames; i++)
     {
       const uint ii = ppos_;

@@ -23,6 +23,7 @@
 
 #include "envelope.hh"
 #include "filter.hh"
+#include "lfogen.hh"
 
 namespace LiquidSFZInternal
 {
@@ -42,29 +43,7 @@ class Voice
   Envelope filter_envelope_;
   float    filter_envelope_depth_ = 0;
 
-  struct LFOGen {
-    struct State {
-      const LFOParams *params = nullptr;
-      double phase = 0;
-      float to_pitch = 0;
-      float to_volume = 0;
-      float to_cutoff = 0;
-      int   delay_len = 0;
-      int   fade_len = 0;
-      int   fade_pos = 0;
-      struct Target
-      {
-        float *target;
-        float  multiply;
-      };
-      std::vector<Target> targets;
-    };
-    bool first = false;
-    float last_speed_factor  = 0;
-    float last_volume_factor = 0;
-    float last_cutoff_factor = 0;
-    std::vector<State> lfos;
-  } lfo_gen;
+  LFOGen lfo_gen_;
 
   float volume_gain_ = 0;
   float amplitude_gain_ = 0;
@@ -117,6 +96,7 @@ public:
   const Region *region_ = nullptr;
 
   Voice (Synth *synth) :
+    lfo_gen_ (synth),
     synth_ (synth)
   {
   }
