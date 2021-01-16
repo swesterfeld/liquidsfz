@@ -35,6 +35,7 @@ class LFOGen
   struct State {
     const LFOParams *params = nullptr;
     double phase = 0;
+    float freq = 0;
     float to_pitch = 0;
     float to_volume = 0;
     float to_cutoff = 0;

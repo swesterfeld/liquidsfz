@@ -63,6 +63,7 @@ LFOGen::process (float *lfo_speed_factor,
       lfo.to_pitch  = (synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
       lfo.to_volume = (synth_->get_cc_vec_value (channel_, lfo.params->volume_cc) + lfo.params->volume);
       lfo.to_cutoff = (synth_->get_cc_vec_value (channel_, lfo.params->cutoff_cc) + lfo.params->cutoff) / 1200.;
+      lfo.freq      = (synth_->get_cc_vec_value (channel_, lfo.params->freq_cc)   + lfo.params->freq);
 
       lfo.targets.clear(); // RT problem: should reserve()
       if (lfo.to_pitch)
@@ -116,8 +117,7 @@ LFOGen::process (float *lfo_speed_factor,
 
       for (auto& lfo : lfos)
         {
-          double freq = synth_->get_cc_vec_value (channel_, lfo.params->freq_cc) + lfo.params->freq;
-          lfo.phase += (freq * 2 * M_PI) / sample_rate_;
+          lfo.phase += (lfo.freq * 2 * M_PI) / sample_rate_;
 
           if (lfo.delay_len)
             lfo.delay_len--;
