@@ -54,9 +54,9 @@ LFOGen::process (float *lfo_speed_factor,
                  float *lfo_cutoff_factor,
                  uint   n_frames)
 {
-  float target_speed = 1;
-  float target_volume = 1;
-  float target_cutoff = 1;
+  float target_speed = 0;
+  float target_volume = 0;
+  float target_cutoff = 0;
 
   for (auto& lfo : lfos)
     {
@@ -74,31 +74,30 @@ LFOGen::process (float *lfo_speed_factor,
         lfo.targets.push_back ({ &target_cutoff, lfo.to_cutoff });
     }
 
-  for (uint i = 0; i < n_frames; i++)
+  uint i = 0;
+  while (i < n_frames)
     {
-      if ((i & 31) == 0)
+      target_speed = 0;
+      target_volume = 0;
+      target_cutoff = 0;
+
+      for (auto& lfo : lfos)
         {
-          target_speed = 0;
-          target_volume = 0;
-          target_cutoff = 0;
+          if (lfo.delay_len)
+            continue;
 
-          for (auto& lfo : lfos)
-            {
-              if (lfo.delay_len)
-                continue;
+          float value = sin (lfo.phase);
 
-              float value = sin (lfo.phase);
+          if (lfo.fade_pos < lfo.fade_len)
+            value *= float (lfo.fade_pos) / lfo.fade_len;
 
-              if (lfo.fade_pos < lfo.fade_len)
-                value *= float (lfo.fade_pos) / lfo.fade_len;
-
-              for (auto& t : lfo.targets)
-                *t.target += value * t.multiply;
-            }
-          target_speed = (target_speed != 0) ? exp2f (target_speed) : 1;
-          target_volume = (target_volume != 0) ? db_to_factor (target_volume) : 1;
-          target_cutoff = (target_cutoff != 0) ? exp2f (target_cutoff) : 1;
+          for (auto& t : lfo.targets)
+            *t.target += value * t.multiply;
         }
+      target_speed = (target_speed != 0) ? exp2f (target_speed) : 1;
+      target_volume = (target_volume != 0) ? db_to_factor (target_volume) : 1;
+      target_cutoff = (target_cutoff != 0) ? exp2f (target_cutoff) : 1;
+
       if (first)
         {
           last_speed_factor = target_speed;
@@ -106,23 +105,44 @@ LFOGen::process (float *lfo_speed_factor,
           last_cutoff_factor = target_cutoff;
           first = false;
         }
-      last_speed_factor  = target_speed * 0.01f + 0.99f * last_speed_factor;
-      lfo_speed_factor[i] = last_speed_factor;
 
-      last_volume_factor = target_volume * 0.01f + 0.99f * last_volume_factor;
-      lfo_volume_factor[i] = last_volume_factor;
+      constexpr uint block_size = 32;
+      uint todo = std::min (block_size, n_frames - i);
 
-      last_cutoff_factor = target_cutoff * 0.01f + 0.99f * last_cutoff_factor;
-      lfo_cutoff_factor[i] = last_cutoff_factor;
+      for (uint k = 0; k < todo; k++)
+        {
+          last_speed_factor  = target_speed * 0.01f + 0.99f * last_speed_factor;
+          lfo_speed_factor[i+k] = last_speed_factor;
+
+          last_volume_factor = target_volume * 0.01f + 0.99f * last_volume_factor;
+          lfo_volume_factor[i+k] = last_volume_factor;
+
+          last_cutoff_factor = target_cutoff * 0.01f + 0.99f * last_cutoff_factor;
+          lfo_cutoff_factor[i+k] = last_cutoff_factor;
+        }
 
       for (auto& lfo : lfos)
         {
-          lfo.phase += (lfo.freq * 2 * M_PI) / sample_rate_;
+          lfo.phase += todo * (lfo.freq * 2 * M_PI) / sample_rate_;
 
           if (lfo.delay_len)
-            lfo.delay_len--;
+            {
+              if (lfo.delay_len >= todo)
+                {
+                  lfo.delay_len -= todo;
+                  todo = 0;
+                }
+              else
+                {
+                  todo -= lfo.delay_len;
+                  lfo.delay_len = 0;
+                }
+            }
           if (lfo.fade_pos < lfo.fade_len)
-            lfo.fade_pos++;
+            {
+              lfo.fade_pos = std::min<int> (lfo.fade_len, lfo.fade_pos + todo);
+            }
         }
+      i += todo;
     }
 }

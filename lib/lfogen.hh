@@ -39,9 +39,9 @@ class LFOGen
     float to_pitch = 0;
     float to_volume = 0;
     float to_cutoff = 0;
-    int   delay_len = 0;
-    int   fade_len = 0;
-    int   fade_pos = 0;
+    uint  delay_len = 0;
+    uint  fade_len = 0;
+    uint  fade_pos = 0;
     struct Target
     {
       float *target;
