@@ -29,6 +29,9 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
   channel_     = channel;
   sample_rate_ = sample_rate;
 
+  for (auto& output : outputs) // reset outputs
+    output = Output();
+
   lfos.resize (region.lfos.size()); // FIXME: not RT safe
   for (size_t i = 0; i < region.lfos.size(); i++)
     {
@@ -43,6 +46,15 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
       fade += synth_->get_cc_vec_value (channel_, region.lfos[i].fade_cc);
       lfos[i].fade_len = std::max (fade * sample_rate, 0.0);
       lfos[i].fade_pos = 0;
+
+      if (lfos[i].params->pitch || !lfos[i].params->pitch_cc.empty())
+        outputs[PITCH].active = true;
+
+      if (lfos[i].params->volume || !lfos[i].params->volume_cc.empty())
+        outputs[VOLUME].active = true;
+
+      if (lfos[i].params->cutoff || !lfos[i].params->cutoff_cc.empty())
+        outputs[CUTOFF].active = true;
 
       first = true;
     }
@@ -69,6 +81,13 @@ LFOGen::process (float *lfo_speed_factor,
       if (lfo.to_cutoff)
         lfo.targets.push_back ({ &outputs[CUTOFF].value, lfo.to_cutoff });
     }
+
+  if (!outputs[PITCH].active)
+    std::fill (lfo_speed_factor, lfo_speed_factor + n_frames, 1);
+  if (!outputs[VOLUME].active)
+    std::fill (lfo_volume_factor, lfo_volume_factor + n_frames, 1);
+  if (!outputs[CUTOFF].active)
+    std::fill (lfo_cutoff_factor, lfo_cutoff_factor + n_frames, 1);
 
   uint i = 0;
   while (i < n_frames)
@@ -104,12 +123,18 @@ LFOGen::process (float *lfo_speed_factor,
       constexpr uint block_size = 32;
       uint todo = std::min (block_size, n_frames - i);
 
-      smooth (PITCH,  lfo_speed_factor + i,  todo);
-      smooth (VOLUME, lfo_volume_factor + i, todo);
-      smooth (CUTOFF, lfo_cutoff_factor + i, todo);
+      if (outputs[PITCH].active)
+        smooth (PITCH,  lfo_speed_factor + i,  todo);
+
+      if (outputs[VOLUME].active)
+        smooth (VOLUME, lfo_volume_factor + i, todo);
+
+      if (outputs[CUTOFF].active)
+        smooth (CUTOFF, lfo_cutoff_factor + i, todo);
 
       for (auto& lfo : lfos)
         {
+          // FIXME: phase increment broken (todo)
           lfo.phase += todo * (lfo.freq * 2 * M_PI) / sample_rate_;
 
           if (lfo.delay_len)

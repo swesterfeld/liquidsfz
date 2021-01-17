@@ -75,6 +75,11 @@ public:
   {
     return entries_.end();
   }
+  bool
+  empty() const
+  {
+    return entries_.empty();
+  }
   void
   set (int cc, float value)
   {

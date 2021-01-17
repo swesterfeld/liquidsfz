@@ -56,6 +56,7 @@ class LFOGen
   };
   struct Output
   {
+    bool  active     = false;
     float last_value = 0;
     float value      = 0;
   };
