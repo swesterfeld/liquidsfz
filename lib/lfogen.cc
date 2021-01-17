@@ -82,12 +82,14 @@ LFOGen::process (float *lfo_speed_factor,
         lfo.targets.push_back ({ &outputs[CUTOFF].value, lfo.to_cutoff });
     }
 
-  if (!outputs[PITCH].active)
-    std::fill (lfo_speed_factor, lfo_speed_factor + n_frames, 1);
-  if (!outputs[VOLUME].active)
-    std::fill (lfo_volume_factor, lfo_volume_factor + n_frames, 1);
-  if (!outputs[CUTOFF].active)
-    std::fill (lfo_cutoff_factor, lfo_cutoff_factor + n_frames, 1);
+  if (outputs[PITCH].active)
+    outputs[PITCH].buffer = lfo_speed_factor;
+
+  if (outputs[VOLUME].active)
+    outputs[VOLUME].buffer = lfo_volume_factor;
+
+  if (outputs[CUTOFF].active)
+    outputs[CUTOFF].buffer = lfo_cutoff_factor;
 
   uint i = 0;
   while (i < n_frames)
@@ -123,14 +125,8 @@ LFOGen::process (float *lfo_speed_factor,
       constexpr uint block_size = 32;
       uint todo = std::min (block_size, n_frames - i);
 
-      if (outputs[PITCH].active)
-        smooth (PITCH,  lfo_speed_factor + i,  todo);
-
-      if (outputs[VOLUME].active)
-        smooth (VOLUME, lfo_volume_factor + i, todo);
-
-      if (outputs[CUTOFF].active)
-        smooth (CUTOFF, lfo_cutoff_factor + i, todo);
+      for (uint o = 0; o < outputs.size(); o++)
+        smooth (OutputType (o), i, todo);
 
       for (auto& lfo : lfos)
         {

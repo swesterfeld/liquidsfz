@@ -425,14 +425,25 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
     };
 
   /* provide lfo buffers */
-  float lfo_speed_factor[n_frames];
-  float lfo_volume_factor[n_frames];
-  float lfo_cutoff_factor[n_frames];
+  float lfo_buffer1[n_frames];
+  float lfo_buffer2[n_frames];
+  float lfo_buffer3[n_frames];
 
-  lfo_gen_.process (lfo_speed_factor,
-                    lfo_volume_factor,
-                    lfo_cutoff_factor,
+  lfo_gen_.process (lfo_buffer1,
+                    lfo_buffer2,
+                    lfo_buffer3,
                     n_frames);
+
+  float ones[n_frames];
+  std::fill (ones, ones + n_frames, 1.f);
+
+  const float *lfo_pitch = lfo_gen_.get (LFOGen::PITCH);
+  if (!lfo_pitch)
+    lfo_pitch = ones;
+
+  const float *lfo_volume = lfo_gen_.get (LFOGen::VOLUME);
+  if (!lfo_volume)
+    lfo_volume = ones;
 
   /* render voice */
   float out_l[n_frames];
@@ -476,14 +487,14 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           out_l[i] = 0;
           out_r[i] = 0;
         }
-      ppos_ += replay_speed_.get_next() * lfo_speed_factor[i];
+      ppos_ += replay_speed_.get_next() * lfo_pitch[i];
       if (loop_enabled_)
         while (ppos_ > region_->loop_end)
           ppos_ -= (region_->loop_end - region_->loop_start);
     }
 
   /* process filters */
-  process_filter (fimpl_, true, out_l, out_r, n_frames, lfo_cutoff_factor);
+  process_filter (fimpl_, true, out_l, out_r, n_frames, lfo_gen_.get (LFOGen::CUTOFF));
   process_filter (fimpl2_, false, out_l, out_r, n_frames, nullptr);
 
   /* add samples to output buffer */
@@ -491,22 +502,22 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
     {
       for (uint i = 0; i < n_frames; i++)
         {
-          outputs[0][i] += out_l[i] * lfo_volume_factor[i] * left_gain_.get_next();
-          outputs[1][i] += out_r[i] * lfo_volume_factor[i] * right_gain_.get_next();
+          outputs[0][i] += out_l[i] * lfo_volume[i] * left_gain_.get_next();
+          outputs[1][i] += out_r[i] * lfo_volume[i] * right_gain_.get_next();
         }
     }
   else
     {
       for (uint i = 0; i < n_frames; i++)
         {
-          outputs[0][i] += out_l[i] * lfo_volume_factor[i] * left_gain_.get_next();
-          outputs[1][i] += out_l[i] * lfo_volume_factor[i] * right_gain_.get_next();
+          outputs[0][i] += out_l[i] * lfo_volume[i] * left_gain_.get_next();
+          outputs[1][i] += out_l[i] * lfo_volume[i] * right_gain_.get_next();
         }
     }
 }
 
 void
-Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames, float *lfo_cutoff_factor)
+Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames, const float *lfo_cutoff_factor)
 {
   if (fi.params->type == Filter::Type::NONE)
     return;
