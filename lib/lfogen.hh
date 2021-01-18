@@ -43,6 +43,8 @@ private:
   struct LFO {
     const LFOParams *params = nullptr;
     double phase = 0;
+    float next_freq_mod = 0;
+    float freq_mod = 0;
     float freq = 0;
     float to_pitch = 0;
     float to_volume = 0;

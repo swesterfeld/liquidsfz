@@ -102,7 +102,12 @@ Loader::split_sub_key (const string& key, const string& start, int& sub_key)
   if (key.length() <= start.length())
     return false;
 
-  sub_key = convert_int (key.substr (start.length()));
+  string subkey_str = key.substr (start.length());
+  for (auto c : subkey_str)
+    if (!isdigit (c))
+      return false;
+
+  sub_key = convert_int (subkey_str);
   return true;
 }
 
@@ -202,9 +207,12 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
   string lfo_key = sm[2].str();
   printf ("got lfo opcode [%d][%s][%s]\n", lfo_id, sm[2].str().c_str(), value.c_str());
 
+  static const regex lfo_mod_re ("freq_lfo([0-9]+)(\\S+)");
 
   LFOParams lfo_params;
   lfo_params.id = lfo_id;
+
+  int sub_key;
 
   /* if lfo is already defined in region, use it */
   for (const auto& lfo : region.lfos)
@@ -224,6 +232,47 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
     lfo_params.volume = convert_float (value);
   else if (lfo_key == "cutoff")
     lfo_params.cutoff = convert_float (value);
+  else if (split_sub_key (lfo_key, "freq_lfo", sub_key))
+    {
+      LFOParams::LFOMod *lfo_mod = nullptr;
+
+      /* search existing mod by id */
+      for (auto& m : lfo_params.lfo_mod)
+        if (m.lfo_freq_id == sub_key)
+          lfo_mod = &m;
+
+      /* create new lfo_mod if necessary */
+      if (!lfo_mod)
+        {
+          lfo_params.lfo_mod.emplace_back();
+          lfo_mod = &lfo_params.lfo_mod.back();
+          lfo_mod->lfo_freq_id = sub_key;
+        }
+      lfo_mod->lfo_freq = convert_float (value);
+    }
+  else if (regex_match (lfo_key, sm, lfo_mod_re) &&
+           split_sub_key (sm[2].str(), "_oncc", sub_key))
+    {
+      int dest_lfo_id = convert_int (sm[1].str());
+
+      // FIXME: this is redundant
+      LFOParams::LFOMod *lfo_mod = nullptr;
+
+      /* search existing mod by id */
+      for (auto& m : lfo_params.lfo_mod)
+        if (m.lfo_freq_id == dest_lfo_id)
+          lfo_mod = &m;
+
+      /* create new lfo_mod if necessary */
+      if (!lfo_mod)
+        {
+          lfo_params.lfo_mod.emplace_back();
+          lfo_mod = &lfo_params.lfo_mod.back();
+          lfo_mod->lfo_freq_id = dest_lfo_id;
+        }
+      lfo_mod->lfo_freq_cc.set (sub_key, convert_float (value));
+      update_cc_info (sub_key);
+    }
   else if (parse_cc (lfo_key, value, lfo_params.freq_cc,    "freq_*")
        ||  parse_cc (lfo_key, value, lfo_params.delay_cc,   "delay_*")
        ||  parse_cc (lfo_key, value, lfo_params.fade_cc,    "fade_*")

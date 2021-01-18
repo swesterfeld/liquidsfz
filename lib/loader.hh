@@ -189,6 +189,13 @@ struct LFOParams
   CCParamVec pitch_cc;
   CCParamVec volume_cc;
   CCParamVec cutoff_cc;
+
+  struct LFOMod {
+    int        lfo_freq_id = -1;
+    float      lfo_freq = 0;
+    CCParamVec lfo_freq_cc;
+  };
+  std::vector<LFOMod> lfo_mod; // LFO modulating LFO
 };
 
 struct CurveSection

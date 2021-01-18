@@ -92,7 +92,7 @@ LFOGen::process_lfo (LFO& lfo, uint n_values)
       lfo.fade_pos = std::min (lfo.fade_len, lfo.fade_pos + n_values);
     }
 
-  lfo.phase += n_values * (lfo.freq * 2 * M_PI) / sample_rate_;
+  lfo.phase += n_values * ((lfo.freq + lfo.freq_mod) * 2 * M_PI) / sample_rate_;
 }
 
 void
@@ -115,6 +115,19 @@ LFOGen::process (float *lfo_buffer, uint n_values)
         lfo.targets.push_back ({ &outputs[VOLUME].value, lfo.to_volume });
       if (lfo.to_cutoff)
         lfo.targets.push_back ({ &outputs[CUTOFF].value, lfo.to_cutoff });
+
+      for (auto lm : lfo.params->lfo_mod)
+        {
+          for (auto& mod_lfo : lfos) // FIXME: get rid of the search here
+            {
+              if (mod_lfo.params->id == lm.lfo_freq_id)
+                {
+                  float to_lfo_freq = (synth_->get_cc_vec_value (channel_, lm.lfo_freq_cc) + lm.lfo_freq);
+                  if (to_lfo_freq)
+                    lfo.targets.push_back ({ &mod_lfo.next_freq_mod, to_lfo_freq });
+                }
+            }
+        }
     }
 
   for (auto& output : outputs)
@@ -135,6 +148,11 @@ LFOGen::process (float *lfo_buffer, uint n_values)
       for (auto& output : outputs)
         output.value = 0;
 
+      for (auto& lfo : lfos)
+        {
+          lfo.freq_mod = lfo.next_freq_mod;
+          lfo.next_freq_mod = 0;
+        }
       for (auto& lfo : lfos)
         process_lfo (lfo, todo);
 
