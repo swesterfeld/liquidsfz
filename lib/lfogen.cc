@@ -60,8 +60,43 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
     }
 }
 
+inline void
+LFOGen::process_lfo (LFO& lfo, uint n_values)
+{
+  if (!lfo.delay_len)
+    {
+      float value = sin (lfo.phase);
+
+      if (lfo.fade_pos < lfo.fade_len)
+        value *= float (lfo.fade_pos) / lfo.fade_len;
+
+      for (auto& t : lfo.targets)
+        *t.target += value * t.multiply;
+    }
+
+  if (lfo.delay_len)
+    {
+      if (lfo.delay_len >= n_values)
+        {
+          lfo.delay_len -= n_values;
+          n_values = 0;
+        }
+      else
+        {
+          n_values -= lfo.delay_len;
+          lfo.delay_len = 0;
+        }
+    }
+  if (lfo.fade_pos < lfo.fade_len)
+    {
+      lfo.fade_pos = std::min (lfo.fade_len, lfo.fade_pos + n_values);
+    }
+
+  lfo.phase += n_values * (lfo.freq * 2 * M_PI) / sample_rate_;
+}
+
 void
-LFOGen::process (float *lfo_buffer, uint n_frames)
+LFOGen::process (float *lfo_buffer, uint n_values)
 {
   if (!lfos.size())
     return;
@@ -87,29 +122,22 @@ LFOGen::process (float *lfo_buffer, uint n_frames)
       if (output.active)
         {
           output.buffer = lfo_buffer;
-          lfo_buffer += n_frames;
+          lfo_buffer += n_values;
         }
     }
 
   uint i = 0;
-  while (i < n_frames)
+  while (i < n_values)
     {
+      constexpr uint block_size = 32;
+      uint todo = std::min (block_size, n_values - i);
+
       for (auto& output : outputs)
         output.value = 0;
 
       for (auto& lfo : lfos)
-        {
-          if (lfo.delay_len)
-            continue;
+        process_lfo (lfo, todo);
 
-          float value = sin (lfo.phase);
-
-          if (lfo.fade_pos < lfo.fade_len)
-            value *= float (lfo.fade_pos) / lfo.fade_len;
-
-          for (auto& t : lfo.targets)
-            *t.target += value * t.multiply;
-        }
       outputs[PITCH].value  = (outputs[PITCH].value != 0) ? exp2f (outputs[PITCH].value) : 1;
       outputs[VOLUME].value = (outputs[VOLUME].value != 0) ? db_to_factor (outputs[VOLUME].value) : 1;
       outputs[CUTOFF].value = (outputs[CUTOFF].value != 0) ? exp2f (outputs[CUTOFF].value) : 1;
@@ -122,35 +150,9 @@ LFOGen::process (float *lfo_buffer, uint n_frames)
           first = false;
         }
 
-      constexpr uint block_size = 32;
-      uint todo = std::min (block_size, n_frames - i);
-
       for (uint o = 0; o < outputs.size(); o++)
         smooth (OutputType (o), i, todo);
 
-      for (auto& lfo : lfos)
-        {
-          // FIXME: phase increment broken (todo)
-          lfo.phase += todo * (lfo.freq * 2 * M_PI) / sample_rate_;
-
-          if (lfo.delay_len)
-            {
-              if (lfo.delay_len >= todo)
-                {
-                  lfo.delay_len -= todo;
-                  todo = 0;
-                }
-              else
-                {
-                  todo -= lfo.delay_len;
-                  lfo.delay_len = 0;
-                }
-            }
-          if (lfo.fade_pos < lfo.fade_len)
-            {
-              lfo.fade_pos = std::min (lfo.fade_len, lfo.fade_pos + todo);
-            }
-        }
       i += todo;
     }
 }

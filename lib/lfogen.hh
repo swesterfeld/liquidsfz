@@ -40,7 +40,7 @@ private:
   int channel_ = 0;
   int sample_rate_ = 0;
 
-  struct State {
+  struct LFO {
     const LFOParams *params = nullptr;
     double phase = 0;
     float freq = 0;
@@ -66,7 +66,9 @@ private:
   };
   std::array<Output, 3> outputs;
   bool first = false;
-  std::vector<State> lfos;
+  std::vector<LFO> lfos;
+
+  void process_lfo (LFO& lfo, uint n_values);
 
   void
   smooth (OutputType type, uint start, uint n_values)
@@ -91,7 +93,7 @@ public:
   {
   }
   void start (const Region& region, int channel, int sample_rate);
-  void process (float *buffer, uint n_frames);
+  void process (float *buffer, uint n_values);
 
   const float *
   get (OutputType type)
