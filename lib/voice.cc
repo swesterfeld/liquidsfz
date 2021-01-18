@@ -531,7 +531,7 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
         fi.filter.process_mod_mono (left, cr_func, n_frames);
     };
 
-  if (envelope)
+  if (envelope && filter_envelope_depth_)
     {
       const float depth_factor = filter_envelope_depth_ / 1200.;
 
@@ -566,7 +566,7 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
     }
   else
     {
-      if (fi.cutoff_smooth.is_constant() && fi.resonance_smooth.is_constant())
+      if (fi.cutoff_smooth.is_constant() && fi.resonance_smooth.is_constant() && !lfo_cutoff_factor)
         {
           float cutoff    = fi.cutoff_smooth.get_next();
           float resonance = fi.resonance_smooth.get_next();
@@ -585,7 +585,11 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
             }
           run_filter ([&] (int i)
             {
-              return Filter::CR (mod_cutoff[i], mod_resonance[i]);
+              float cutoff = mod_cutoff[i];
+              if (lfo_cutoff_factor)
+                cutoff *= lfo_cutoff_factor[i];
+
+              return Filter::CR (cutoff, mod_resonance[i]);
             });
         }
     }
