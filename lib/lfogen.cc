@@ -61,11 +61,11 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
 }
 
 void
-LFOGen::process (float *lfo_speed_factor,
-                 float *lfo_volume_factor,
-                 float *lfo_cutoff_factor,
-                 uint   n_frames)
+LFOGen::process (float *lfo_buffer, uint n_frames)
 {
+  if (!lfos.size())
+    return;
+
   for (auto& lfo : lfos)
     {
       lfo.to_pitch  = (synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
@@ -82,14 +82,14 @@ LFOGen::process (float *lfo_speed_factor,
         lfo.targets.push_back ({ &outputs[CUTOFF].value, lfo.to_cutoff });
     }
 
-  if (outputs[PITCH].active)
-    outputs[PITCH].buffer = lfo_speed_factor;
-
-  if (outputs[VOLUME].active)
-    outputs[VOLUME].buffer = lfo_volume_factor;
-
-  if (outputs[CUTOFF].active)
-    outputs[CUTOFF].buffer = lfo_cutoff_factor;
+  for (auto& output : outputs)
+    {
+      if (output.active)
+        {
+          output.buffer = lfo_buffer;
+          lfo_buffer += n_frames;
+        }
+    }
 
   uint i = 0;
   while (i < n_frames)

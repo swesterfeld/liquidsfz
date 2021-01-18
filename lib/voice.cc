@@ -424,15 +424,9 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
       orig_outputs[1] + dframes
     };
 
-  /* provide lfo buffers */
-  float lfo_buffer1[n_frames];
-  float lfo_buffer2[n_frames];
-  float lfo_buffer3[n_frames];
-
-  lfo_gen_.process (lfo_buffer1,
-                    lfo_buffer2,
-                    lfo_buffer3,
-                    n_frames);
+  /* render lfos */
+  float lfo_buffer[lfo_gen_.buffer_size (n_frames)];
+  lfo_gen_.process (lfo_buffer, n_frames);
 
   float ones[n_frames];
   std::fill (ones, ones + n_frames, 1.f);

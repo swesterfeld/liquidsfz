@@ -91,15 +91,17 @@ public:
   {
   }
   void start (const Region& region, int channel, int sample_rate);
-  void process (float *lfo_speed_factor,
-                float *lfo_volume_factor,
-                float *lfo_cutoff_factor,
-                uint   n_frames);
+  void process (float *buffer, uint n_frames);
 
   const float *
   get (OutputType type)
   {
     return outputs[type].buffer;
+  }
+  uint
+  buffer_size (uint n_values)
+  {
+    return outputs.size() * n_values;
   }
 };
 
