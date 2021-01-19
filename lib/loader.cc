@@ -208,6 +208,23 @@ Loader::lfo_index_by_id (Region& region, int id)
   return region.lfos.size() - 1;
 }
 
+LFOParams::LFOMod&
+Loader::lfo_mod_by_dest_id (Region& region, LFOParams& lfo_params, int dest_id)
+{
+  /* search existing mod by id */
+  int to_index = lfo_index_by_id (region, dest_id);
+  for (auto& lfo_mod : lfo_params.lfo_mod)
+    if (lfo_mod.to_index == to_index)
+      return lfo_mod;
+
+  /* create new lfo_mod if necessary */
+  lfo_params.lfo_mod.emplace_back();
+  auto& lfo_mod = lfo_params.lfo_mod.back();
+  lfo_mod.to_index = to_index;
+
+  return lfo_mod;
+}
+
 bool
 Loader::parse_lfo_param (Region& region, const string& key, const string& value)
 {
@@ -244,45 +261,17 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
     lfo_params.cutoff = convert_float (value);
   else if (split_sub_key (lfo_key, "freq_lfo", sub_key))
     {
-      LFOParams::LFOMod *lfo_mod = nullptr;
+      LFOParams::LFOMod& lfo_mod = lfo_mod_by_dest_id (region, lfo_params, sub_key);
 
-      /* search existing mod by id */
-      int to_index = lfo_index_by_id (region, sub_key);
-      for (auto& m : lfo_params.lfo_mod)
-        if (m.to_index == to_index)
-          lfo_mod = &m;
-
-      /* create new lfo_mod if necessary */
-      if (!lfo_mod)
-        {
-          lfo_params.lfo_mod.emplace_back();
-          lfo_mod = &lfo_params.lfo_mod.back();
-          lfo_mod->to_index = to_index;
-        }
-      lfo_mod->lfo_freq = convert_float (value);
+      lfo_mod.lfo_freq = convert_float (value);
     }
   else if (regex_match (lfo_key, sm, lfo_mod_re) &&
            split_sub_key (sm[2].str(), "_oncc", sub_key))
     {
       int dest_lfo_id = convert_int (sm[1].str());
+      LFOParams::LFOMod& lfo_mod = lfo_mod_by_dest_id (region, lfo_params, dest_lfo_id);
 
-      // FIXME: this is redundant
-      LFOParams::LFOMod *lfo_mod = nullptr;
-
-      /* search existing mod by id */
-      int to_index = lfo_index_by_id (region, dest_lfo_id);
-      for (auto& m : lfo_params.lfo_mod)
-        if (m.to_index == to_index)
-          lfo_mod = &m;
-
-      /* create new lfo_mod if necessary */
-      if (!lfo_mod)
-        {
-          lfo_params.lfo_mod.emplace_back();
-          lfo_mod = &lfo_params.lfo_mod.back();
-          lfo_mod->to_index = to_index;
-        }
-      lfo_mod->lfo_freq_cc.set (sub_key, convert_float (value));
+      lfo_mod.lfo_freq_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
     }
   else if (parse_cc (lfo_key, value, lfo_params.freq_cc,    "freq_*")
