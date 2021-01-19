@@ -105,9 +105,9 @@ LFOGen::get_wave (int wave)
     float
     eval (LFO& lfo) override
     {
-      if (lfo.phase < 0.25) return lfo.phase * 4;
-      if (lfo.phase < 0.75) return 1 - (lfo.phase - 0.25) * 4;
-      return -1 + (lfo.phase - 0.75) * 4;
+      if (lfo.phase < 0.25f) return lfo.phase * 4;
+      if (lfo.phase < 0.75f) return 2 - lfo.phase * 4;
+      return -4 + lfo.phase * 4;
     }
   } wave_tri;
   static struct WaveSin : public Wave
