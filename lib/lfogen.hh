@@ -40,9 +40,11 @@ private:
   int channel_ = 0;
   int sample_rate_ = 0;
 
+  struct Wave;
   struct LFO {
     const LFOParams *params = nullptr;
-    double phase = 0;
+    float phase = 0;
+    Wave *wave;
     float next_freq_mod = 0;
     float freq_mod = 0;
     float freq = 0;
@@ -66,6 +68,12 @@ private:
     float   last_value = 0;
     float   value      = 0;
   };
+  struct Wave
+  {
+    virtual float eval (LFO& lfo) = 0;
+  };
+  static Wave *get_wave (int wave);
+
   std::array<Output, 3> outputs;
   bool first = false;
   std::vector<LFO> lfos;
@@ -107,6 +115,7 @@ public:
   {
     return outputs.size() * n_values;
   }
+  static bool supports_wave (int wave);
 };
 
 }

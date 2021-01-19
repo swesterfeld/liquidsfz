@@ -94,6 +94,17 @@ Loader::convert_filter_type (const string& f)
   return Filter::Type::NONE;
 }
 
+int
+Loader::convert_wave (const string& w)
+{
+  int wave = convert_int (w);
+  if (LFOGen::supports_wave (wave))
+    return wave;
+
+  synth_->warning ("%s unsupported lfo wave type: %s\n", location().c_str(), w.c_str());
+  return 0;
+}
+
 bool
 Loader::split_sub_key (const string& key, const string& start, int& sub_key)
 {
@@ -263,6 +274,8 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
   /* process opcodes */
   if (lfo_key == "freq")
     lfo_params.freq = convert_float (value);
+  else if (lfo_key == "wave")
+    lfo_params.wave = convert_wave (value);
   else if (lfo_key == "delay")
     lfo_params.delay = convert_float (value);
   else if (lfo_key == "fade")

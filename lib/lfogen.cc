@@ -65,7 +65,7 @@ LFOGen::process_lfo (LFO& lfo, uint n_values)
 {
   if (!lfo.delay_len)
     {
-      float value = sin (lfo.phase);
+      float value = lfo.wave->eval (lfo);
 
       if (lfo.fade_pos < lfo.fade_len)
         value *= float (lfo.fade_pos) / lfo.fade_len;
@@ -92,7 +92,46 @@ LFOGen::process_lfo (LFO& lfo, uint n_values)
       lfo.fade_pos = std::min (lfo.fade_len, lfo.fade_pos + n_values);
     }
 
-  lfo.phase += n_values * ((lfo.freq + lfo.freq_mod) * 2 * M_PI) / sample_rate_;
+  lfo.phase += n_values * (lfo.freq + lfo.freq_mod) / sample_rate_;
+  while (lfo.phase > 1)
+    lfo.phase -= 1;
+}
+
+LFOGen::Wave *
+LFOGen::get_wave (int wave)
+{
+  static struct WaveTri : public Wave
+  {
+    float
+    eval (LFO& lfo) override
+    {
+      if (lfo.phase < 0.25) return lfo.phase * 4;
+      if (lfo.phase < 0.75) return 1 - (lfo.phase - 0.25) * 4;
+      return -1 + (lfo.phase - 0.75) * 4;
+    }
+  } wave_tri;
+  static struct WaveSin : public Wave
+  {
+    float eval (LFO& lfo) override { return sinf (lfo.phase * 2 * M_PI); };
+  } wave_sin;
+  static struct WaveRect : public Wave
+  {
+    float eval (LFO& lfo) override { return lfo.phase < 0.5 ? 1 : -1; };
+  } wave_rect;
+
+  switch (wave)
+  {
+    case 0: return &wave_tri;
+    case 1: return &wave_sin;
+    case 3: return &wave_rect;
+    default: return nullptr;
+  }
+}
+
+bool
+LFOGen::supports_wave (int wave)
+{
+  return get_wave (wave) != nullptr;
 }
 
 void
@@ -122,6 +161,7 @@ LFOGen::process (float *lfo_buffer, uint n_values)
           if (to_lfo_freq)
             lfo.targets.push_back ({ &lfos[lm.to_index].next_freq_mod, to_lfo_freq });
         }
+      lfo.wave = get_wave (lfo.params->wave);
     }
 
   for (auto& output : outputs)

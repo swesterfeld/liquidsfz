@@ -175,6 +175,7 @@ struct LFOParams
 {
   int   id = -1;
   float freq = 0;
+  int   wave = 0; // default to triangle
   float delay = 0;
   float fade = 0;
 
@@ -462,6 +463,7 @@ public:
   OffMode convert_off_mode (const std::string& s);
   XFCurve convert_xfcurve (const std::string& c);
   Filter::Type convert_filter_type (const std::string& f);
+  int convert_wave (const std::string& w);
   bool
   starts_with (const std::string& key, const std::string& start)
   {
