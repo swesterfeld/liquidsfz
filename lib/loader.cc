@@ -226,6 +226,22 @@ Loader::lfo_mod_by_dest_id (Region& region, LFOParams& lfo_params, int dest_id)
 }
 
 bool
+Loader::parse_freq_cc_lfo (Region& region, LFOParams& lfo_params, const string& lfo_key, const string& value)
+{
+  /* parse opcodes like "lfo1_freq_lfo6_oncc1=3" */
+  std::smatch sm;
+
+  static const regex lfo_mod_re ("freq_lfo([0-9]+)(\\S+)");
+  if (!regex_match (lfo_key, sm, lfo_mod_re))
+    return false;
+
+  int dest_lfo_id = convert_int (sm[1].str());
+  LFOParams::LFOMod& lfo_mod = lfo_mod_by_dest_id (region, lfo_params, dest_lfo_id);
+
+  return parse_cc (sm[2].str(), value, lfo_mod.lfo_freq_cc, "_*");
+}
+
+bool
 Loader::parse_lfo_param (Region& region, const string& key, const string& value)
 {
   if (!starts_with (key, "lfo"))
@@ -239,8 +255,6 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
   int    lfo_id = convert_int (sm[1].str());
   string lfo_key = sm[2].str();
   printf ("got lfo opcode [%d][%s][%s]\n", lfo_id, sm[2].str().c_str(), value.c_str());
-
-  static const regex lfo_mod_re ("freq_lfo([0-9]+)(\\S+)");
 
   LFOParams& lfo_params = region.lfos[lfo_index_by_id (region, lfo_id)];
 
@@ -265,15 +279,6 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
 
       lfo_mod.lfo_freq = convert_float (value);
     }
-  else if (regex_match (lfo_key, sm, lfo_mod_re) &&
-           split_sub_key (sm[2].str(), "_oncc", sub_key))
-    {
-      int dest_lfo_id = convert_int (sm[1].str());
-      LFOParams::LFOMod& lfo_mod = lfo_mod_by_dest_id (region, lfo_params, dest_lfo_id);
-
-      lfo_mod.lfo_freq_cc.set (sub_key, convert_float (value));
-      update_cc_info (sub_key);
-    }
   else if (parse_cc (lfo_key, value, lfo_params.freq_cc,    "freq_*")
        ||  parse_cc (lfo_key, value, lfo_params.delay_cc,   "delay_*")
        ||  parse_cc (lfo_key, value, lfo_params.fade_cc,    "fade_*")
@@ -282,6 +287,10 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
        ||  parse_cc (lfo_key, value, lfo_params.cutoff_cc,  "cutoff_*"))
     {
       // actual value conversion is performed by parse_cc
+    }
+  else if (parse_freq_cc_lfo (region, lfo_params, lfo_key, value))
+    {
+      // actual value conversion is performed by parse_freq_cc_lfo
     }
   else
     return false;

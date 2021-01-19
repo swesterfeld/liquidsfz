@@ -372,6 +372,7 @@ class Loader
   }
   int lfo_index_by_id (Region& region, int id);
   LFOParams::LFOMod& lfo_mod_by_dest_id (Region& region, LFOParams& lfo_params, int dest_id);
+  bool parse_freq_cc_lfo (Region& region, LFOParams& lfo_params, const std::string& lfo_key, const std::string& value);
   bool parse_lfo_param (Region& region, const std::string& key, const std::string& value);
   static constexpr int MAX_INCLUDE_DEPTH = 25;
 public:
