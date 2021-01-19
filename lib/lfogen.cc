@@ -114,16 +114,41 @@ LFOGen::get_wave (int wave)
   {
     float eval (LFO& lfo) override { return sinf (lfo.phase * 2 * M_PI); };
   } wave_sin;
-  static struct WaveRect : public Wave
+  static struct WavePulse75 : public Wave
+  {
+    float eval (LFO& lfo) override { return lfo.phase < 0.75 ? 1 : -1; };
+  } wave_pulse75;
+  static struct WaveSquare : public Wave
   {
     float eval (LFO& lfo) override { return lfo.phase < 0.5 ? 1 : -1; };
-  } wave_rect;
+  } wave_square;
+  static struct WavePulse25 : public Wave
+  {
+    float eval (LFO& lfo) override { return lfo.phase < 0.25 ? 1 : -1; };
+  } wave_pulse25;
+  static struct WavePulse125 : public Wave
+  {
+    float eval (LFO& lfo) override { return lfo.phase < 0.125 ? 1 : -1; };
+  } wave_pulse125;
+  static struct WaveSawUp : public Wave
+  {
+    float eval (LFO& lfo) override { return lfo.phase * 2 - 1; };
+  } wave_saw_up;
+  static struct WaveSawDown : public Wave
+  {
+    float eval (LFO& lfo) override { return 1 - lfo.phase * 2; };
+  } wave_saw_down;
 
   switch (wave)
   {
     case 0: return &wave_tri;
     case 1: return &wave_sin;
-    case 3: return &wave_rect;
+    case 2: return &wave_pulse75;
+    case 3: return &wave_square;
+    case 4: return &wave_pulse25;
+    case 5: return &wave_pulse125;
+    case 6: return &wave_saw_up;
+    case 7: return &wave_saw_down;
     default: return nullptr;
   }
 }
