@@ -192,6 +192,22 @@ Loader::parse_fileg_param (EGParam& amp_param, const string& key, const string& 
   return parse_eg_param ("fileg", amp_param, key, value, param_str);
 }
 
+int
+Loader::lfo_index_by_id (Region& region, int id)
+{
+  /* find existing LFO parameters */
+  for (size_t i = 0; i < region.lfos.size(); i++)
+    if (region.lfos[i].id == id)
+      return i;
+
+  /* create new LFO with this id */
+  LFOParams lfo_params;
+  lfo_params.id = id;
+  region.lfos.push_back (lfo_params);
+
+  return region.lfos.size() - 1;
+}
+
 bool
 Loader::parse_lfo_param (Region& region, const string& key, const string& value)
 {
@@ -209,15 +225,9 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
 
   static const regex lfo_mod_re ("freq_lfo([0-9]+)(\\S+)");
 
-  LFOParams lfo_params;
-  lfo_params.id = lfo_id;
+  LFOParams& lfo_params = region.lfos[lfo_index_by_id (region, lfo_id)];
 
   int sub_key;
-
-  /* if lfo is already defined in region, use it */
-  for (const auto& lfo : region.lfos)
-    if (lfo.id == lfo_id)
-      lfo_params = lfo;
 
   /* process opcodes */
   if (lfo_key == "freq")
@@ -237,8 +247,9 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
       LFOParams::LFOMod *lfo_mod = nullptr;
 
       /* search existing mod by id */
+      int to_index = lfo_index_by_id (region, sub_key);
       for (auto& m : lfo_params.lfo_mod)
-        if (m.lfo_freq_id == sub_key)
+        if (m.to_index == to_index)
           lfo_mod = &m;
 
       /* create new lfo_mod if necessary */
@@ -246,7 +257,7 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
         {
           lfo_params.lfo_mod.emplace_back();
           lfo_mod = &lfo_params.lfo_mod.back();
-          lfo_mod->lfo_freq_id = sub_key;
+          lfo_mod->to_index = to_index;
         }
       lfo_mod->lfo_freq = convert_float (value);
     }
@@ -259,8 +270,9 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
       LFOParams::LFOMod *lfo_mod = nullptr;
 
       /* search existing mod by id */
+      int to_index = lfo_index_by_id (region, dest_lfo_id);
       for (auto& m : lfo_params.lfo_mod)
-        if (m.lfo_freq_id == dest_lfo_id)
+        if (m.to_index == to_index)
           lfo_mod = &m;
 
       /* create new lfo_mod if necessary */
@@ -268,7 +280,7 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
         {
           lfo_params.lfo_mod.emplace_back();
           lfo_mod = &lfo_params.lfo_mod.back();
-          lfo_mod->lfo_freq_id = dest_lfo_id;
+          lfo_mod->to_index = to_index;
         }
       lfo_mod->lfo_freq_cc.set (sub_key, convert_float (value));
       update_cc_info (sub_key);
@@ -285,14 +297,6 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
   else
     return false;
 
-  /* store lfo to region */
-  for (auto& lfo : region.lfos)
-    if (lfo.id == lfo_id)
-      {
-        lfo = lfo_params;
-        return true;
-      }
-  region.lfos.push_back (lfo_params);
   return true;
 }
 

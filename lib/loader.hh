@@ -191,7 +191,7 @@ struct LFOParams
   CCParamVec cutoff_cc;
 
   struct LFOMod {
-    int        lfo_freq_id = -1;
+    int        to_index = -1;
     float      lfo_freq = 0;
     CCParamVec lfo_freq_cc;
   };
@@ -370,6 +370,7 @@ class Loader
       opcodes.push_back (s);
     return parse_cc (key, value, ccvec, opcodes);
   }
+  int lfo_index_by_id (Region& region, int id);
   bool parse_lfo_param (Region& region, const std::string& key, const std::string& value);
   static constexpr int MAX_INCLUDE_DEPTH = 25;
 public:

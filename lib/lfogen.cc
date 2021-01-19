@@ -118,15 +118,9 @@ LFOGen::process (float *lfo_buffer, uint n_values)
 
       for (auto lm : lfo.params->lfo_mod)
         {
-          for (auto& mod_lfo : lfos) // FIXME: get rid of the search here
-            {
-              if (mod_lfo.params->id == lm.lfo_freq_id)
-                {
-                  float to_lfo_freq = (synth_->get_cc_vec_value (channel_, lm.lfo_freq_cc) + lm.lfo_freq);
-                  if (to_lfo_freq)
-                    lfo.targets.push_back ({ &mod_lfo.next_freq_mod, to_lfo_freq });
-                }
-            }
+          float to_lfo_freq = (synth_->get_cc_vec_value (channel_, lm.lfo_freq_cc) + lm.lfo_freq);
+          if (to_lfo_freq)
+            lfo.targets.push_back ({ &lfos[lm.to_index].next_freq_mod, to_lfo_freq });
         }
     }
 
