@@ -25,7 +25,8 @@ using namespace LiquidSFZInternal;
 int
 main (int argc, char **argv)
 {
-  Voice voice (nullptr);
+  Limits no_limits;
+  Voice voice (nullptr, no_limits);
 
   int lo = atoi (argv[1]);
   int hi = atoi (argv[2]);
