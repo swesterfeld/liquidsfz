@@ -36,6 +36,7 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
   for (size_t i = 0; i < region.lfos.size(); i++)
     {
       lfos[i].params = &region.lfos[i];
+      lfos[i].synth  = synth_;
 
       double phase = region.lfos[i].phase;
       phase += synth_->get_cc_vec_value (channel_, region.lfos[i].phase_cc);
@@ -141,6 +142,20 @@ LFOGen::get_wave (int wave)
   {
     float eval (LFO& lfo) override { return 1 - lfo.phase * 2; };
   } wave_saw_down;
+  static struct WaveSH : public Wave
+  {
+    float
+    eval (LFO& lfo) override
+    {
+      int sh_state = lfo.phase < 0.5;
+      if (lfo.last_sh_state != sh_state)
+        {
+          lfo.sh_value = lfo.synth->normalized_random_value() * 2 - 1;
+          lfo.last_sh_state = sh_state;
+        }
+      return lfo.sh_value;
+    };
+  } wave_sh;
 
   switch (wave)
   {
@@ -152,6 +167,7 @@ LFOGen::get_wave (int wave)
     case 5: return &wave_pulse125;
     case 6: return &wave_saw_up;
     case 7: return &wave_saw_down;
+    case 12: return &wave_sh;
     default: return nullptr;
   }
 }

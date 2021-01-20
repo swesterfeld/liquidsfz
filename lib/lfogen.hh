@@ -43,8 +43,9 @@ private:
   struct Wave;
   struct LFO {
     const LFOParams *params = nullptr;
+    Synth *synth = nullptr;
     float phase = 0;
-    Wave *wave;
+    Wave *wave = nullptr;
     float next_freq_mod = 0;
     float freq_mod = 0;
     float freq = 0;
@@ -54,6 +55,12 @@ private:
     uint  delay_len = 0;
     uint  fade_len = 0;
     uint  fade_pos = 0;
+
+    /* sample and hold wave form */
+    float sh_value = 0;
+    int   last_sh_state = -1;
+
+    /* targets */
     struct Target
     {
       float *target;
