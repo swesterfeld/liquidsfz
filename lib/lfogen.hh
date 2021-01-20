@@ -87,23 +87,13 @@ private:
 
   void process_lfo (LFO& lfo, uint n_values);
 
+  template<OutputType T>
+  float
+  post_function (float value);
+
+  template<OutputType T>
   void
-  smooth (OutputType type, uint start, uint n_values)
-  {
-    if (!outputs[type].active)
-      return;
-
-    float last_value = outputs[type].last_value;
-    float value      = outputs[type].value;
-    float *out       = outputs[type].buffer + start;
-    for (uint k = 0; k < n_values; k++)
-      {
-        last_value = value * 0.01f + 0.99f * last_value;
-        out[k] = last_value;
-      }
-    outputs[type].last_value = last_value;
-  }
-
+  write_output (uint start, uint n_values);
 public:
   LFOGen (Synth *synth) :
     synth_ (synth)

@@ -101,6 +101,37 @@ LFOGen::process_lfo (LFO& lfo, uint n_values)
     lfo.phase -= 1;
 }
 
+template<LFOGen::OutputType T>
+inline float
+LFOGen::post_function (float value)
+{
+  switch (T)
+  {
+    case PITCH:   return exp2f (value);
+    case VOLUME:  return db_to_factor (value);
+    case CUTOFF:  return exp2f (value);
+  }
+}
+
+template<LFOGen::OutputType T>
+inline void
+LFOGen::write_output (uint start, uint n_values)
+{
+  if (!outputs[T].active)
+    return;
+
+  float value      = post_function<T> (outputs[T].value);
+  float last_value = first ? value : outputs[T].last_value;
+
+  float *out       = outputs[T].buffer + start;
+  for (uint k = 0; k < n_values; k++)
+    {
+      last_value = value * 0.01f + 0.99f * last_value;
+      out[k] = last_value;
+    }
+  outputs[T].last_value = last_value;
+}
+
 LFOGen::Wave *
 LFOGen::get_wave (int wave)
 {
@@ -234,21 +265,11 @@ LFOGen::process (float *lfo_buffer, uint n_values)
       for (auto& lfo : lfos)
         process_lfo (lfo, todo);
 
-      outputs[PITCH].value  = (outputs[PITCH].value != 0) ? exp2f (outputs[PITCH].value) : 1;
-      outputs[VOLUME].value = (outputs[VOLUME].value != 0) ? db_to_factor (outputs[VOLUME].value) : 1;
-      outputs[CUTOFF].value = (outputs[CUTOFF].value != 0) ? exp2f (outputs[CUTOFF].value) : 1;
+      write_output<PITCH> (i, todo);
+      write_output<VOLUME> (i, todo);
+      write_output<CUTOFF> (i, todo);
 
-      if (first)
-        {
-          for (auto& output : outputs)
-            output.last_value = output.value;
-
-          first = false;
-        }
-
-      for (uint o = 0; o < outputs.size(); o++)
-        smooth (OutputType (o), i, todo);
-
+      first = false;
       i += todo;
     }
 }
