@@ -41,6 +41,14 @@ private:
   int sample_rate_ = 0;
 
   struct Wave;
+
+  /* modulation links */
+  struct ModLink
+  {
+    float *source;
+    float  factor;
+    float *dest;
+  };
   struct LFO {
     const LFOParams *params = nullptr;
     Synth *synth = nullptr;
@@ -49,6 +57,7 @@ private:
     float next_freq_mod = 0;
     float freq_mod = 0;
     float freq = 0;
+    float value = 0;
     float to_pitch = 0;
     float to_volume = 0;
     float to_cutoff = 0;
@@ -59,14 +68,6 @@ private:
     /* sample and hold wave form */
     float sh_value = 0;
     int   last_sh_state = -1;
-
-    /* targets */
-    struct Target
-    {
-      float *target;
-      float  multiply;
-    };
-    std::vector<Target> targets;
   };
   struct Output
   {
@@ -84,6 +85,7 @@ private:
   std::array<Output, 3> outputs;
   bool first = false;
   std::vector<LFO> lfos;
+  std::vector<ModLink> mod_links;
 
   void process_lfo (LFO& lfo, uint n_values);
 

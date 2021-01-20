@@ -37,6 +37,7 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
     {
       lfos[i].params = &region.lfos[i];
       lfos[i].synth  = synth_;
+      lfos[i].wave = get_wave (region.lfos[i].wave);
 
       double phase = region.lfos[i].phase;
       phase += synth_->get_cc_vec_value (channel_, region.lfos[i].phase_cc);
@@ -69,13 +70,10 @@ LFOGen::process_lfo (LFO& lfo, uint n_values)
 {
   if (!lfo.delay_len)
     {
-      float value = lfo.wave->eval (lfo);
+      lfo.value = lfo.wave->eval (lfo);
 
       if (lfo.fade_pos < lfo.fade_len)
-        value *= float (lfo.fade_pos) / lfo.fade_len;
-
-      for (auto& t : lfo.targets)
-        *t.target += value * t.multiply;
+        lfo.value *= float (lfo.fade_pos) / lfo.fade_len;
     }
 
   if (lfo.delay_len)
@@ -215,6 +213,7 @@ LFOGen::process (float *lfo_buffer, uint n_values)
   if (!lfos.size())
     return;
 
+  mod_links.clear(); // RT problem: should reserve()
   for (auto& lfo : lfos)
     {
       lfo.to_pitch  = (synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
@@ -222,21 +221,19 @@ LFOGen::process (float *lfo_buffer, uint n_values)
       lfo.to_cutoff = (synth_->get_cc_vec_value (channel_, lfo.params->cutoff_cc) + lfo.params->cutoff) / 1200.;
       lfo.freq      = (synth_->get_cc_vec_value (channel_, lfo.params->freq_cc)   + lfo.params->freq);
 
-      lfo.targets.clear(); // RT problem: should reserve()
       if (lfo.to_pitch)
-        lfo.targets.push_back ({ &outputs[PITCH].value,  lfo.to_pitch });
+        mod_links.push_back ({ &lfo.value, lfo.to_pitch,  &outputs[PITCH].value });
       if (lfo.to_volume)
-        lfo.targets.push_back ({ &outputs[VOLUME].value, lfo.to_volume });
+        mod_links.push_back ({ &lfo.value, lfo.to_volume, &outputs[VOLUME].value });
       if (lfo.to_cutoff)
-        lfo.targets.push_back ({ &outputs[CUTOFF].value, lfo.to_cutoff });
+        mod_links.push_back ({ &lfo.value, lfo.to_cutoff, &outputs[CUTOFF].value });
 
       for (auto lm : lfo.params->lfo_mod)
         {
           float to_lfo_freq = (synth_->get_cc_vec_value (channel_, lm.lfo_freq_cc) + lm.lfo_freq);
           if (to_lfo_freq)
-            lfo.targets.push_back ({ &lfos[lm.to_index].next_freq_mod, to_lfo_freq });
+            mod_links.push_back ({ &lfo.value, to_lfo_freq, &lfos[lm.to_index].next_freq_mod });
         }
-      lfo.wave = get_wave (lfo.params->wave);
     }
 
   for (auto& output : outputs)
@@ -264,6 +261,9 @@ LFOGen::process (float *lfo_buffer, uint n_values)
         }
       for (auto& lfo : lfos)
         process_lfo (lfo, todo);
+
+      for (auto& ml : mod_links)
+        *ml.dest += *ml.source * ml.factor;
 
       write_output<PITCH> (i, todo);
       write_output<VOLUME> (i, todo);
