@@ -36,7 +36,10 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
   for (size_t i = 0; i < region.lfos.size(); i++)
     {
       lfos[i].params = &region.lfos[i];
-      lfos[i].phase = 0;
+
+      double phase = region.lfos[i].phase;
+      phase += synth_->get_cc_vec_value (channel_, region.lfos[i].phase_cc);
+      lfos[i].phase = std::clamp (phase, 0.0, 1.0);
 
       double delay = region.lfos[i].delay;
       delay += synth_->get_cc_vec_value (channel_, region.lfos[i].delay_cc);

@@ -178,6 +178,7 @@ struct LFOParams
   int   wave = 0; // default to triangle
   float delay = 0;
   float fade = 0;
+  float phase = 0;
 
   float pitch = 0;
   float volume = 0;
@@ -186,6 +187,7 @@ struct LFOParams
   CCParamVec freq_cc;
   CCParamVec delay_cc;
   CCParamVec fade_cc;
+  CCParamVec phase_cc;
 
   CCParamVec pitch_cc;
   CCParamVec volume_cc;

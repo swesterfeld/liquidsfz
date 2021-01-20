@@ -265,7 +265,6 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
 
   int    lfo_id = convert_int (sm[1].str());
   string lfo_key = sm[2].str();
-  printf ("got lfo opcode [%d][%s][%s]\n", lfo_id, sm[2].str().c_str(), value.c_str());
 
   LFOParams& lfo_params = region.lfos[lfo_index_by_id (region, lfo_id)];
 
@@ -276,6 +275,8 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
     lfo_params.freq = convert_float (value);
   else if (lfo_key == "wave")
     lfo_params.wave = convert_wave (value);
+  else if (lfo_key == "phase")
+    lfo_params.phase = convert_float (value);
   else if (lfo_key == "delay")
     lfo_params.delay = convert_float (value);
   else if (lfo_key == "fade")
@@ -293,6 +294,7 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
       lfo_mod.lfo_freq = convert_float (value);
     }
   else if (parse_cc (lfo_key, value, lfo_params.freq_cc,    "freq_*")
+       ||  parse_cc (lfo_key, value, lfo_params.phase_cc,   "phase_*")
        ||  parse_cc (lfo_key, value, lfo_params.delay_cc,   "delay_*")
        ||  parse_cc (lfo_key, value, lfo_params.fade_cc,    "fade_*")
        ||  parse_cc (lfo_key, value, lfo_params.pitch_cc,   "pitch_*")
