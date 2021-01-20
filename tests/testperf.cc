@@ -29,7 +29,10 @@ using namespace LiquidSFZInternal;
 int
 main (int argc, char **argv)
 {
-  if (argc != 2)
+  size_t block_size = 1024;
+  if (argc == 3)
+    block_size = atoi (argv[2]);
+  else if (argc != 2)
     {
       fprintf (stderr, "usage: testperf <sfz_filename>\n");
       return 1;
@@ -42,16 +45,17 @@ main (int argc, char **argv)
       return 1;
     }
 
-  std::vector<float> out_left (1024), out_right (1024);
+  std::vector<float> out_left (block_size), out_right (block_size);
 
   float *outputs[2] = { out_left.data(), out_right.data() };
   synth.add_event_note_on (0, 0, 60, 127);
   const double time_start = get_time();
   uint samples = 0;
-  for (int pos = 0; pos < 10000; pos++)
+  uint n_blocks = 20000000 / block_size;
+  for (uint pos = 0; pos < n_blocks; pos++)
     {
-      synth.process (outputs, 1024);
-      samples += 1024;
+      synth.process (outputs, block_size);
+      samples += block_size;
     }
   const double time_total = get_time() - time_start;
   printf ("time %f, samples %d, ns/sample %f bogo_voices %f\n", time_total, samples, time_total * 1e9 / samples, (samples / 48000.) / time_total);
