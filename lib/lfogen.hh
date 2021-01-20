@@ -97,10 +97,8 @@ private:
   void
   write_output (uint start, uint n_values);
 public:
-  LFOGen (Synth *synth) :
-    synth_ (synth)
-  {
-  }
+  LFOGen (Synth *synth, const Limits& limits);
+
   void start (const Region& region, int channel, int sample_rate);
   void process (float *buffer, uint n_values);
 

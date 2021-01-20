@@ -23,16 +23,27 @@
 
 using namespace LiquidSFZInternal;
 
+LFOGen::LFOGen (Synth *synth,
+                const Limits& limits) :
+  synth_ (synth)
+{
+  lfos.reserve (limits.max_lfos);
+  mod_links.reserve (limits.max_lfos * outputs.size() + limits.max_lfo_mods);
+}
+
 void
 LFOGen::start (const Region& region, int channel, int sample_rate)
 {
   channel_     = channel;
   sample_rate_ = sample_rate;
+  first        = true;
 
   for (auto& output : outputs) // reset outputs
     output = Output();
 
-  lfos.resize (region.lfos.size()); // FIXME: not RT safe
+  // reset all lfos to initial state
+  lfos.clear();
+  lfos.resize (region.lfos.size());
   for (size_t i = 0; i < region.lfos.size(); i++)
     {
       lfos[i].params = &region.lfos[i];
@@ -60,8 +71,6 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
 
       if (lfos[i].params->cutoff || !lfos[i].params->cutoff_cc.empty())
         outputs[CUTOFF].active = true;
-
-      first = true;
     }
 }
 
@@ -213,7 +222,7 @@ LFOGen::process (float *lfo_buffer, uint n_values)
   if (!lfos.size())
     return;
 
-  mod_links.clear(); // RT problem: should reserve()
+  mod_links.clear();
   for (auto& lfo : lfos)
     {
       lfo.to_pitch  = (synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
@@ -228,7 +237,7 @@ LFOGen::process (float *lfo_buffer, uint n_values)
       if (lfo.to_cutoff)
         mod_links.push_back ({ &lfo.value, lfo.to_cutoff, &outputs[CUTOFF].value });
 
-      for (auto lm : lfo.params->lfo_mod)
+      for (auto lm : lfo.params->lfo_mods)
         {
           float to_lfo_freq = (synth_->get_cc_vec_value (channel_, lm.lfo_freq_cc) + lm.lfo_freq);
           if (to_lfo_freq)

@@ -98,6 +98,7 @@ class Synth
   std::vector<KeyInfo> key_list_;
   CurveTable curve_table_;
   std::vector<Curve> curves_;
+  Limits limits_;
   Log log_level_ = Log::INFO;
   static Global global_;
   float gain_ = 1.0;
@@ -142,7 +143,7 @@ public:
   {
     voices_.clear();
     for (uint i = 0; i < n_voices; i++)
-      voices_.emplace_back (this);
+      voices_.emplace_back (this, limits_);
   }
   void
   set_channels (uint n_channels)
@@ -168,9 +169,6 @@ public:
   bool
   load (const std::string& filename)
   {
-    for (auto& v : voices_) // kill all voices to avoid dangling region pointers
-      v = Voice (this);
-
     Loader loader (this);
     if (loader.parse (filename, *global_.sample_cache))
       {
@@ -178,6 +176,7 @@ public:
         control_      = loader.control;
         cc_list_      = loader.cc_list;
         key_list_     = loader.key_list;
+        limits_       = loader.limits;
         curve_table_  = std::move (loader.curve_table);
         curves_       = std::move (loader.curves);
 
@@ -190,6 +189,12 @@ public:
         for (auto c : cc_list_)
           if (c.cc >= 0 && uint (c.cc) < is_supported_cc_.size())
             is_supported_cc_[c.cc] = true;
+
+        // we must reinit all voices
+        //  - ensure that there are no pointers to old regions (which are deleted)
+        //  - adjust voice state to the new global limits for this sfz
+        for (auto& v : voices_)
+          v = Voice (this, limits_);
 
         init_channels();
         return true;

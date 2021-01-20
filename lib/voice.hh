@@ -95,8 +95,9 @@ public:
 
   const Region *region_ = nullptr;
 
-  Voice (Synth *synth) :
-    lfo_gen_ (synth),
+  Voice (Synth *synth,
+         const Limits& limits) :
+    lfo_gen_ (synth, limits),
     synth_ (synth)
   {
   }

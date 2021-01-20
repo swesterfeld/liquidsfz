@@ -224,13 +224,13 @@ Loader::lfo_mod_by_dest_id (Region& region, LFOParams& lfo_params, int dest_id)
 {
   /* search existing mod by id */
   int to_index = lfo_index_by_id (region, dest_id);
-  for (auto& lfo_mod : lfo_params.lfo_mod)
+  for (auto& lfo_mod : lfo_params.lfo_mods)
     if (lfo_mod.to_index == to_index)
       return lfo_mod;
 
   /* create new lfo_mod if necessary */
-  lfo_params.lfo_mod.emplace_back();
-  auto& lfo_mod = lfo_params.lfo_mod.back();
+  lfo_params.lfo_mods.emplace_back();
+  auto& lfo_mod = lfo_params.lfo_mods.back();
   lfo_mod.to_index = to_index;
 
   return lfo_mod;
@@ -1171,6 +1171,19 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   for (auto& c : curves)
     curve_table.expand_curve (c);
 
+  // find memory requirements for lfos
+  for (const auto& region : regions)
+    {
+      limits.max_lfos = std::max (limits.max_lfos, region.lfos.size());
+
+      size_t lfo_mods = 0;
+      for (const auto& lfo : region.lfos)
+        lfo_mods += lfo.lfo_mods.size();
+
+      limits.max_lfo_mods = std::max (limits.max_lfo_mods, lfo_mods);
+    }
+
+  synth_->debug ("*** limits: max_lfos=%zd max_lfo_mods=%zd\n", limits.max_lfos, limits.max_lfo_mods);
   synth_->debug ("*** regions: %zd\n", regions.size());
   return true;
 }

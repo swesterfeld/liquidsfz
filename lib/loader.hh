@@ -198,7 +198,7 @@ struct LFOParams
     float      lfo_freq = 0;
     CCParamVec lfo_freq_cc;
   };
-  std::vector<LFOMod> lfo_mod; // LFO modulating LFO
+  std::vector<LFOMod> lfo_mods; // LFO modulating LFO
 };
 
 struct CurveSection
@@ -211,6 +211,12 @@ struct CurveSection
   {
     return curve_index < 0;
   }
+};
+
+struct Limits
+{
+  size_t max_lfos = 0;
+  size_t max_lfo_mods = 0;
 };
 
 struct Region
@@ -401,6 +407,7 @@ public:
   std::map<int, KeyInfo> key_map;
   std::vector<KeyInfo> key_list;
   CurveTable curve_table;
+  Limits limits;
   std::string sample_path;
 
   int
