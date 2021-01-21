@@ -219,25 +219,25 @@ Loader::lfo_index_by_id (Region& region, int id)
   return region.lfos.size() - 1;
 }
 
-LFOParams::LFOMod&
-Loader::lfo_mod_by_dest_id (Region& region, LFOParams& lfo_params, int dest_id)
+int
+Loader::lfo_mod_index_by_dest_id (Region& region, int l, int dest_id)
 {
   /* search existing mod by id */
   int to_index = lfo_index_by_id (region, dest_id);
-  for (auto& lfo_mod : lfo_params.lfo_mods)
-    if (lfo_mod.to_index == to_index)
-      return lfo_mod;
+  for (size_t i = 0; i < region.lfos[l].lfo_mods.size(); i++)
+    if (region.lfos[l].lfo_mods[i].to_index == to_index)
+      return i;
 
   /* create new lfo_mod if necessary */
-  lfo_params.lfo_mods.emplace_back();
-  auto& lfo_mod = lfo_params.lfo_mods.back();
+  LFOParams::LFOMod lfo_mod;
   lfo_mod.to_index = to_index;
+  region.lfos[l].lfo_mods.push_back (lfo_mod);
 
-  return lfo_mod;
+  return region.lfos[l].lfo_mods.size() - 1;
 }
 
 bool
-Loader::parse_freq_cc_lfo (Region& region, LFOParams& lfo_params, const string& lfo_key, const string& value)
+Loader::parse_freq_cc_lfo (Region& region, int l, const string& lfo_key, const string& value)
 {
   /* parse opcodes like "lfo1_freq_lfo6_oncc1=3" */
   std::smatch sm;
@@ -247,9 +247,9 @@ Loader::parse_freq_cc_lfo (Region& region, LFOParams& lfo_params, const string& 
     return false;
 
   int dest_lfo_id = convert_int (sm[1].str());
-  LFOParams::LFOMod& lfo_mod = lfo_mod_by_dest_id (region, lfo_params, dest_lfo_id);
+  int lfo_mod_index = lfo_mod_index_by_dest_id (region, l, dest_lfo_id);
 
-  return parse_cc (sm[2].str(), value, lfo_mod.lfo_freq_cc, "_*");
+  return parse_cc (sm[2].str(), value, region.lfos[l].lfo_mods[lfo_mod_index].lfo_freq_cc, "_*");
 }
 
 bool
@@ -263,47 +263,46 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
   if (!regex_match (key, sm, lfo_re))
     return false;
 
-  int    lfo_id = convert_int (sm[1].str());
+  int    l = lfo_index_by_id (region, convert_int (sm[1].str()));
   string lfo_key = sm[2].str();
 
-  LFOParams& lfo_params = region.lfos[lfo_index_by_id (region, lfo_id)];
-
+  /* process opcodes */
   int sub_key;
 
-  /* process opcodes */
   if (lfo_key == "freq")
-    lfo_params.freq = convert_float (value);
+    region.lfos[l].freq = convert_float (value);
   else if (lfo_key == "wave")
-    lfo_params.wave = convert_wave (value);
+    region.lfos[l].wave = convert_wave (value);
   else if (lfo_key == "phase")
-    lfo_params.phase = convert_float (value);
+    region.lfos[l].phase = convert_float (value);
   else if (lfo_key == "delay")
-    lfo_params.delay = convert_float (value);
+    region.lfos[l].delay = convert_float (value);
   else if (lfo_key == "fade")
-    lfo_params.fade = convert_float (value);
+    region.lfos[l].fade = convert_float (value);
   else if (lfo_key == "pitch")
-    lfo_params.pitch = convert_float (value);
+    region.lfos[l].pitch = convert_float (value);
   else if (lfo_key == "volume")
-    lfo_params.volume = convert_float (value);
+    region.lfos[l].volume = convert_float (value);
   else if (lfo_key == "cutoff")
-    lfo_params.cutoff = convert_float (value);
+    region.lfos[l].cutoff = convert_float (value);
   else if (split_sub_key (lfo_key, "freq_lfo", sub_key))
     {
-      LFOParams::LFOMod& lfo_mod = lfo_mod_by_dest_id (region, lfo_params, sub_key);
+      int lfo_mod_index = lfo_mod_index_by_dest_id (region, l, sub_key);
 
-      lfo_mod.lfo_freq = convert_float (value);
+      printf ("lfo_mod_index=%d, %zd\n", lfo_mod_index, region.lfos[l].lfo_mods.size());
+      region.lfos[l].lfo_mods[lfo_mod_index].lfo_freq = convert_float (value);
     }
-  else if (parse_cc (lfo_key, value, lfo_params.freq_cc,    "freq_*")
-       ||  parse_cc (lfo_key, value, lfo_params.phase_cc,   "phase_*")
-       ||  parse_cc (lfo_key, value, lfo_params.delay_cc,   "delay_*")
-       ||  parse_cc (lfo_key, value, lfo_params.fade_cc,    "fade_*")
-       ||  parse_cc (lfo_key, value, lfo_params.pitch_cc,   "pitch_*")
-       ||  parse_cc (lfo_key, value, lfo_params.volume_cc,  "volume_*")
-       ||  parse_cc (lfo_key, value, lfo_params.cutoff_cc,  "cutoff_*"))
+  else if (parse_cc (lfo_key, value, region.lfos[l].freq_cc,    "freq_*")
+       ||  parse_cc (lfo_key, value, region.lfos[l].phase_cc,   "phase_*")
+       ||  parse_cc (lfo_key, value, region.lfos[l].delay_cc,   "delay_*")
+       ||  parse_cc (lfo_key, value, region.lfos[l].fade_cc,    "fade_*")
+       ||  parse_cc (lfo_key, value, region.lfos[l].pitch_cc,   "pitch_*")
+       ||  parse_cc (lfo_key, value, region.lfos[l].volume_cc,  "volume_*")
+       ||  parse_cc (lfo_key, value, region.lfos[l].cutoff_cc,  "cutoff_*"))
     {
       // actual value conversion is performed by parse_cc
     }
-  else if (parse_freq_cc_lfo (region, lfo_params, lfo_key, value))
+  else if (parse_freq_cc_lfo (region, l, lfo_key, value))
     {
       // actual value conversion is performed by parse_freq_cc_lfo
     }
