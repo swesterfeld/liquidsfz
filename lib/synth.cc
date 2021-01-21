@@ -33,15 +33,22 @@ namespace LiquidSFZInternal {
 void
 Synth::process_audio (float **outputs, uint n_frames, uint offset)
 {
-  float *outputs_offset[] = {
-    outputs[0] + offset,
-    outputs[1] + offset
-  };
-
-  for (auto& voice : voices_)
+  uint i = 0;
+  while (i < n_frames)
     {
-      if (voice.state_ != Voice::IDLE)
-        voice.process (outputs_offset, n_frames);
+      const uint todo = min (n_frames - i, MAX_BLOCK_SIZE);
+
+      float *outputs_offset[] = {
+        outputs[0] + offset + i,
+        outputs[1] + offset + i
+      };
+
+      for (auto& voice : voices_)
+        {
+          if (voice.state_ != Voice::IDLE)
+            voice.process (outputs_offset, todo);
+        }
+      i += todo;
     }
   global_frame_count += n_frames;
 }
