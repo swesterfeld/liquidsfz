@@ -344,6 +344,7 @@ Voice::update_cc (int controller)
     };
   update_filter (fimpl_);
   update_filter (fimpl2_);
+  lfo_gen_.update_ccs();
 }
 
 void

@@ -101,6 +101,7 @@ public:
 
   void start (const Region& region, int channel, int sample_rate);
   void process (float *buffer, uint n_values);
+  void update_ccs();
 
   const float *
   get (OutputType type)

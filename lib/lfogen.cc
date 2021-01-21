@@ -72,6 +72,8 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
       if (lfos[i].params->cutoff || !lfos[i].params->cutoff_cc.empty())
         outputs[CUTOFF].active = true;
     }
+
+  update_ccs();
 }
 
 inline void
@@ -217,11 +219,8 @@ LFOGen::supports_wave (int wave)
 }
 
 void
-LFOGen::process (float *lfo_buffer, uint n_values)
+LFOGen::update_ccs()
 {
-  if (!lfos.size())
-    return;
-
   mod_links.clear();
   for (auto& lfo : lfos)
     {
@@ -244,6 +243,13 @@ LFOGen::process (float *lfo_buffer, uint n_values)
             mod_links.push_back ({ &lfo.value, to_lfo_freq, &lfos[lm.to_index].next_freq_mod });
         }
     }
+}
+
+void
+LFOGen::process (float *lfo_buffer, uint n_values)
+{
+  if (!lfos.size())
+    return;
 
   for (auto& output : outputs)
     {
