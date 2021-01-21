@@ -1,7 +1,6 @@
 - *silence
 - lfo
  - check compatibility with aria
- - compat code for amplfo/fillfo/pitchlfo
 - key switches (details: sw_down, sw_up)
 - envelope minimum times (prevent clicks)
 - implement better interpolation (windowed sinc, bandlimited interpolation)
