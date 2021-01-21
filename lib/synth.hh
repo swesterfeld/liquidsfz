@@ -105,11 +105,14 @@ class Synth
   std::array<bool, 128> is_key_switch_;
   std::array<bool, 128> is_supported_cc_;
 
+
   static constexpr int CC_SUSTAIN       = 64;
   static constexpr int CC_ALL_SOUND_OFF = 120;
   static constexpr int CC_ALL_NOTES_OFF = 123;
 
   static constexpr uint MAX_BLOCK_SIZE = 1024;
+
+  std::array<float, MAX_BLOCK_SIZE> const_block_0_, const_block_1_;
 
   void
   init_channels()
@@ -125,6 +128,10 @@ public:
 
     // preallocate event buffer to avoid malloc in audio thread
     events.reserve (1024);
+
+    // constant blocks
+    const_block_0_.fill (0.f);
+    const_block_1_.fill (1.f);
 
     // sane defaults:
     set_max_voices (256);
@@ -470,6 +477,16 @@ public:
         return 0;
       }
     return channels_[channel].pitch_bend;
+  }
+  const float *
+  const_block_0() const
+  {
+    return const_block_0_.data();
+  }
+  const float *
+  const_block_1() const
+  {
+    return const_block_1_.data();
   }
   struct Event
   {

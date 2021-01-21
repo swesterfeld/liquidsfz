@@ -429,16 +429,13 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   float lfo_buffer[lfo_gen_.buffer_size (n_frames)];
   lfo_gen_.process (lfo_buffer, n_frames);
 
-  float ones[n_frames];
-  std::fill (ones, ones + n_frames, 1.f);
-
   const float *lfo_pitch = lfo_gen_.get (LFOGen::PITCH);
   if (!lfo_pitch)
-    lfo_pitch = ones;
+    lfo_pitch = synth_->const_block_1();
 
   const float *lfo_volume = lfo_gen_.get (LFOGen::VOLUME);
   if (!lfo_volume)
-    lfo_volume = ones;
+    lfo_volume = synth_->const_block_1();
 
   /* render voice */
   float out_l[n_frames];
