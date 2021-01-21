@@ -289,7 +289,6 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
     {
       int lfo_mod_index = lfo_mod_index_by_dest_id (region, l, sub_key);
 
-      printf ("lfo_mod_index=%d, %zd\n", lfo_mod_index, region.lfos[l].lfo_mods.size());
       region.lfos[l].lfo_mods[lfo_mod_index].lfo_freq = convert_float (value);
     }
   else if (parse_cc (lfo_key, value, region.lfos[l].freq_cc,    "freq_*")
