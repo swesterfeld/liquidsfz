@@ -457,17 +457,17 @@ Loader::set_key_value (const string& key, const string& value)
     region.lorand = convert_float (value);
   else if (key == "hirand")
     region.hirand = convert_float (value);
-  else if (key == "loop_mode")
+  else if (key == "loop_mode" || key == "loopmode")
     {
       region.loop_mode = convert_loop_mode (value);
       region.have_loop_mode = true;
     }
-  else if (key == "loop_start")
+  else if (key == "loop_start" || key == "loopstart")
     {
       region.loop_start = convert_int (value);
       region.have_loop_start = true;
     }
-  else if (key == "loop_end")
+  else if (key == "loop_end" || key == "loopend")
     {
       region.loop_end = convert_int (value);
       region.have_loop_end = true;
@@ -533,7 +533,7 @@ Loader::set_key_value (const string& key, const string& value)
     region.rt_decay = convert_float (value);
   else if (key == "group")
     region.group = convert_uint (value);
-  else if (key == "off_by")
+  else if (key == "off_by" || key == "offby")
     region.off_by = convert_uint (value);
   else if (key == "off_mode")
     region.off_mode = convert_off_mode (value);
