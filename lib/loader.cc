@@ -204,6 +204,22 @@ Loader::parse_fileg_param (EGParam& amp_param, const string& key, const string& 
 }
 
 int
+Loader::find_unused_lfo_id (Region& region)
+{
+  for (int id = 1 ;; id++)
+    {
+      bool used = false;
+
+      for (size_t i = 0; i < region.lfos.size(); i++)
+        if (region.lfos[i].id == id)
+          used = true;
+
+      if (!used)
+        return id;
+    }
+}
+
+int
 Loader::lfo_index_by_id (Region& region, int id)
 {
   /* find existing LFO parameters */
@@ -308,6 +324,36 @@ Loader::parse_lfo_param (Region& region, const string& key, const string& value)
   else
     return false;
 
+  return true;
+}
+
+bool
+Loader::parse_simple_lfo_param (Region& region, const string& type, SimpleLFO& lfo, const string& key, const string& value)
+{
+  int sub_key;
+
+  if (key == type + "freq")
+    lfo.freq = convert_float (value);
+  else if (key == type + "depth")
+    lfo.depth = convert_float (value);
+  else if (key == type + "fade")
+    lfo.fade = convert_float (value);
+  else if (key == type + "delay")
+    lfo.delay = convert_float (value);
+  else if (split_sub_key (key, type + "freqcc", sub_key))
+    {
+      lfo.freq_cc.set (sub_key, convert_float (value));
+      update_cc_info (sub_key);
+    }
+  else if (split_sub_key (key, type + "depthcc", sub_key))
+    {
+      lfo.depth_cc.set (sub_key, convert_float (value));
+      update_cc_info (sub_key);
+    }
+  else
+    return false;
+
+  lfo.used = true;
   return true;
 }
 
@@ -617,6 +663,12 @@ Loader::set_key_value (const string& key, const string& value)
   else if (parse_lfo_param (region, key, value))
     {
       // actual value conversion is performed by parse_lfo_param
+    }
+  else if (parse_simple_lfo_param (region, "pitchlfo_", region.pitchlfo, key, value)
+       ||  parse_simple_lfo_param (region, "amplfo_",   region.amplfo,   key, value)
+       ||  parse_simple_lfo_param (region, "fillfo_",   region.fillfo,   key, value))
+    {
+      // actual value conversion is performed by parse_simple_lfo_param
     }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
@@ -995,6 +1047,35 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
   return true;
 }
 
+void
+Loader::convert_lfo (Region& region, SimpleLFO& simple_lfo, SimpleLFO::Type type)
+{
+  int id = find_unused_lfo_id (region);
+  int l = lfo_index_by_id (region, id);
+
+  region.lfos[l].freq = simple_lfo.freq;
+  region.lfos[l].fade = simple_lfo.fade;
+  region.lfos[l].delay = simple_lfo.delay;
+  region.lfos[l].freq_cc = simple_lfo.freq_cc;
+  region.lfos[l].wave = 1; // sine
+
+  switch (type)
+  {
+    case SimpleLFO::PITCH:
+      region.lfos[l].pitch    = simple_lfo.depth;
+      region.lfos[l].pitch_cc = simple_lfo.depth_cc;
+      break;
+    case SimpleLFO::AMP:
+      region.lfos[l].volume    = simple_lfo.depth;
+      region.lfos[l].volume_cc = simple_lfo.depth_cc;
+      break;
+    case SimpleLFO::FIL:
+      region.lfos[l].cutoff    = simple_lfo.depth;
+      region.lfos[l].cutoff_cc = simple_lfo.depth_cc;
+      break;
+  }
+}
+
 bool
 Loader::parse (const string& filename, SampleCache& sample_cache)
 {
@@ -1169,9 +1250,14 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   for (auto& c : curves)
     curve_table.expand_curve (c);
 
-  // find memory requirements for lfos
-  for (const auto& region : regions)
+  for (auto& region : regions)
     {
+      // convert SFZ1 lfos to SFZ2 lfos
+      convert_lfo (region, region.pitchlfo, SimpleLFO::PITCH);
+      convert_lfo (region, region.amplfo, SimpleLFO::AMP);
+      convert_lfo (region, region.fillfo, SimpleLFO::FIL);
+
+      // find memory requirements for lfos
       limits.max_lfos = std::max (limits.max_lfos, region.lfos.size());
 
       size_t lfo_mods = 0;

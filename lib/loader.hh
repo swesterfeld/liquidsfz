@@ -201,6 +201,19 @@ struct LFOParams
   std::vector<LFOMod> lfo_mods; // LFO modulating LFO
 };
 
+struct SimpleLFO
+{
+  enum Type { PITCH, AMP, FIL };
+  bool  used = false;
+  float delay = 0;
+  float fade = 0;
+  float freq = 0;
+  float depth = 0;
+
+  CCParamVec freq_cc;
+  CCParamVec depth_cc;
+};
+
 struct CurveSection
 {
   int   curve_index = -1;
@@ -312,6 +325,8 @@ struct Region
 
   std::vector<LFOParams> lfos;
 
+  SimpleLFO amplfo, pitchlfo, fillfo;
+
   CCParamVec pan_cc;
   CCParamVec gain_cc;
   CCParamVec amplitude_cc;
@@ -381,8 +396,12 @@ class Loader
   }
   int lfo_index_by_id (Region& region, int id);
   int lfo_mod_index_by_dest_id (Region& region, int lfo_index, int dest_id);
+  int find_unused_lfo_id (Region& region);
   bool parse_freq_cc_lfo (Region& region, int lfo_index, const std::string& lfo_key, const std::string& value);
   bool parse_lfo_param (Region& region, const std::string& key, const std::string& value);
+  bool parse_simple_lfo_param (Region& region, const std::string& type, SimpleLFO& lfo, const std::string& key, const std::string& value);
+  void convert_lfo (Region& region, SimpleLFO& simple_lfo, SimpleLFO::Type type);
+
   static constexpr int MAX_INCLUDE_DEPTH = 25;
 public:
   Loader (Synth *synth)
