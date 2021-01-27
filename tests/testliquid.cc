@@ -20,20 +20,32 @@
 
 #include "synth.hh"
 #include "liquidsfz.hh"
+#include "argparser.hh"
 
 using namespace LiquidSFZ;
+
+using LiquidSFZInternal::ArgParser;
+
+using std::vector;
+using std::string;
 
 int
 main (int argc, char **argv)
 {
-  if (argc != 2)
+  ArgParser ap (argc, argv);
+
+  int sample_rate = 48000;
+  ap.parse_opt ("--rate", sample_rate);
+
+  vector<string> args;
+  if (!ap.parse_args (1, args))
     {
       fprintf (stderr, "usage: testliquid <sfz_filename>\n");
       return 1;
     }
   Synth synth;
-  synth.set_sample_rate (48000);
-  if (!synth.load (argv[1]))
+  synth.set_sample_rate (sample_rate);
+  if (!synth.load (args[0]))
     {
       fprintf (stderr, "parse error: exiting\n");
       return 1;
