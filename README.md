@@ -8,7 +8,7 @@ It can also load and play Hydrogen drumkits. We support JACK and LV2.
 The main goal is to provide a library that is easy to integrate into other
 projects.
 
- * API documentation is available here: https://space.twc.de/~stefan/liquidsfz/api-0.2.2
+ * API documentation is available here: https://space.twc.de/~stefan/liquidsfz/api-0.2.3
  * There is also a list of [currently supported SFZ opcodes](OPCODES.md)
 
 The API should be fairly stable at this point, so we try to maintain source
@@ -35,6 +35,12 @@ building the JACK client, --without-lv2 will turn off building the LV2 plugin.
 If you are building from git, you also need the package (for autogen.sh to work):
 
 * autoconf-archive
+
+### WINDOWS
+
+If you are a windows developer and need only the .dll (not the plugin or jack
+client), there is [experimental support for building on windows] (README_WINDOWS.md)
+but this experimental and may or may not work.
 
 ## USING JACK
 
@@ -65,10 +71,10 @@ The code is licensed under the LGPL 2.1 or later.
 
 ## RELEASES
 
-The current version of liquidsfz is liquidsfz-0.2.2, and can be downloaded
+The current version of liquidsfz is liquidsfz-0.2.3, and can be downloaded
 here:
 
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.2.tar.bz2
+* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.3.tar.bz2
 
 ## BINARY LV2 PLUGIN
 
@@ -76,7 +82,7 @@ The LV2 plugin (and only the LV2 plugin) is available as self-contained 64-bit
 binary which should run on most recent linux distributions (newer than Ubuntu
 16.04).
 
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.2-x86_64.tar.gz
+* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.3-x86_64.tar.gz
 
 To install it, extract the archive and
 
@@ -85,6 +91,7 @@ To install it, extract the archive and
 
 ## OLDER VERSIONS
 
+* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.2.tar.bz2 (old version)
 * https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.1.tar.bz2 (old version)
 * https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.0.tar.bz2 (old version)
 * https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2 (old version)
