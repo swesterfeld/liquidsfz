@@ -47,6 +47,11 @@ using namespace LiquidSFZ;
 using LiquidSFZInternal::path_join;
 using LiquidSFZInternal::ArgParser;
 
+namespace Options
+{
+  bool debug = false;
+}
+
 class CommandQueue
 {
   struct Command
@@ -422,11 +427,6 @@ public:
       }
   }
 };
-
-namespace Options
-{
-  bool debug = false;
-}
 
 static void
 print_usage()
