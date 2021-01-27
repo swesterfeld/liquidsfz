@@ -39,7 +39,7 @@ If you are building from git, you also need the package (for autogen.sh to work)
 ### WINDOWS
 
 If you are a windows developer and need only the .dll (not the plugin or jack
-client), there is [experimental support for building on windows] (README_WINDOWS.md)
+client), there is [experimental support for building on windows](README_WINDOWS.md)
 but this experimental and may or may not work.
 
 ## USING JACK
