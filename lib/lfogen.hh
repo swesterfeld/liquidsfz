@@ -39,6 +39,7 @@ private:
   Synth *synth_ = nullptr;
   int channel_ = 0;
   int sample_rate_ = 0;
+  float smoothing_factor_ = 0;
 
   struct Wave;
 

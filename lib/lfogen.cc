@@ -38,6 +38,12 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
   sample_rate_ = sample_rate;
   first        = true;
 
+  // smoothing should be the same for different sample rates
+  //  -> compute the smoothing factor from half-life time
+  const float smoothing_time    = 0.002;
+  const int   smoothing_samples = smoothing_time * sample_rate;
+  smoothing_factor_ = exp2f (-1.f / smoothing_samples);
+
   for (auto& output : outputs) // reset outputs
     output = Output();
 
@@ -131,11 +137,13 @@ LFOGen::write_output (uint start, uint n_values)
 
   float value      = post_function<T> (outputs[T].value);
   float last_value = first ? value : outputs[T].last_value;
+  float a          = smoothing_factor_;
+  float b          = 1 - a;
 
   float *out       = outputs[T].buffer + start;
   for (uint k = 0; k < n_values; k++)
     {
-      last_value = value * 0.01f + 0.99f * last_value;
+      last_value = b * value + a * last_value;
       out[k] = last_value;
     }
   outputs[T].last_value = last_value;
