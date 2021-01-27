@@ -1,3 +1,16 @@
+Overview of Changes in liquidsfz-0.2.3:
+
+* Implement LFO support
+  - old style (amplfo_*, pitchlfo_*, fillfo_*)
+  - new style (lfoN_freq, lfoN_pitch,...)
+* Preprocessor improvements
+  - allow #define / #include in the middle of a line
+  - allow to #include the same file twice
+  - support C style block comments
+* Support curve sections and related opcodes
+* Portability changes which should allow building the lib on windows
+* Minor fixes and cleanups
+
 Overview of Changes in liquidsfz-0.2.2:
 
 * Implement filters (fil_type, cutoff, resonance, ...)
