@@ -112,6 +112,18 @@ main (int argc, char **argv)
 
       return 0;
     }
+  else if (argc == 2 && cmd == "gen-sincos")
+    {
+      int l = 5 * 48000;
+      double phase = 0;
+      double f = 100;
+      for (int i = 0; i < l; i++)
+        {
+          printf ("%.17g %.17g\n", sin (phase), cos (phase));
+
+          phase += f / 48000 * 2 * M_PI;
+        }
+    }
   else if (argc == 5 && cmd == "ir")
     {
       float cutoff = atof (argv[3]);
