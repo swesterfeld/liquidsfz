@@ -31,6 +31,18 @@ using std::vector;
 namespace LiquidSFZInternal
 {
 
+bool
+path_is_absolute (const string& filename)
+{
+  if (filename.size() && filename[0] == PATH_SEPARATOR)
+    return true;
+#if LIQUIDSFZ_OS_WINDOWS
+  if (filename.size() >= 2 && isalpha (filename[0]) && filename[1] == ':')
+    return true;
+#endif
+  return false;
+}
+
 /*
  * NOTE: path_absolute and path_dirname are currently not portable to windows
  *
@@ -42,7 +54,7 @@ namespace LiquidSFZInternal
 string
 path_absolute (const string& filename)
 {
-  if (filename.size() && filename[0] == PATH_SEPARATOR) // already absolute?
+  if (path_is_absolute (filename))
     return filename;
   char buffer[2048];
   if (getcwd (buffer, sizeof (buffer)))

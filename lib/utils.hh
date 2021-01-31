@@ -23,23 +23,28 @@
 
 // detect compiler
 #if __clang__
-  #define LIQUIDSFZ_COMP_CLANG
+  #define LIQUIDSFZ_COMP_CLANG 1
 #elif __GNUC__ > 2
-  #define LIQUIDSFZ_COMP_GCC
+  #define LIQUIDSFZ_COMP_GCC 1
 #else
   #error "unsupported compiler"
 #endif
 
-#ifdef LIQUIDSFZ_COMP_GCC
+#if LIQUIDSFZ_COMP_GCC
   #define LIQUIDSFZ_PRINTF(format_idx, arg_idx)      __attribute__ ((__format__ (gnu_printf, format_idx, arg_idx)))
 #else
   #define LIQUIDSFZ_PRINTF(format_idx, arg_idx)      __attribute__ ((__format__ (__printf__, format_idx, arg_idx)))
+#endif
+
+#if WIN32
+  #define LIQUIDSFZ_OS_WINDOWS 1
 #endif
 
 #include <sys/time.h>
 #include <math.h>
 
 #include <string>
+
 
 typedef unsigned int uint;
 
@@ -75,6 +80,7 @@ double string_to_double (const std::string& str);
 
 static constexpr char PATH_SEPARATOR = '/';
 
+bool path_is_absolute (const std::string& filename);
 std::string path_absolute (const std::string& filename);
 std::string path_dirname (const std::string& filename);
 std::string path_join (const std::string& path1, const std::string& path2);
