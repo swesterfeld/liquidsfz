@@ -566,7 +566,7 @@ Loader::set_key_value (const string& key, const string& value)
     region.sw_default = convert_key (value);
   else if (key == "sw_label")
     region.sw_label = value;
-  else if (key == "tune")
+  else if (key == "tune" || key == "pitch")
     region.tune = convert_int (value);
   else if (key == "transpose")
     region.transpose = convert_int (value);
