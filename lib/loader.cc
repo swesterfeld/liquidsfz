@@ -426,12 +426,19 @@ Loader::set_key_value (const string& key, const string& value)
       string native_filename = value;
       std::replace (native_filename.begin(), native_filename.end(), '\\', PATH_SEPARATOR);
 
-      string path = sample_path;
-      if (control.default_path != "")
-        path = path_join (path, control.default_path);
+      if (path_is_absolute (native_filename))
+        {
+          region.sample = native_filename;
+        }
+      else
+        {
+          string path = sample_path;
+          if (control.default_path != "")
+            path = path_join (path, control.default_path);
 
-      path = path_join (path, native_filename);
-      region.sample = path_absolute (path);
+          path = path_join (path, native_filename);
+          region.sample = path_absolute (path);
+        }
       region.location = location();
     }
   else if (key == "lokey")
