@@ -40,7 +40,7 @@ struct SampleBuffer
   static constexpr size_t frames_per_buffer = 1000;
 
   std::atomic<int>   loaded = 0;
-  std::vector<short> samples;
+  std::vector<float> samples;
 };
 
 class SampleCache
@@ -69,7 +69,7 @@ public:
       while (prev_max_index < value && !max_buffer_index.compare_exchange_weak (prev_max_index, value))
         ;
     }
-    short
+    float
     get (size_t pos)
     {
       size_t buffer_index = pos / (SampleBuffer::frames_per_buffer * channels);
@@ -181,7 +181,7 @@ public:
         new_entry->buffers.emplace_back (std::make_unique<SampleBuffer>());
 
         if (b < 20)
-          load_buffer (new_entry, sndfile, sfinfo, b++);
+          load_buffer (new_entry, sndfile, b++);
 
         pos += SampleBuffer::frames_per_buffer;
       }
@@ -196,46 +196,21 @@ public:
     return new_entry;
   }
   void
-  load_buffer (std::shared_ptr<Entry> entry, SNDFILE *sndfile, const SF_INFO& sfinfo, size_t b)
+  load_buffer (std::shared_ptr<Entry> entry, SNDFILE *sndfile, size_t b)
   {
     auto& buffer = *entry->buffers[b];
     if (buffer.loaded == 0)
       {
         sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
 
-        std::vector<short> isamples (SampleBuffer::frames_per_buffer * entry->channels);
+        std::vector<float> fsamples (SampleBuffer::frames_per_buffer * entry->channels);
 
-        sf_count_t count;
-
-        int mask_format = sfinfo.format & SF_FORMAT_SUBMASK;
-        if (mask_format == SF_FORMAT_FLOAT || mask_format == SF_FORMAT_DOUBLE)
-          {
-            // https://github.com/erikd/libsndfile/issues/388
-            //
-            // for floating point wav files, libsndfile isn't able to convert to shorts
-            // properly when using sf_readf_short(), so we convert the data manually
-
-            std::vector<float> fsamples (isamples.size());
-            count = sf_readf_float (sndfile, &fsamples[0], isamples.size());
-
-            for (size_t i = 0; i < fsamples.size(); i++)
-              {
-                const double norm      =  0x8000;
-                const double min_value = -0x8000;
-                const double max_value =  0x7FFF;
-
-                isamples[i] = lrint (std::clamp (fsamples[i] * norm, min_value, max_value));
-              }
-          }
-        else
-          {
-            count = sf_readf_short (sndfile, &isamples[0], SampleBuffer::frames_per_buffer);
-          }
+        sf_count_t count = sf_readf_float (sndfile, &fsamples[0], fsamples.size() / entry->channels);
         if (count > 0)
           {
-            isamples.resize (count * sfinfo.channels);
+            fsamples.resize (count * entry->channels);
 
-            buffer.samples = std::move (isamples);
+            buffer.samples = std::move (fsamples);
           }
         /*
          * we also set this to one if loading failed (short read) because
@@ -257,7 +232,7 @@ public:
             if (sndfile)
               {
                 printf ("loading %s / buffer %zd / %s\n", entry->filename.c_str(), b, cache_stats().c_str());
-                load_buffer (entry, sndfile, sfinfo, b);
+                load_buffer (entry, sndfile, b);
                 cache_stats();
                 sf_close (sndfile);
               }

@@ -199,7 +199,7 @@ Voice::update_pan_gain()
 void
 Voice::update_lr_gain (bool now)
 {
-  const float global_gain = (1 / 32768.) * synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_ * amplitude_gain_;
+  const float global_gain = synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_ * amplitude_gain_;
 
   synth_->debug (" - gain l=%.2f r=%.2f\n", 32768 * pan_left_gain_ * global_gain, 32768 * pan_right_gain_ * global_gain);
   left_gain_.set (pan_left_gain_ * global_gain, now);
