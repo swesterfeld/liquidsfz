@@ -141,6 +141,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   envelope_.start (region, sample_rate_);
 
   state_ = ACTIVE;
+  region.cached_sample->start_playback();
   synth_->debug ("location %s\n", region.location.c_str());
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
 
@@ -304,7 +305,18 @@ Voice::stop (OffMode off_mode)
 void
 Voice::kill()
 {
-  state_ = Voice::IDLE;
+  end_playback();
+}
+
+void
+Voice::end_playback()
+{
+  /* FIXME: this may not always be called when necessary, so cached samples may remain playing forever */
+  if (state_ != Voice::IDLE)
+    {
+      state_ = Voice::IDLE;
+      region_->cached_sample->end_playback();
+    }
 }
 
 void
@@ -376,13 +388,13 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
     {
       for (uint i = 0; i < fsamples.size(); i++)
         {
-          if (x >= csample->samples.size())
+          if (x >= csample->n_samples)
             {
               fsamples[i] = 0;
             }
           else
             {
-              fsamples[i] = csample->samples[x];
+              fsamples[i] = csample->get (x);
               x++;
 
               if (loop_enabled_)
@@ -396,15 +408,15 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
     {
       for (uint i = 0; i < fsamples.size(); i += 2)
         {
-          if (x >= csample->samples.size())
+          if (x >= csample->n_samples)
             {
               fsamples[i]     = 0;
               fsamples[i + 1] = 0;
             }
           else
             {
-              fsamples[i]     = csample->samples[x];
-              fsamples[i + 1] = csample->samples[x + 1];
+              fsamples[i]     = csample->get (x);
+              fsamples[i + 1] = csample->get (x + 1);
               x += 2;
 
               if (loop_enabled_)
@@ -446,7 +458,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
       const uint ii = ppos_;
       const uint x = ii * channels;
       const float frac = ppos_ - ii;
-      if (x < csample->samples.size() && !envelope_.done())
+      if (x < csample->n_samples && !envelope_.done())
         {
           const float amp_gain = envelope_.get_next();
           if (channels == 1)
@@ -473,7 +485,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
         }
       else
         {
-          state_ = IDLE;
+          end_playback();
 
           /* output memory is uninitialized, so we need to explicitely write every sampl when done */
           out_l[i] = 0;

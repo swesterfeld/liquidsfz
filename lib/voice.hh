@@ -72,6 +72,8 @@ class Voice
 
   void set_pitch_bend (int value);
   void update_replay_speed (bool now);
+
+  void end_playback();
 public:
   Synth *synth_;
   int sample_rate_ = 44100;
