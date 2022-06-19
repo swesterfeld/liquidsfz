@@ -42,6 +42,16 @@ struct SampleBuffer
   struct Data
   {
     std::vector<float> samples;
+    std::atomic<int>   used;
+  };
+  struct DataDeleter
+  {
+    void
+    operator() (Data* data) const
+    {
+      /* will be collected later */
+      data->used = 0;
+    }
   };
   typedef std::shared_ptr<Data> DataP;
 
@@ -88,7 +98,6 @@ public:
 
               size_t sample_index = pos - (buffer_index * (SampleBuffer::frames_per_buffer * channels));
 
-              /* FIXME: this could trigger deletion of Data buffer in audio thread */
               SampleBuffer::DataP data = buffer.data;
               if (data && sample_index < data->samples.size())
                 return data->samples[sample_index];
@@ -113,6 +122,7 @@ private:
   std::map<std::string, std::weak_ptr<Entry>> cache;
   std::mutex mutex;
   std::thread loader_thread;
+  std::vector<SampleBuffer::Data *> data_entries;
 
   bool quit_background_loader = false;
 
@@ -135,6 +145,14 @@ protected:
             it++;
           }
       }
+  }
+  void
+  remove_unused_data_entries()
+  {
+    auto is_unused = [] (SampleBuffer::Data *data) {
+      return data->used == 0;
+    };
+    data_entries.erase (std::remove_if (data_entries.begin(), data_entries.end(), is_unused), data_entries.end());
   }
 public:
   std::shared_ptr<Entry>
@@ -219,8 +237,13 @@ public:
           {
             fsamples.resize (count * entry->channels);
 
-            buffer.data = std::make_shared<SampleBuffer::Data> ();
-            buffer.data->samples = std::move (fsamples);
+            std::shared_ptr<SampleBuffer::Data> data (new SampleBuffer::Data, [](auto data) { data->used = 0; });
+            data->samples = std::move (fsamples);
+            data->used = 1;
+
+            buffer.data = data;
+
+            data_entries.push_back (data.get());
           }
         /*
          * we also set this to one if loading failed (short read) because
@@ -252,26 +275,12 @@ public:
   cache_stats()
   {
     size_t bytes = 0;
-    size_t entries = 0;
-    for (auto it : cache)
+    for (auto data : data_entries)
       {
-        auto entry = it.second.lock();
-        if (entry)
-          {
-            for (auto& buffer : entry->buffers)
-              {
-                if (buffer->loaded)
-                  {
-                    SampleBuffer::DataP data = buffer->data;
-                    if (data)
-                      bytes += data->samples.size() * sizeof (data->samples[0]);
-                  }
-              }
-
-            entries++;
-          }
+        if (data)
+          bytes += data->samples.size() * sizeof (data->samples[0]);
       }
-    return string_printf ("cache holds %.2f MB in %zd entries", bytes / 1024. / 1024., entries);
+    return string_printf ("cache holds %.2f MB in %zd entries", bytes / 1024. / 1024., cache.size());
   }
 
   SampleCache()
@@ -285,6 +294,24 @@ public:
       quit_background_loader = true;
     }
     loader_thread.join();
+
+    for (auto it : cache)
+      {
+        auto entry = it.second.lock();
+        if (entry)
+          {
+            for (size_t b = 0; b < entry->buffers.size(); b++)
+              {
+                entry->buffers[b]->loaded = 0;
+                entry->buffers[b]->data = nullptr;
+              }
+          }
+      }
+
+    remove_unused_data_entries();
+    remove_expired_entries();
+
+    printf ("cache stats in SampleCache destructor: %s\n", cache_stats().c_str());
   }
 
   void
@@ -320,6 +347,7 @@ public:
                     }
                 }
             }
+          remove_unused_data_entries();
         }
         usleep (20 * 1000);
       }
