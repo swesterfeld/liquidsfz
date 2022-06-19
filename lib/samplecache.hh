@@ -39,8 +39,14 @@ struct SampleBuffer
 {
   static constexpr size_t frames_per_buffer = 1000;
 
-  std::atomic<int>   loaded = 0;
-  std::vector<float> samples;
+  struct Data
+  {
+    std::vector<float> samples;
+  };
+  typedef std::shared_ptr<Data> DataP;
+
+  std::atomic<int>  loaded = 0;
+  DataP             data;
 };
 
 class SampleCache
@@ -58,7 +64,7 @@ public:
 
     std::atomic<int>            playback_count = 0;
     std::atomic<int>            max_buffer_index = 0;
-    bool                        loaded = false;
+    bool                        playing = false;
 
     std::string                 filename;
 
@@ -81,8 +87,11 @@ public:
               update_max_buffer_index (buffer_index);
 
               size_t sample_index = pos - (buffer_index * (SampleBuffer::frames_per_buffer * channels));
-              if (sample_index < buffer.samples.size())
-                return buffer.samples[sample_index];
+
+              /* FIXME: this could trigger deletion of Data buffer in audio thread */
+              SampleBuffer::DataP data = buffer.data;
+              if (data && sample_index < data->samples.size())
+                return data->samples[sample_index];
             }
         }
       return 0;
@@ -210,7 +219,8 @@ public:
           {
             fsamples.resize (count * entry->channels);
 
-            buffer.samples = std::move (fsamples);
+            buffer.data = std::make_shared<SampleBuffer::Data> ();
+            buffer.data->samples = std::move (fsamples);
           }
         /*
          * we also set this to one if loading failed (short read) because
@@ -231,9 +241,8 @@ public:
 
             if (sndfile)
               {
-                printf ("loading %s / buffer %zd / %s\n", entry->filename.c_str(), b, cache_stats().c_str());
+                printf ("loading %s / buffer %zd\n", entry->filename.c_str(), b);
                 load_buffer (entry, sndfile, b);
-                cache_stats();
                 sf_close (sndfile);
               }
           }
@@ -250,7 +259,14 @@ public:
         if (entry)
           {
             for (auto& buffer : entry->buffers)
-              bytes += buffer->samples.size() * sizeof (buffer->samples[0]);
+              {
+                if (buffer->loaded)
+                  {
+                    SampleBuffer::DataP data = buffer->data;
+                    if (data)
+                      bytes += data->samples.size() * sizeof (data->samples[0]);
+                  }
+              }
 
             entries++;
           }
@@ -283,9 +299,24 @@ public:
               auto entry = it.second.lock();
               if (entry)
                 {
-                  if (entry->playback_count && !entry->loaded)
+                  if (entry->playback_count)
                     {
                       load (entry);
+                      entry->playing = true;
+                    }
+                  if (!entry->playback_count && entry->playing)
+                    {
+                      for (size_t b = 0; b < entry->buffers.size(); b++)
+                        {
+                          if (b > 20 && entry->buffers[b]->loaded)
+                            {
+                              entry->buffers[b]->loaded = 0;
+                              entry->buffers[b]->data = nullptr;
+                            }
+                        }
+                      printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
+                      entry->max_buffer_index = 0;
+                      entry->playing = false;
                     }
                 }
             }
