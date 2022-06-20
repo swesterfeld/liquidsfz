@@ -46,7 +46,6 @@ struct SampleBuffer
     std::atomic<int>   used;
   };
 
-  std::atomic<int>    loaded = 0;
   std::atomic<Data *> data = nullptr;
 };
 
@@ -162,15 +161,14 @@ public:
       size_t buffer_index = pos / (SampleBuffer::frames_per_buffer * channels);
       if (buffer_index < buffers.size())
         {
-          auto& buffer = buffers[buffer_index];
-          if (buffer.loaded)
+          const SampleBuffer::Data *data = buffers[buffer_index].data;
+          if (data)
             {
               update_max_buffer_index (buffer_index);
 
               size_t sample_index = pos - (buffer_index * (SampleBuffer::frames_per_buffer * channels));
 
-              const SampleBuffer::Data *data = buffer.data.load();
-              if (data && sample_index < data->samples.size())
+              if (sample_index < data->samples.size())
                 return data->samples[sample_index];
             }
         }
@@ -300,8 +298,13 @@ public:
   load_buffer (std::shared_ptr<Entry> entry, SNDFILE *sndfile, size_t b)
   {
     auto& buffer = entry->buffers[b];
-    if (buffer.loaded == 0)
+    if (!buffer.data)
       {
+        auto data = new SampleBuffer::Data();
+        data->used = 1;
+        buffer.data = data;
+        data_entries.push_back (data);
+
         sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
 
         std::vector<float> fsamples (SampleBuffer::frames_per_buffer * entry->channels);
@@ -311,19 +314,8 @@ public:
           {
             fsamples.resize (count * entry->channels);
 
-            auto data = new SampleBuffer::Data();
             data->samples = std::move (fsamples);
-            data->used = 1;
-
-            buffer.data = data;
-
-            data_entries.push_back (data);
           }
-        /*
-         * we also set this to one if loading failed (short read) because
-         * otherwise we would reload the same buffer again and again
-         */
-        buffer.loaded = 1;
       }
   }
   void
@@ -331,7 +323,7 @@ public:
   {
     for (size_t b = 0; b < entry->buffers.size(); b++)
       {
-        if (entry->buffers[b].loaded == 0 && b < size_t (entry->max_buffer_index.load() + 20))
+        if (!entry->buffers[b].data && b < size_t (entry->max_buffer_index.load() + 20))
           {
             SF_INFO sfinfo = { 0, };
             SNDFILE *sndfile = sf_open (entry->filename.c_str(), SFM_READ, &sfinfo);
@@ -411,14 +403,12 @@ public:
                       new_buffers.resize (entry->buffers.size());
                       for (size_t b = 0; b < entry->buffers.size(); b++)
                         {
-                          if (b > 20 && entry->buffers[b].loaded)
+                          if (b > 20)
                             {
-                              new_buffers[b].loaded = 0;
                               new_buffers[b].data   = nullptr;
                             }
                           else
                             {
-                              new_buffers[b].loaded = entry->buffers[b].loaded.load();
                               new_buffers[b].data   = entry->buffers[b].data.load();
                             }
                         }
