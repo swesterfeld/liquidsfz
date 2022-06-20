@@ -40,6 +40,8 @@ class Voice
     const FilterParams *params;
   } fimpl_, fimpl2_;
 
+  SampleCache::Entry::PlayHandle play_handle_;
+
   Envelope filter_envelope_;
   float    filter_envelope_depth_ = 0;
 
@@ -72,8 +74,6 @@ class Voice
 
   void set_pitch_bend (int value);
   void update_replay_speed (bool now);
-
-  void end_playback();
 public:
   Synth *synth_;
   int sample_rate_ = 44100;

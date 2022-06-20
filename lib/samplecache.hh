@@ -44,6 +44,7 @@ struct SampleBuffer
   {
     std::vector<float> samples;
     std::atomic<int>   used;
+    size_t             start_n_values;
   };
 
   std::atomic<Data *> data = nullptr;
@@ -155,25 +156,80 @@ public:
       while (prev_max_index < value && !max_buffer_index.compare_exchange_weak (prev_max_index, value))
         ;
     }
-    float
-    get (size_t pos)
+    class PlayHandle
     {
-      size_t buffer_index = pos / (SampleBuffer::frames_per_buffer * channels);
-      if (buffer_index < buffers.size())
-        {
-          const SampleBuffer::Data *data = buffers[buffer_index].data;
-          if (data)
-            {
-              update_max_buffer_index (buffer_index);
+    private:
+      Entry *entry_                        = nullptr;
+      const SampleBuffer::Data *last_data_ = nullptr;
 
-              size_t sample_index = pos - (buffer_index * (SampleBuffer::frames_per_buffer * channels));
+    public:
+      PlayHandle (const PlayHandle& p)
+      {
+        start_playback (p.entry_);
+      }
+      PlayHandle&
+      operator= (const PlayHandle& p)
+      {
+        start_playback (p.entry_);
+        return *this;
+      }
+      PlayHandle()
+      {
+      }
+      ~PlayHandle()
+      {
+        end_playback();
+      }
+      void
+      start_playback (Entry *entry)
+      {
+        if (entry != entry_)
+          {
+            if (entry_)
+              entry_->end_playback();
 
-              if (sample_index < data->samples.size())
-                return data->samples[sample_index];
-            }
-        }
-      return 0;
-    }
+            entry_ = entry;
+            if (entry_)
+              entry_->start_playback();
+
+            last_data_ = nullptr;
+          }
+      }
+      void
+      end_playback()
+      {
+        start_playback (nullptr);
+      }
+      float
+      get (size_t pos)
+      {
+        /* typically we can simply take the sample from the data block we used last time */
+        if (last_data_ && pos >= last_data_->start_n_values)
+          {
+            size_t sample_index = pos - last_data_->start_n_values;
+            if (sample_index < last_data_->samples.size())
+              return last_data_->samples[sample_index];
+          }
+
+        /* rare case: we need to lookup a new data block */
+        int buffer_index = pos / (SampleBuffer::frames_per_buffer * entry_->channels);
+        entry_->update_max_buffer_index (buffer_index);
+
+        if (buffer_index < int (entry_->buffers.size()))
+          {
+            const SampleBuffer::Data *data = entry_->buffers[buffer_index].data;
+            last_data_ = data;
+            if (data)
+              {
+                size_t sample_index = pos - data->start_n_values;
+
+                if (sample_index < data->samples.size())
+                  return data->samples[sample_index];
+              }
+          }
+        return 0;
+      }
+    };
 
     void
     start_playback()
@@ -302,6 +358,7 @@ public:
       {
         auto data = new SampleBuffer::Data();
         data->used = 1;
+        data->start_n_values = b * SampleBuffer::frames_per_buffer * entry->channels;
         buffer.data = data;
         data_entries.push_back (data);
 

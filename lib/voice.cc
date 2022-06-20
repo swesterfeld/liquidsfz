@@ -141,7 +141,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   envelope_.start (region, sample_rate_);
 
   state_ = ACTIVE;
-  region.cached_sample->start_playback();
+  play_handle_.start_playback (region.cached_sample.get());
   synth_->debug ("location %s\n", region.location.c_str());
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
 
@@ -305,18 +305,8 @@ Voice::stop (OffMode off_mode)
 void
 Voice::kill()
 {
-  end_playback();
-}
-
-void
-Voice::end_playback()
-{
-  /* FIXME: this may not always be called when necessary, so cached samples may remain playing forever */
-  if (state_ != Voice::IDLE)
-    {
-      state_ = Voice::IDLE;
-      region_->cached_sample->end_playback();
-    }
+  state_ = Voice::IDLE;
+  play_handle_.end_playback();
 }
 
 void
@@ -394,7 +384,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
             }
           else
             {
-              fsamples[i] = csample->get (x);
+              fsamples[i] = play_handle_.get (x);
               x++;
 
               if (loop_enabled_)
@@ -415,8 +405,8 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
             }
           else
             {
-              fsamples[i]     = csample->get (x);
-              fsamples[i + 1] = csample->get (x + 1);
+              fsamples[i]     = play_handle_.get (x);
+              fsamples[i + 1] = play_handle_.get (x + 1);
               x += 2;
 
               if (loop_enabled_)
@@ -485,7 +475,8 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
         }
       else
         {
-          end_playback();
+          state_ = IDLE;
+          play_handle_.end_playback();
 
           /* output memory is uninitialized, so we need to explicitely write every sampl when done */
           out_l[i] = 0;
