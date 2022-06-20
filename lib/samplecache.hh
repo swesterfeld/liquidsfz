@@ -28,6 +28,7 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
+#include <cassert>
 
 #include <sndfile.h>
 #include <unistd.h>
@@ -44,19 +45,87 @@ struct SampleBuffer
     std::vector<float> samples;
     std::atomic<int>   used;
   };
-  struct DataDeleter
-  {
-    void
-    operator() (Data* data) const
-    {
-      /* will be collected later */
-      data->used = 0;
-    }
-  };
-  typedef std::shared_ptr<Data> DataP;
 
-  std::atomic<int>  loaded = 0;
-  DataP             data;
+  std::atomic<int>    loaded = 0;
+  std::atomic<Data *> data = nullptr;
+};
+
+class SampleBufferVector
+{
+  size_t                      size_    = 0;
+  std::atomic<SampleBuffer *> buffers_ = nullptr;
+public:
+  SampleBufferVector()
+  {
+    static_assert (decltype (buffers_)::is_always_lock_free);
+  }
+  ~SampleBufferVector()
+  {
+    if (size_ || buffers_)
+      fprintf (stderr, "liquidsfz: SampleBufferVector: should clear the vector before deleting\n");
+  }
+  SampleBufferVector (const SampleBufferVector&) = delete;
+  SampleBufferVector& operator=  (const SampleBufferVector&) = delete;
+
+  size_t
+  size()
+  {
+    return size_;
+  }
+  SampleBuffer&
+  operator[] (size_t pos)
+  {
+    return buffers_[pos];
+  }
+  void
+  resize (size_t size)
+  {
+    assert (size_ == 0);
+    assert (buffers_ == nullptr);
+    size_ = size;
+    buffers_ = new SampleBuffer[size];
+  }
+  auto
+  take_atomically (SampleBufferVector& other)
+  {
+    auto free_function = [buffers = buffers_.load(), size = size_] () {
+      for (size_t b = 0; b < size; b++)
+        {
+          auto data = buffers[b].data.load();
+          if (data)
+            data->used--;
+        }
+      if (buffers)
+        delete[] buffers;
+    };
+
+    assert (size_ == other.size_);
+
+    buffers_ = other.buffers_.load();
+    for (size_t b = 0; b < size_; b++)
+      if (buffers_[b].data)
+        buffers_[b].data.load()->used++;
+
+    other.buffers_ = nullptr;
+    other.size_ = 0;
+    return free_function;
+  }
+  void
+  clear()
+  {
+    if (buffers_)
+      {
+        for (size_t b = 0; b < size_; b++)
+          {
+            auto data = buffers_[b].data.load();
+            if (data)
+              data->used--;
+          }
+        delete[] buffers_;
+      }
+    size_ = 0;
+    buffers_ = nullptr;
+  }
 };
 
 class SampleCache
@@ -67,7 +136,7 @@ public:
     int                         loop_start = 0;
     int                         loop_end = 0;
 
-    std::vector<std::unique_ptr<SampleBuffer>>   buffers; /* FIXME: what about same sample, different settings */
+    SampleBufferVector          buffers;
     uint                        sample_rate;
     uint                        channels;
     size_t                      n_samples = 0;
@@ -77,6 +146,8 @@ public:
     bool                        playing = false;
 
     std::string                 filename;
+
+    std::vector<std::function<void()>> free_functions;
 
     void
     update_max_buffer_index (int value)
@@ -91,14 +162,14 @@ public:
       size_t buffer_index = pos / (SampleBuffer::frames_per_buffer * channels);
       if (buffer_index < buffers.size())
         {
-          auto& buffer = *buffers[buffer_index];
+          auto& buffer = buffers[buffer_index];
           if (buffer.loaded)
             {
               update_max_buffer_index (buffer_index);
 
               size_t sample_index = pos - (buffer_index * (SampleBuffer::frames_per_buffer * channels));
 
-              SampleBuffer::DataP data = buffer.data;
+              const SampleBuffer::Data *data = buffer.data.load();
               if (data && sample_index < data->samples.size())
                 return data->samples[sample_index];
             }
@@ -202,16 +273,19 @@ public:
 
     /* preload sample data */
     sf_count_t pos = 0;
-    size_t b = 0;
+    size_t n_buffers = 0;
     while (pos < sfinfo.frames)
       {
-        new_entry->buffers.emplace_back (std::make_unique<SampleBuffer>());
-
-        if (b < 20)
-          load_buffer (new_entry, sndfile, b++);
-
+        n_buffers++;
         pos += SampleBuffer::frames_per_buffer;
       }
+    new_entry->buffers.resize (n_buffers);
+    for (size_t b = 0; b < n_buffers; b++)
+      {
+        if (b < 20)
+          load_buffer (new_entry, sndfile, b);
+      }
+
     error = sf_close (sndfile);
     if (error)
       {
@@ -225,7 +299,7 @@ public:
   void
   load_buffer (std::shared_ptr<Entry> entry, SNDFILE *sndfile, size_t b)
   {
-    auto& buffer = *entry->buffers[b];
+    auto& buffer = entry->buffers[b];
     if (buffer.loaded == 0)
       {
         sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
@@ -237,13 +311,13 @@ public:
           {
             fsamples.resize (count * entry->channels);
 
-            std::shared_ptr<SampleBuffer::Data> data (new SampleBuffer::Data, [](auto data) { data->used = 0; });
+            auto data = new SampleBuffer::Data();
             data->samples = std::move (fsamples);
             data->used = 1;
 
             buffer.data = data;
 
-            data_entries.push_back (data.get());
+            data_entries.push_back (data);
           }
         /*
          * we also set this to one if loading failed (short read) because
@@ -257,7 +331,7 @@ public:
   {
     for (size_t b = 0; b < entry->buffers.size(); b++)
       {
-        if (entry->buffers[b]->loaded == 0 && b < size_t (entry->max_buffer_index.load() + 20))
+        if (entry->buffers[b].loaded == 0 && b < size_t (entry->max_buffer_index.load() + 20))
           {
             SF_INFO sfinfo = { 0, };
             SNDFILE *sndfile = sf_open (entry->filename.c_str(), SFM_READ, &sfinfo);
@@ -300,11 +374,11 @@ public:
         auto entry = it.second.lock();
         if (entry)
           {
-            for (size_t b = 0; b < entry->buffers.size(); b++)
-              {
-                entry->buffers[b]->loaded = 0;
-                entry->buffers[b]->data = nullptr;
-              }
+            for (auto func : entry->free_functions)
+              func();
+
+            entry->free_functions.clear();
+            entry->buffers.clear();
           }
       }
 
@@ -333,17 +407,39 @@ public:
                     }
                   if (!entry->playback_count && entry->playing)
                     {
+                      SampleBufferVector new_buffers;
+                      new_buffers.resize (entry->buffers.size());
                       for (size_t b = 0; b < entry->buffers.size(); b++)
                         {
-                          if (b > 20 && entry->buffers[b]->loaded)
+                          if (b > 20 && entry->buffers[b].loaded)
                             {
-                              entry->buffers[b]->loaded = 0;
-                              entry->buffers[b]->data = nullptr;
+                              new_buffers[b].loaded = 0;
+                              new_buffers[b].data   = nullptr;
+                            }
+                          else
+                            {
+                              new_buffers[b].loaded = entry->buffers[b].loaded.load();
+                              new_buffers[b].data   = entry->buffers[b].data.load();
                             }
                         }
-                      printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
+                      auto free_function = entry->buffers.take_atomically (new_buffers);
+                      entry->free_functions.push_back (free_function);
                       entry->max_buffer_index = 0;
                       entry->playing = false;
+
+                      printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
+                    }
+                  if (!entry->playback_count)
+                    {
+                      /*
+                       * we can safely free the old data structures here because there cannot
+                       * be any threads that are reading an old version of the sample buffer vector
+                       * at this point
+                       */
+                      for (auto func : entry->free_functions)
+                        func();
+
+                      entry->free_functions.clear();
                     }
                 }
             }
