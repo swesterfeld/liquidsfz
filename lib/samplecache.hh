@@ -36,15 +36,34 @@
 namespace LiquidSFZInternal
 {
 
+class SampleCache;
+
 struct SampleBuffer
 {
   static constexpr size_t frames_per_buffer = 1000;
 
-  struct Data
+  class Data
   {
+    SampleCache *sample_cache_ = nullptr;
+    int          n_samples_ = 0;
+    int          ref_count_ = 1;
+  public:
+    Data (SampleCache *sample_cache, size_t n_samples);
+    ~Data();
+    void
+    ref()
+    {
+      ref_count_++;
+    }
+    void
+    unref()
+    {
+      ref_count_--;
+      if (ref_count_ == 0)
+        delete this;
+    }
     std::vector<float> samples;
-    std::atomic<int>   used;
-    size_t             start_n_values;
+    size_t             start_n_values = 0;
   };
 
   std::atomic<Data *> data = nullptr;
@@ -93,7 +112,7 @@ public:
         {
           auto data = buffers[b].data.load();
           if (data)
-            data->used--;
+            data->unref();
         }
       if (buffers)
         delete[] buffers;
@@ -104,7 +123,7 @@ public:
     buffers_ = other.buffers_.load();
     for (size_t b = 0; b < size_; b++)
       if (buffers_[b].data)
-        buffers_[b].data.load()->used++;
+        buffers_[b].data.load()->ref();
 
     other.buffers_ = nullptr;
     other.size_ = 0;
@@ -119,7 +138,7 @@ public:
           {
             auto data = buffers_[b].data.load();
             if (data)
-              data->used--;
+              data->unref();
           }
         delete[] buffers_;
       }
@@ -248,6 +267,7 @@ private:
   std::mutex mutex;
   std::thread loader_thread;
   std::vector<SampleBuffer::Data *> data_entries;
+  int64_t n_total_bytes = 0;
 
   bool quit_background_loader = false;
 
@@ -270,14 +290,6 @@ protected:
             it++;
           }
       }
-  }
-  void
-  remove_unused_data_entries()
-  {
-    auto is_unused = [] (SampleBuffer::Data *data) {
-      return data->used == 0;
-    };
-    data_entries.erase (std::remove_if (data_entries.begin(), data_entries.end(), is_unused), data_entries.end());
   }
 public:
   std::shared_ptr<Entry>
@@ -356,23 +368,16 @@ public:
     auto& buffer = entry->buffers[b];
     if (!buffer.data)
       {
-        auto data = new SampleBuffer::Data();
-        data->used = 1;
+        auto data = new SampleBuffer::Data (this, SampleBuffer::frames_per_buffer * entry->channels);
         data->start_n_values = b * SampleBuffer::frames_per_buffer * entry->channels;
         buffer.data = data;
         data_entries.push_back (data);
 
         sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
 
-        std::vector<float> fsamples (SampleBuffer::frames_per_buffer * entry->channels);
-
-        sf_count_t count = sf_readf_float (sndfile, &fsamples[0], fsamples.size() / entry->channels);
+        sf_count_t count = sf_readf_float (sndfile, &data->samples[0], data->samples.size() / entry->channels);
         if (count > 0)
-          {
-            fsamples.resize (count * entry->channels);
-
-            data->samples = std::move (fsamples);
-          }
+          data->samples.resize (count * entry->channels);
       }
   }
   void
@@ -394,16 +399,15 @@ public:
           }
       }
   }
+  void
+  update_size_bytes (int delta_bytes)
+  {
+    n_total_bytes += delta_bytes;
+  }
   std::string
   cache_stats()
   {
-    size_t bytes = 0;
-    for (auto data : data_entries)
-      {
-        if (data)
-          bytes += data->samples.size() * sizeof (data->samples[0]);
-      }
-    return string_printf ("cache holds %.2f MB in %zd entries", bytes / 1024. / 1024., cache.size());
+    return string_printf ("cache holds %.2f MB in %zd entries", n_total_bytes / 1024. / 1024., cache.size());
   }
 
   SampleCache()
@@ -431,7 +435,6 @@ public:
           }
       }
 
-    remove_unused_data_entries();
     remove_expired_entries();
 
     printf ("cache stats in SampleCache destructor: %s\n", cache_stats().c_str());
@@ -490,12 +493,26 @@ public:
                     }
                 }
             }
-          remove_unused_data_entries();
         }
         usleep (20 * 1000);
       }
   }
 };
+
+inline
+SampleBuffer::Data::Data (SampleCache *sample_cache, size_t n_samples) :
+  sample_cache_ (sample_cache),
+  n_samples_ (n_samples),
+  samples (n_samples)
+{
+  sample_cache_->update_size_bytes (n_samples_ * sizeof (decltype (samples)::value_type));
+}
+
+inline
+SampleBuffer::Data::~Data()
+{
+  sample_cache_->update_size_bytes (-n_samples_ * sizeof (decltype (samples)::value_type));
+}
 
 }
 
