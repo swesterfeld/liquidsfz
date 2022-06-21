@@ -33,6 +33,8 @@
 #include <sndfile.h>
 #include <unistd.h>
 
+#include "sfpool.hh"
+
 namespace LiquidSFZInternal
 {
 
@@ -268,6 +270,7 @@ private:
   std::thread loader_thread;
   std::vector<SampleBuffer::Data *> data_entries;
   int64_t n_total_bytes = 0;
+  SFPool sf_pool;
 
   bool quit_background_loader = false;
 
@@ -387,14 +390,12 @@ public:
       {
         if (!entry->buffers[b].data && b < size_t (entry->max_buffer_index.load() + 20))
           {
-            SF_INFO sfinfo = { 0, };
-            SNDFILE *sndfile = sf_open (entry->filename.c_str(), SFM_READ, &sfinfo);
+            auto sf = sf_pool.open (entry->filename);
 
-            if (sndfile)
+            if (sf->sndfile)
               {
                 printf ("loading %s / buffer %zd\n", entry->filename.c_str(), b);
-                load_buffer (entry, sndfile, b);
-                sf_close (sndfile);
+                load_buffer (entry, sf->sndfile, b);
               }
           }
       }
@@ -493,6 +494,7 @@ public:
                     }
                 }
             }
+          sf_pool.cleanup();
         }
         usleep (20 * 1000);
       }
