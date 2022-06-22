@@ -21,85 +21,59 @@
 #ifndef LIQUIDSFZ_SFPOOL_HH
 #define LIQUIDSFZ_SFPOOL_HH
 
+#include <sndfile.h>
+
+#include <string>
+#include <memory>
+#include <map>
+
+#include "utils.hh"
+
 namespace LiquidSFZInternal
 {
 
 class SFPool
 {
 public:
-  struct Entry {
-    SNDFILE *sndfile = nullptr;
-    std::string filename;
-    double time = 0;
+  /* to support virtual io read from memory */
+  struct MappedVirtualData
+  {
+    unsigned char *mem    = nullptr;
+    sf_count_t     size   = 0;
+    sf_count_t     offset = 0;
+    SF_VIRTUAL_IO  io;
+  };
 
-    ~Entry()
-    {
-      if (sndfile)
-        {
-          printf ("sf_close %s\n", filename.c_str());
-          sf_close (sndfile);
-        }
-    }
+  struct Entry
+  {
+    SNDFILE    *sndfile = nullptr;
+    SF_INFO     sfinfo = { 0, };
+    std::string filename;
+    double      time = 0;
+
+    MappedVirtualData mapped_data; // for mmap
+
+    ~Entry();
   };
   typedef std::shared_ptr<Entry> EntryP;
 
   static constexpr size_t max_fds  = 64;
   static constexpr double max_time = 30; /* seconds */
 
+#if LIQUIDSFZ_64BIT
+  static constexpr bool   use_mmap = true;
+#else
+  static constexpr bool   use_mmap = false;
+#endif
+
 private:
   std::map<std::string, EntryP> cache;
 
+  SNDFILE *mmap_open (const std::string& filename, SF_INFO *sfinfo, EntryP entry);
 public:
-  EntryP
-  open (const std::string& filename)
-  {
-    EntryP entry = cache[filename];
-    if (entry)
-      {
-        entry->time = get_time();
-        return entry;
-      }
+  EntryP open (const std::string& filename, SF_INFO *sfinfo);
+  void cleanup();
 
-    SF_INFO sf_info = { 0, };
-
-    entry = std::make_shared<Entry>();
-    entry->filename = filename;
-    entry->sndfile = sf_open (filename.c_str(), SFM_READ, &sf_info);
-    entry->time = get_time();
-    cache[filename] = entry;
-    printf ("sf_open %s -> %p\n", filename.c_str(), entry->sndfile);
-
-    cleanup(); // close old files if any
-    return entry;
-  }
-  void
-  cleanup()
-  {
-    auto close_candidates = [&]() {
-      std::vector<EntryP> close_candidates;
-
-      for (auto [ filename, entry ] : cache)
-        close_candidates.push_back (entry);
-      std::sort (close_candidates.begin(), close_candidates.end(), [] (auto& a, auto& b) { return a->time < b->time; });
-
-      return close_candidates;
-    };
-
-    /* enforce time limit */
-    double now = get_time();
-    for (auto cc : close_candidates())
-      {
-        if (fabs (cc->time - now) > max_time)
-          cache.erase (cc->filename);
-      }
-
-    /* enforce max_fds limit */
-    while (cache.size() > max_fds)
-      {
-        auto cc = close_candidates()[0];
-        cache.erase (cc->filename);
-      }
-  }
 };
 
 }

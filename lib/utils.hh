@@ -40,6 +40,14 @@
   #define LIQUIDSFZ_OS_WINDOWS 1
 #endif
 
+#if INTPTR_MAX == INT64_MAX
+  #define LIQUIDSFZ_64BIT 1 // 64-bit
+#elif INTPTR_MAX == INT32_MAX
+  #define LIQUIDSFZ_32BIT 1 // 32-bit
+#else
+  #error Unknown pointer size or missing size macros!
+#endif
+
 #include <sys/time.h>
 #include <math.h>
 

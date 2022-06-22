@@ -171,6 +171,7 @@ public:
     std::string                 filename;
 
     std::vector<std::function<void()>> free_functions;
+    SFPool::EntryP              mmap_sf;
 
     void
     update_max_buffer_index (int value)
@@ -330,8 +331,13 @@ public:
     auto new_entry = std::make_shared<Entry>();
 
     SF_INFO sfinfo = { 0, };
-    SNDFILE *sndfile = sf_open (filename.c_str(), SFM_READ, &sfinfo);
+    auto sf = sf_pool.open (filename, &sfinfo);
+    SNDFILE *sndfile = sf->sndfile;
 
+    if (!sndfile)
+      return nullptr;
+
+#if 0
     int error = sf_error (sndfile);
     if (error)
       {
@@ -341,6 +347,11 @@ public:
 
         return nullptr;
       }
+#endif
+
+    /* if we use mmap, we keep the file open */
+    if (SFPool::use_mmap)
+      new_entry->mmap_sf = sf;
 
     /* load loop points */
     SF_INSTRUMENT instrument = {0,};
@@ -376,14 +387,6 @@ public:
         if (b < 20)
           load_buffer (new_entry.get(), sndfile, b);
       }
-
-    error = sf_close (sndfile);
-    if (error)
-      {
-        printf ("error during close\n");
-        return nullptr;
-      }
-
     cache[filename] = new_entry;
     return new_entry;
   }
@@ -412,7 +415,8 @@ public:
       {
         if (!entry->buffers[b].data && b < size_t (entry->max_buffer_index.load() + 20))
           {
-            auto sf = sf_pool.open (entry->filename);
+            SF_INFO sfinfo;
+            auto sf = SFPool::use_mmap ? entry->mmap_sf : sf_pool.open (entry->filename, &sfinfo);
 
             if (sf->sndfile)
               {
