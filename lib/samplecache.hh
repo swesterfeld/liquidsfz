@@ -223,6 +223,19 @@ public:
       {
         start_playback (nullptr);
       }
+      const float *
+      get_n (size_t pos, size_t n)
+      {
+        /* usually this succeeds quickly */
+        if (last_data_ && pos >= last_data_->start_n_values)
+          {
+            size_t sample_index = pos - last_data_->start_n_values;
+            if (sample_index + n <= last_data_->samples.size())
+              return &last_data_->samples[sample_index];
+          }
+        /* but it can fail */
+        return nullptr;
+      }
       float
       get (size_t pos)
       {

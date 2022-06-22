@@ -374,8 +374,17 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   const auto csample = region_->cached_sample;
   const auto channels = csample->channels;
 
-  auto get_samples_mono = [csample, this] (uint x, auto& fsamples)
+  auto get_samples_mono = [csample, this] (uint x, auto& fsamples) -> const float *
     {
+      uint end_pos = loop_enabled_ ? region_->loop_end : csample->n_samples;
+
+      if (x + fsamples.size() <= end_pos) // usually this quicker version can be used
+        {
+          const float *f = play_handle_.get_n (x, fsamples.size());
+          if (f)
+            return f;
+        }
+
       for (uint i = 0; i < fsamples.size(); i++)
         {
           if (x >= csample->n_samples)
@@ -392,10 +401,20 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
                   x = region_->loop_start;
             }
         }
+      return &fsamples[0];
     };
 
-  auto get_samples_stereo = [csample, this] (uint x, auto& fsamples)
+  auto get_samples_stereo = [csample, this] (uint x, auto& fsamples) -> const float *
     {
+      uint end_pos = loop_enabled_ ? (region_->loop_end * 2) : csample->n_samples;
+
+      if (x + fsamples.size() <= end_pos) // usually this quicker version can be used
+        {
+          const float *f = play_handle_.get_n (x, fsamples.size());
+          if (f)
+            return f;
+        }
+
       for (uint i = 0; i < fsamples.size(); i += 2)
         {
           if (x >= csample->n_samples)
@@ -414,6 +433,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
                   x = region_->loop_start * 2;
             }
         }
+      return &fsamples[0];
     };
   /* delay start of voice for delay_samples_ frames */
   uint dframes = std::min (orig_n_frames, delay_samples_);
@@ -453,8 +473,8 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           const float amp_gain = envelope_.get_next();
           if (channels == 1)
             {
-              std::array<float, 2> fsamples;
-              get_samples_mono (x, fsamples);
+              std::array<float, 2> fsamples_stack;
+              const float *fsamples = get_samples_mono (x, fsamples_stack);
 
               const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
               out_l[i] = interp * amp_gain;
@@ -462,8 +482,8 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
             }
           else if (channels == 2)
             {
-              std::array<float, 4> fsamples;
-              get_samples_stereo (x, fsamples);
+              std::array<float, 4> fsamples_stack;
+              const float *fsamples = get_samples_stereo (x, fsamples_stack);
 
               out_l[i] = (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain;
               out_r[i] = (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain;
