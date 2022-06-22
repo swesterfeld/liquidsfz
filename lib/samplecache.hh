@@ -153,6 +153,8 @@ class SampleCache
 {
 public:
   struct Entry {
+    SampleCache                *sample_cache = nullptr;
+
     bool                        loop = false;
     int                         loop_start = 0;
     int                         loop_end = 0;
@@ -256,14 +258,17 @@ public:
     start_playback()
     {
       playback_count++;
+      sample_cache->playback_entries_need_update.store (true);
     }
 
     void
     end_playback()
     {
       playback_count--;
+      sample_cache->playback_entries_need_update.store (true);
     }
   };
+  typedef std::shared_ptr<SampleCache::Entry> EntryP;
 private:
   std::map<std::string, std::weak_ptr<Entry>> cache;
   std::mutex mutex;
@@ -271,6 +276,9 @@ private:
   std::vector<SampleBuffer::Data *> data_entries;
   int64_t n_total_bytes = 0;
   SFPool sf_pool;
+  double last_cleanup_time = 0;
+  std::vector<EntryP> playback_entries;
+  std::atomic<bool>   playback_entries_need_update = false;
 
   bool quit_background_loader = false;
 
@@ -295,12 +303,12 @@ protected:
       }
   }
 public:
-  std::shared_ptr<Entry>
+  EntryP
   load (const std::string& filename)
   {
     std::lock_guard lg (mutex);
 
-    std::shared_ptr<Entry> cached_entry = cache[filename].lock();
+    EntryP cached_entry = cache[filename].lock();
     if (cached_entry) /* already in cache? -> nothing to do */
       return cached_entry;
 
@@ -335,6 +343,7 @@ public:
               }
           }
         }
+    new_entry->sample_cache = this;
     new_entry->sample_rate = sfinfo.samplerate;
     new_entry->channels = sfinfo.channels;
     new_entry->n_samples = sfinfo.frames * sfinfo.channels;
@@ -352,7 +361,7 @@ public:
     for (size_t b = 0; b < n_buffers; b++)
       {
         if (b < 20)
-          load_buffer (new_entry, sndfile, b);
+          load_buffer (new_entry.get(), sndfile, b);
       }
 
     error = sf_close (sndfile);
@@ -366,7 +375,7 @@ public:
     return new_entry;
   }
   void
-  load_buffer (std::shared_ptr<Entry> entry, SNDFILE *sndfile, size_t b)
+  load_buffer (Entry *entry, SNDFILE *sndfile, size_t b)
   {
     auto& buffer = entry->buffers[b];
     if (!buffer.data)
@@ -384,7 +393,7 @@ public:
       }
   }
   void
-  load (std::shared_ptr<Entry> entry)
+  load (Entry *entry)
   {
     for (size_t b = 0; b < entry->buffers.size(); b++)
       {
@@ -394,11 +403,94 @@ public:
 
             if (sf->sndfile)
               {
-                printf ("loading %s / buffer %zd\n", entry->filename.c_str(), b);
+                //printf ("loading %s / buffer %zd\n", entry->filename.c_str(), b);
                 load_buffer (entry, sf->sndfile, b);
               }
           }
       }
+  }
+  void
+  load_data_for_playback_entries()
+  {
+    if (playback_entries_need_update.load())
+      {
+        playback_entries_need_update.store (false);
+
+        playback_entries.clear();
+        for (const auto& [key, value] : cache)
+          {
+            auto entry = value.lock();
+            if (entry)
+              {
+                if (entry->playback_count.load())
+                  {
+                    playback_entries.push_back (entry);
+                    entry->playing = true;
+                  }
+              }
+          }
+      }
+    for (const auto& entry : playback_entries)
+      load (entry.get());
+  }
+  void
+  unload (Entry *entry)
+  {
+    SampleBufferVector new_buffers;
+    new_buffers.resize (entry->buffers.size());
+    for (size_t b = 0; b < entry->buffers.size(); b++)
+    {
+        if (b > 20)
+          {
+            new_buffers[b].data   = nullptr;
+          }
+        else
+          {
+            new_buffers[b].data   = entry->buffers[b].data.load();
+          }
+      }
+    auto free_function = entry->buffers.take_atomically (new_buffers);
+    entry->free_functions.push_back (free_function);
+
+  }
+  void
+  cleanup_unused_data()
+  {
+    double now = get_time();
+    if (fabs (now - last_cleanup_time) < 0.5)
+      return;
+    last_cleanup_time = now;
+    for (const auto& [key, value] : cache)
+      {
+        auto entry = value.lock();
+        if (entry)
+          {
+            if (!entry->playback_count.load())
+              {
+                if (entry->playing)
+                  {
+                    unload (entry.get());
+                    // printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
+
+                    entry->max_buffer_index = 0;
+                    entry->playing = false;
+                  }
+              }
+            if (!entry->playback_count.load()) // need to repeat this check to be sure no new readers exist
+              {
+                /*
+                 * we can safely free the old data structures here because there cannot
+                 * be any threads that are reading an old version of the sample buffer vector
+                 * at this point
+                 */
+                for (auto func : entry->free_functions)
+                  func();
+
+                entry->free_functions.clear();
+              }
+          }
+      }
+    sf_pool.cleanup();
   }
   void
   update_size_bytes (int delta_bytes)
@@ -440,7 +532,6 @@ public:
 
     printf ("cache stats in SampleCache destructor: %s\n", cache_stats().c_str());
   }
-
   void
   background_loader()
   {
@@ -448,53 +539,10 @@ public:
       {
         {
           std::lock_guard lg (mutex);
-          for (auto it : cache)
-            {
-              auto entry = it.second.lock();
-              if (entry)
-                {
-                  if (entry->playback_count)
-                    {
-                      load (entry);
-                      entry->playing = true;
-                    }
-                  if (!entry->playback_count && entry->playing)
-                    {
-                      SampleBufferVector new_buffers;
-                      new_buffers.resize (entry->buffers.size());
-                      for (size_t b = 0; b < entry->buffers.size(); b++)
-                        {
-                          if (b > 20)
-                            {
-                              new_buffers[b].data   = nullptr;
-                            }
-                          else
-                            {
-                              new_buffers[b].data   = entry->buffers[b].data.load();
-                            }
-                        }
-                      auto free_function = entry->buffers.take_atomically (new_buffers);
-                      entry->free_functions.push_back (free_function);
-                      entry->max_buffer_index = 0;
-                      entry->playing = false;
 
-                      printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
-                    }
-                  if (!entry->playback_count)
-                    {
-                      /*
-                       * we can safely free the old data structures here because there cannot
-                       * be any threads that are reading an old version of the sample buffer vector
-                       * at this point
-                       */
-                      for (auto func : entry->free_functions)
-                        func();
+          load_data_for_playback_entries();
+          cleanup_unused_data();
 
-                      entry->free_functions.clear();
-                    }
-                }
-            }
-          sf_pool.cleanup();
         }
         usleep (20 * 1000);
       }
