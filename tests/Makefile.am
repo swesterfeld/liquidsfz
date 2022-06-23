@@ -29,3 +29,9 @@ testmidnam_LDADD = $(LIQUIDSFZ_LIBS)
 
 testfilter_SOURCES = testfilter.cc
 testfilter_LDADD = $(LIQUIDSFZ_LIBS)
+
+if COND_WITH_FFTW
+noinst_PROGRAMS += testupsample
+testupsample_SOURCES = testupsample.cc
+testupsample_LDADD = $(LIQUIDSFZ_LIBS) $(FFTW_LIBS)
+endif
