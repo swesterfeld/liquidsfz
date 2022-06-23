@@ -40,6 +40,8 @@ class Voice
     const FilterParams *params;
   } fimpl_, fimpl2_;
 
+  SampleCache::Entry::PlayHandle play_handle_;
+
   Envelope filter_envelope_;
   float    filter_envelope_depth_ = 0;
 

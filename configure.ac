@@ -99,10 +99,12 @@ AC_SUBST(STATIC_CXX_LDFLAGS)
 # need c++17 mode
 AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 
-# use -Wall
+# use -Wall / -pthread if available
 AC_LANG_PUSH([C++])
 AX_CHECK_COMPILE_FLAG([-Wall], [CXXFLAGS="$CXXFLAGS -Wall"])
+AX_CHECK_COMPILE_FLAG([-pthread], [CXXFLAGS="$CXXFLAGS -pthread"])
 AC_LANG_POP([C++])
+
 
 # Less cluttered build output
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
