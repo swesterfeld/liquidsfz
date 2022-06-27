@@ -141,10 +141,12 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   envelope_.start (region, sample_rate_);
 
   state_ = ACTIVE;
-  play_handle_.start_playback (region.cached_sample.get());
+
+  play_handle_.start_playback (region.cached_sample.get(), synth_->live_mode());
   sample_reader_.restart (&play_handle_, region.cached_sample.get());
   if (loop_enabled_)
     sample_reader_.set_loop (region.loop_start, region.loop_end);
+
   synth_->debug ("location %s\n", region.location.c_str());
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
 

@@ -185,16 +185,17 @@ public:
     private:
       Entry *entry_                        = nullptr;
       const SampleBuffer::Data *last_data_ = nullptr;
+      bool                      live_mode_ = false;
 
     public:
       PlayHandle (const PlayHandle& p)
       {
-        start_playback (p.entry_);
+        start_playback (p.entry_, p.live_mode_);
       }
       PlayHandle&
       operator= (const PlayHandle& p)
       {
-        start_playback (p.entry_);
+        start_playback (p.entry_, p.live_mode_);
         return *this;
       }
       PlayHandle()
@@ -205,7 +206,7 @@ public:
         end_playback();
       }
       void
-      start_playback (Entry *entry)
+      start_playback (Entry *entry, bool live_mode)
       {
         if (entry != entry_)
           {
@@ -218,11 +219,12 @@ public:
 
             last_data_ = nullptr;
           }
+        live_mode_ = live_mode;
       }
       void
       end_playback()
       {
-        start_playback (nullptr);
+        start_playback (nullptr, live_mode_);
       }
       const float *
       get_n (size_t pos, size_t n)
@@ -254,8 +256,30 @@ public:
 
         if (buffer_index < int (entry_->buffers.size()))
           {
-            const SampleBuffer::Data *data = entry_->buffers[buffer_index].data;
+            const SampleBuffer::Data *data = entry_->buffers[buffer_index].data.load();
+
+            if (!live_mode_)
+              {
+                /* when not in live mode, we need to block until the background thread has completed
+                 *  - loading the block
+                 *  - resampling the block (if oversampling is active)
+                 */
+                bool loaded = false;
+                while (!loaded)
+                  {
+                    if (data)
+                      {
+                        loaded = true;
+                      }
+                    else
+                      {
+                        usleep (20 * 1000); // FIXME: may want to synchronize without sleeping
+                        data = entry_->buffers[buffer_index].data.load();
+                      }
+                  }
+              }
             last_data_ = data;
+
             if (data)
               {
                 size_t sample_index = pos - data->start_n_values;
