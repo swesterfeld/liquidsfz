@@ -4,7 +4,7 @@ AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
 noinst_PROGRAMS = testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter
 
-EXTRA_DIST = gen-upsample.py
+EXTRA_DIST = gen-upsample.py testupsample.sfz
 
 testliquid_SOURCES = testliquid.cc
 testliquid_LDADD = $(LIQUIDSFZ_LIBS)
