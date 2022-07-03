@@ -558,7 +558,7 @@ float
 SampleReader::get (int x)
 {
   int sub_pos = relative_pos_ & 1;
-  if (CHANNEL == 1)
+  if (CHANNEL == 0)
     return left_[x + sub_pos];
   else
     return right_[x + sub_pos];
@@ -579,19 +579,26 @@ SampleReader::skip_to (int pos)
         }
     }
 
-  auto f = [this] (int x) -> float
+  const int N = 30;
+  float input[N * 2 * channels_];
+  for (int n = 0; n < N * 2 * channels_; n++)
     {
+      int x = (relative_pos_ / 2 * channels_) + (n - N * channels_);
       if (x >= 0)
-        return play_handle_->get (x);
+        input[n] = play_handle_->get (x);
       else
-        return 0.f;
+        input[n] = 0;
+    }
+  auto f = [&] (int x) -> float
+    {
+      return input[x + N * channels_];
     };
-  upsample (f, left_,      (relative_pos_ / 2) * channels_);
-  upsample (f, left_ + 2,  (relative_pos_ / 2 + 1) * channels_);
+  upsample (f, left_,      0);
+  upsample (f, left_ + 2,  channels_);
   if (channels_ == 2)
     {
-      upsample (f, right_,     (relative_pos_ / 2) * channels_ + 1);
-      upsample (f, right_ + 2, (relative_pos_ / 2 + 1) * channels_ + 1);
+      upsample (f, right_,     channels_ + 1);
+      upsample (f, right_ + 2, channels_ + 3);
     }
 }
 
