@@ -37,6 +37,8 @@ class SampleReader
   int channels_ = 0;
   int loop_start_ = -1;
   int loop_end_ = -1;
+  float left_[4];
+  float right_[4];
 public:
   void
   restart (SampleCache::Entry::PlayHandle *play_handle, const SampleCache::Entry *cached_sample)

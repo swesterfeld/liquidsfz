@@ -24,6 +24,7 @@
 
 #include "voice.hh"
 #include "synth.hh"
+#include "upsample.hh"
 
 using namespace LiquidSFZInternal;
 
@@ -441,7 +442,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           out_l[i] = 0;
           out_r[i] = 0;
         }
-      ppos_ += replay_speed_.get_next() * lfo_pitch[i];
+      ppos_ += replay_speed_.get_next() * lfo_pitch[i] * 2;
     }
 
   /* process filters */
@@ -554,14 +555,13 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
 
 template<int CHANNEL>
 float
-SampleReader::get (int pos)
+SampleReader::get (int x)
 {
-  int sample_index = (pos + relative_pos_) * channels_ + CHANNEL;
-
-  if (sample_index >= 0)
-    return play_handle_->get (sample_index);
+  int sub_pos = relative_pos_ & 1;
+  if (CHANNEL == 1)
+    return left_[x + sub_pos];
   else
-    return 0;
+    return right_[x + sub_pos];
 }
 
 void
@@ -573,15 +573,30 @@ SampleReader::skip_to (int pos)
 
   if (loop_start_ >= 0)
     {
-      while (relative_pos_ > loop_end_)
+      while (relative_pos_ > loop_end_ * 2)
         {
-          relative_pos_ -= loop_end_ - loop_start_ + 1;
+          relative_pos_ -= (loop_end_ - loop_start_ + 1) * 2;
         }
+    }
+
+  auto f = [this] (int x) -> float
+    {
+      if (x >= 0)
+        return play_handle_->get (x);
+      else
+        return 0.f;
+    };
+  upsample (f, left_,      (relative_pos_ / 2) * channels_);
+  upsample (f, left_ + 2,  (relative_pos_ / 2 + 1) * channels_);
+  if (channels_ == 2)
+    {
+      upsample (f, right_,     (relative_pos_ / 2) * channels_ + 1);
+      upsample (f, right_ + 2, (relative_pos_ / 2 + 1) * channels_ + 1);
     }
 }
 
 bool
 SampleReader::done()
 {
-  return relative_pos_ * channels_ > int (cached_sample_->n_samples + 4 * channels_);
+  return relative_pos_ / 2 * channels_ > int (cached_sample_->n_samples + 4 * channels_);
 }
