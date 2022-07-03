@@ -37,6 +37,8 @@ class SampleReader
   int channels_ = 0;
   int loop_start_ = -1;
   int loop_end_ = -1;
+  int index1_ = -1;
+  int index2_ = -1;
   float left_[4];
   float right_[4];
 public:
@@ -49,6 +51,7 @@ public:
     play_handle_ = play_handle;
     cached_sample_ = cached_sample;
     loop_start_ = loop_end_ = -1;
+    index1_ = index2_ = -1;
   }
   void
   set_loop (int loop_start, int loop_end)

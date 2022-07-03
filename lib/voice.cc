@@ -579,27 +579,65 @@ SampleReader::skip_to (int pos)
         }
     }
 
-  const int N = 30;
-  float input[N * 2 * channels_];
-  for (int n = 0; n < N * 2 * channels_; n++)
+  const int N = 24;
+  const float *input = nullptr;
+  int start_x = (relative_pos_ / 2 * channels_) - N * channels_;
+  if (start_x >= 0)
+    input = play_handle_->get_n (start_x, N * 2 * channels_);
+
+  float input_stack[N * 2 * channels_];
+  if (!input)
     {
-      int x = (relative_pos_ / 2 * channels_) + (n - N * channels_);
-      if (x >= 0)
-        input[n] = play_handle_->get (x);
-      else
-        input[n] = 0;
+      for (int n = 0; n < N * 2 * channels_; n++)
+        {
+          int x = start_x + n;
+          if (x >= 0)
+            input_stack[n] = play_handle_->get (x);
+          else
+            input_stack[n] = 0;
+        }
+      input = input_stack;
     }
+  input += N * channels_;
   auto f = [&] (int x) -> float
     {
-      return input[x + N * channels_];
+      return input[x];
     };
-  upsample (f, left_,      0);
-  upsample (f, left_ + 2,  channels_);
-  if (channels_ == 2)
+  int new_index1 = relative_pos_ / 2;
+  if (new_index1 == index1_)
     {
-      upsample (f, right_,     channels_ + 1);
-      upsample (f, right_ + 2, channels_ + 3);
+      // keep
     }
+  else if (new_index1 == index2_)
+    {
+      // move
+      for (int i = 0; i < 2; i++)
+        {
+          left_[i] = left_[i + 2];
+          right_[i] = right_[i + 2];
+        }
+    }
+  else
+    {
+      upsample (f, left_, 0);
+
+      if (channels_ == 2)
+        upsample (f, right_, channels_ + 1);
+    }
+  index1_ = new_index1;
+
+  int new_index2 = relative_pos_ / 2 + 1;
+  if (new_index2 == index2_)
+    {
+      // keep
+    }
+  else
+    {
+      upsample (f, left_ + 2,  channels_);
+      if (channels_ == 2)
+        upsample (f, right_ + 2, channels_ + 3);
+    }
+  index2_ = new_index2;
 }
 
 bool
