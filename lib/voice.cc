@@ -599,10 +599,11 @@ SampleReader::skip_to (int pos)
       input = input_stack;
     }
   input += N * channels_;
-  auto f = [&] (int x) -> float
-    {
-      return input[x];
-    };
+
+  auto func_mono  = [&] (int x) -> float { return input[x]; };
+  auto func_left  = [&] (int x) -> float { return input[x * 2]; };
+  auto func_right = [&] (int x) -> float { return input[x * 2 + 1]; };
+
   int new_index1 = relative_pos_ / 2;
   if (new_index1 == index1_)
     {
@@ -619,10 +620,15 @@ SampleReader::skip_to (int pos)
     }
   else
     {
-      upsample (f, left_, 0);
-
+      if (channels_ == 1)
+        {
+          upsample (func_mono,  left_, 0);
+        }
       if (channels_ == 2)
-        upsample (f, right_, channels_ + 1);
+        {
+          upsample (func_left,  left_, 0);
+          upsample (func_right, right_, 0);
+        }
     }
   index1_ = new_index1;
 
@@ -633,9 +639,17 @@ SampleReader::skip_to (int pos)
     }
   else
     {
-      upsample (f, left_ + 2,  channels_);
+      input += channels_;
+
+      if (channels_ == 1)
+        {
+          upsample (func_mono,  left_ + 2, 0);
+        }
       if (channels_ == 2)
-        upsample (f, right_ + 2, channels_ + 3);
+        {
+          upsample (func_left,  left_ + 2, 0);
+          upsample (func_right, right_ + 2, 0);
+        }
     }
   index2_ = new_index2;
 }
