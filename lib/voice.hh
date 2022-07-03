@@ -28,6 +28,39 @@
 namespace LiquidSFZInternal
 {
 
+class SampleReader
+{
+  SampleCache::Entry::PlayHandle *play_handle_ = nullptr;
+  const SampleCache::Entry *cached_sample_ = nullptr;
+  int relative_pos_ = 0;
+  int last_pos_ = 0;
+  int channels_ = 0;
+  int loop_start_ = -1;
+  int loop_end_ = -1;
+public:
+  void
+  restart (SampleCache::Entry::PlayHandle *play_handle, const SampleCache::Entry *cached_sample)
+  {
+    relative_pos_ = 0;
+    last_pos_ = 0;
+    channels_ = cached_sample->channels;
+    play_handle_ = play_handle;
+    cached_sample_ = cached_sample;
+    loop_start_ = loop_end_ = -1;
+  }
+  void
+  set_loop (int loop_start, int loop_end)
+  {
+    loop_start_ = loop_start;
+    loop_end_ = loop_end;
+  }
+
+  template<int CHANNEL>
+  float get (int pos);
+  void skip_to (int pos);
+  bool done();
+};
+
 class Voice
 {
   LinearSmooth left_gain_;
@@ -71,6 +104,8 @@ class Voice
 
   LinearSmooth replay_speed_;
   float        pitch_bend_value_ = 0; // [-1:1]
+
+  SampleReader sample_reader_;
 
   void set_pitch_bend (int value);
   void update_replay_speed (bool now);

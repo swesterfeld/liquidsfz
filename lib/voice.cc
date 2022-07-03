@@ -142,6 +142,9 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 
   state_ = ACTIVE;
   play_handle_.start_playback (region.cached_sample.get());
+  sample_reader_.restart (&play_handle_, region.cached_sample.get());
+  if (loop_enabled_)
+    sample_reader_.set_loop (region.loop_start, region.loop_end);
   synth_->debug ("location %s\n", region.location.c_str());
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
 
@@ -374,67 +377,6 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   const auto csample = region_->cached_sample;
   const auto channels = csample->channels;
 
-  auto get_samples_mono = [csample, this] (uint x, auto& fsamples) -> const float *
-    {
-      uint end_pos = loop_enabled_ ? region_->loop_end : csample->n_samples;
-
-      if (x + fsamples.size() <= end_pos) // usually this quicker version can be used
-        {
-          const float *f = play_handle_.get_n (x, fsamples.size());
-          if (f)
-            return f;
-        }
-
-      for (uint i = 0; i < fsamples.size(); i++)
-        {
-          if (x >= csample->n_samples)
-            {
-              fsamples[i] = 0;
-            }
-          else
-            {
-              fsamples[i] = play_handle_.get (x);
-              x++;
-
-              if (loop_enabled_)
-                if (x > uint (region_->loop_end))
-                  x = region_->loop_start;
-            }
-        }
-      return &fsamples[0];
-    };
-
-  auto get_samples_stereo = [csample, this] (uint x, auto& fsamples) -> const float *
-    {
-      uint end_pos = loop_enabled_ ? (region_->loop_end * 2) : csample->n_samples;
-
-      if (x + fsamples.size() <= end_pos) // usually this quicker version can be used
-        {
-          const float *f = play_handle_.get_n (x, fsamples.size());
-          if (f)
-            return f;
-        }
-
-      for (uint i = 0; i < fsamples.size(); i += 2)
-        {
-          if (x >= csample->n_samples)
-            {
-              fsamples[i]     = 0;
-              fsamples[i + 1] = 0;
-            }
-          else
-            {
-              fsamples[i]     = play_handle_.get (x);
-              fsamples[i + 1] = play_handle_.get (x + 1);
-              x += 2;
-
-              if (loop_enabled_)
-                if (x > uint (region_->loop_end * 2))
-                  x = region_->loop_start * 2;
-            }
-        }
-      return &fsamples[0];
-    };
   /* delay start of voice for delay_samples_ frames */
   uint dframes = std::min (orig_n_frames, delay_samples_);
   delay_samples_ -= dframes;
@@ -465,28 +407,23 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
 
   for (uint i = 0; i < n_frames; i++)
     {
-      const uint ii = ppos_;
-      const uint x = ii * channels;
-      const float frac = ppos_ - ii;
-      if (x < csample->n_samples && !envelope_.done())
+      if (!sample_reader_.done() && !envelope_.done())
         {
+          const uint ii = ppos_;
+          const float frac = ppos_ - ii;
+          sample_reader_.skip_to (ii);
+
           const float amp_gain = envelope_.get_next();
           if (channels == 1)
             {
-              std::array<float, 2> fsamples_stack;
-              const float *fsamples = get_samples_mono (x, fsamples_stack);
-
-              const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
+              const float interp = sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac;
               out_l[i] = interp * amp_gain;
               out_r[i] = interp * amp_gain;
             }
           else if (channels == 2)
             {
-              std::array<float, 4> fsamples_stack;
-              const float *fsamples = get_samples_stereo (x, fsamples_stack);
-
-              out_l[i] = (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain;
-              out_r[i] = (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain;
+              out_l[i] = (sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac) * amp_gain;
+              out_r[i] = (sample_reader_.get<1> (0) * (1 - frac) + sample_reader_.get<1> (1) * frac) * amp_gain;
             }
           else
             {
@@ -503,9 +440,6 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           out_r[i] = 0;
         }
       ppos_ += replay_speed_.get_next() * lfo_pitch[i];
-      if (loop_enabled_)
-        while (ppos_ > region_->loop_end)
-          ppos_ -= (region_->loop_end - region_->loop_start);
     }
 
   /* process filters */
@@ -614,4 +548,38 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
             });
         }
     }
+}
+
+template<int CHANNEL>
+float
+SampleReader::get (int pos)
+{
+  int sample_index = (pos + relative_pos_) * channels_ + CHANNEL;
+
+  if (sample_index >= 0)
+    return play_handle_->get (sample_index);
+  else
+    return 0;
+}
+
+void
+SampleReader::skip_to (int pos)
+{
+  assert (pos >= last_pos_);
+  relative_pos_ += pos - last_pos_;
+  last_pos_ = pos;
+
+  if (loop_start_ >= 0)
+    {
+      while (relative_pos_ > loop_end_)
+        {
+          relative_pos_ -= loop_end_ - loop_start_ + 1;
+        }
+    }
+}
+
+bool
+SampleReader::done()
+{
+  return relative_pos_ * channels_ > int (cached_sample_->n_samples + 4 * channels_);
 }
