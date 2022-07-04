@@ -55,7 +55,7 @@ main (int argc, char **argv)
 {
   if (argc == 2 && string (argv[1]) == "synth")
     {
-      //float freq = atof (argv[1]);
+      //float freq = atof (argv[2]);
       for (float freq = 50; freq < 22050; freq += 25)
         {
           auto f = [freq] (int x) -> float { return sin (x * 2 * M_PI * freq / 44100); };
@@ -70,8 +70,14 @@ main (int argc, char **argv)
 
           vector<float> samples;
           int n = 4096 * 4;
+          double window_weight = 0;
           for (int i = 0; i < n; i++)
-            samples.push_back (f (i));
+            {
+              const double wsize_2 = n / 2;
+              const double w = window_blackman_harris_92 ((i - wsize_2) / wsize_2);
+              window_weight += w;
+              samples.push_back (f (i) * w);
+            }
 
           sf_count_t count = sf_writef_float (sndfile, &samples[0], samples.size());
           assert (count == sf_count_t (samples.size()));
@@ -93,17 +99,8 @@ main (int argc, char **argv)
           synth.add_event_note_on (0, 0, 60, 127);
           synth.process (outputs, out_size);
 
-          int n_up = n * 96000. / 44100;
-          double window_weight = 0;
-            for (int i = 0; i < n_up; i++)
-              {
-                const double wsize_2 = n_up / 2;
-                const double w = window_blackman_harris_92 ((i - wsize_2) / wsize_2);
-                out[i] *= w;
-                window_weight += w;
-              }
-            for (auto& x : out)
-              x *= 2 / window_weight;
+          for (auto& x : out)
+            x *= 2 / window_weight * 44100 / 96000;
 
           // zero pad
           vector<float> padded (out);
