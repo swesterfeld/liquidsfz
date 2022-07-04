@@ -404,6 +404,22 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   if (!lfo_volume)
     lfo_volume = synth_->const_block_1();
 
+  // from: Polynomial Interpolators for High-Quality Resampling of Oversampled Audio
+  // by Olli Niemitalo in October 2001
+  auto optimal_2x_4p = [] (float ym1, float y0, float y1, float y2, float frac) -> float
+  {
+    // Optimal 2x (4-point, 4th-order) (z-form)
+    float z = frac - 0.5f;
+    float even1 = y1+y0, odd1 = y1-y0;
+    float even2 = y2+ym1, odd2 = y2-ym1;
+    float c0 = even1*0.45645918406487612f + even2*0.04354173901996461f;
+    float c1 = odd1*0.47236675362442071f + odd2*0.17686613581136501f;
+    float c2 = even1*-0.253674794204558521f + even2*0.25371918651882464f;
+    float c3 = odd1*-0.37917091811631082f + odd2*0.11952965967158000f;
+    float c4 = even1*0.04252164479749607f + even2*-0.04289144034653719f;
+    return (((c4*z+c3)*z+c2)*z+c1)*z+c0;
+  };
+
   /* render voice */
   float out_l[n_frames];
   float out_r[n_frames];
@@ -419,14 +435,37 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           const float amp_gain = envelope_.get_next();
           if (channels == 1)
             {
+#if 0
               const float interp = sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac;
+#endif
+              const float interp = optimal_2x_4p (sample_reader_.get<0> (-1),
+                                                  sample_reader_.get<0> (0),
+                                                  sample_reader_.get<0> (1),
+                                                  sample_reader_.get<0> (2),
+                                                  frac);
               out_l[i] = interp * amp_gain;
               out_r[i] = interp * amp_gain;
             }
           else if (channels == 2)
             {
-              out_l[i] = (sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac) * amp_gain;
-              out_r[i] = (sample_reader_.get<1> (0) * (1 - frac) + sample_reader_.get<1> (1) * frac) * amp_gain;
+              if (0)
+                {
+                  out_l[i] = (sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac) * amp_gain;
+                  out_r[i] = (sample_reader_.get<1> (0) * (1 - frac) + sample_reader_.get<1> (1) * frac) * amp_gain;
+                }
+              else
+                {
+                  out_l[i] = optimal_2x_4p (sample_reader_.get<0> (-1),
+                                            sample_reader_.get<0> (0),
+                                            sample_reader_.get<0> (1),
+                                            sample_reader_.get<0> (2),
+                                            frac) * amp_gain;
+                  out_r[i] = optimal_2x_4p (sample_reader_.get<1> (-1),
+                                            sample_reader_.get<1> (0),
+                                            sample_reader_.get<1> (1),
+                                            sample_reader_.get<1> (2),
+                                            frac) * amp_gain;
+                }
             }
           else
             {
@@ -558,10 +597,11 @@ float
 SampleReader::get (int x)
 {
   int sub_pos = relative_pos_ & 1;
+  // FIXME: check offset for correct time alignment
   if (CHANNEL == 0)
-    return left_[x + sub_pos];
+    return left_[2 + x + sub_pos];
   else
-    return right_[x + sub_pos];
+    return right_[2 + x + sub_pos];
 }
 
 void
@@ -604,54 +644,48 @@ SampleReader::skip_to (int pos)
   auto func_left  = [&] (int x) -> float { return input[x * 2]; };
   auto func_right = [&] (int x) -> float { return input[x * 2 + 1]; };
 
-  int new_index1 = relative_pos_ / 2;
-  if (new_index1 == index1_)
+  for (int i = 0; i < 4; i++)
     {
-      // keep
-    }
-  else if (new_index1 == index2_)
-    {
-      // move
-      for (int i = 0; i < 2; i++)
-        {
-          left_[i] = left_[i + 2];
-          right_[i] = right_[i + 2];
-        }
-    }
-  else
-    {
-      if (channels_ == 1)
-        {
-          upsample (func_mono,  left_, 0);
-        }
-      if (channels_ == 2)
-        {
-          upsample (func_left,  left_, 0);
-          upsample (func_right, right_, 0);
-        }
-    }
-  index1_ = new_index1;
+      bool need_upsample = true;
 
-  int new_index2 = relative_pos_ / 2 + 1;
-  if (new_index2 == index2_)
-    {
-      // keep
-    }
-  else
-    {
-      input += channels_;
-
-      if (channels_ == 1)
+      int new_index = relative_pos_ / 2 + i;
+      if (new_index == index_[i])
         {
-          upsample (func_mono,  left_ + 2, 0);
+          /* cheap: samples are still correct */
+          need_upsample = false;
         }
-      if (channels_ == 2)
+      else
         {
-          upsample (func_left,  left_ + 2, 0);
-          upsample (func_right, right_ + 2, 0);
+          for (int j = i + 1; j < 4; j++)
+            {
+              if (new_index == index_[j])
+                {
+                  /* cheap: already upsampled this before, so we can move the samples to a new location */
+                  for (int k = 0; k < 2; k++)
+                    {
+                      left_[i * 2 + k] = left_[j * 2 + k];
+                      right_[i * 2 + k] = right_[j * 2 + k];
+                    }
+                  need_upsample = false;
+                  break;
+                }
+            }
         }
+      if (need_upsample)
+        {
+          /* expensive: we need to really upsample something here */
+          if (channels_ == 1)
+            {
+              upsample (func_mono,  &left_[2 * i], i - 1);
+            }
+          else
+            {
+              upsample (func_left,  &left_[2 * i], i - 1);
+              upsample (func_right, &right_[2 * i], i - 1);
+            }
+        }
+      index_[i] = new_index;
     }
-  index2_ = new_index2;
 }
 
 bool
