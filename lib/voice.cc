@@ -640,10 +640,6 @@ SampleReader::skip_to (int pos)
     }
   input += N * channels_;
 
-  auto func_mono  = [&] (int x) -> float { return input[x]; };
-  auto func_left  = [&] (int x) -> float { return input[x * 2]; };
-  auto func_right = [&] (int x) -> float { return input[x * 2 + 1]; };
-
   for (int i = 0; i < 4; i++)
     {
       bool need_upsample = true;
@@ -676,12 +672,16 @@ SampleReader::skip_to (int pos)
           /* expensive: we need to really upsample something here */
           if (channels_ == 1)
             {
-              upsample (func_mono,  &left_[2 * i], i - 1);
+              upsample<1> (&input[i - 1],  &left_[2 * i]);
             }
           else
             {
-              upsample (func_left,  &left_[2 * i], i - 1);
-              upsample (func_right, &right_[2 * i], i - 1);
+              float tmp[4];
+              upsample<2> (&input[i - 2], tmp);
+              left_[2 * i] = tmp[0];
+              right_[2 * i] = tmp[1];
+              left_[2 * i + 1] = tmp[2];
+              right_[2 * i + 1] = tmp [3];
             }
         }
       index_[i] = new_index;
