@@ -133,10 +133,15 @@ main (int argc, char **argv)
         {
           auto f = [freq] (int x) -> float { return sin (x * 2 * M_PI * freq / 44100); };
 
+          const int N = 64; // upsample can access samples with negative index
           int n = 4096 * 4;
+          vector<float> in (n + 2 * N);
+          for (int i = 0; i < n + 2 * N; i++)
+            in[i] = f (i - N);
+
           vector<float> out (n * 2);
           for (int i = 0; i < n; i++)
-            upsample (f, &out[i * 2], i);
+            upsample<1> (&in[i + N], &out[i * 2]);
 
           double window_weight = 0;
           for (int i = 0; i < n * 2; i++)
