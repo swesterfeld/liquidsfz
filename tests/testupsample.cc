@@ -58,10 +58,13 @@ main (int argc, char **argv)
       //float freq = atof (argv[2]);
       for (float freq = 50; freq < 22050; freq += 25)
         {
-          auto f = [freq] (int x) -> float { return sin (x * 2 * M_PI * freq / 44100); };
+          static constexpr int RATE_FROM = 44100;
+          static constexpr int RATE_TO = 96000;
+
+          auto f = [freq] (int x) -> float { return sin (x * 2 * M_PI * freq / RATE_FROM); };
 
           SF_INFO sfinfo = {0,};
-          sfinfo.samplerate = 44100;
+          sfinfo.samplerate = RATE_FROM;
           sfinfo.channels = 1;
           sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
 
@@ -84,7 +87,7 @@ main (int argc, char **argv)
           sf_close (sndfile);
 
           LiquidSFZ::Synth synth;
-          synth.set_sample_rate (96000);
+          synth.set_sample_rate (RATE_TO);
           synth.set_live_mode (false);
           if (!synth.load ("testupsample.sfz"))
             {
@@ -100,7 +103,7 @@ main (int argc, char **argv)
           synth.process (outputs, out_size);
 
           for (auto& x : out)
-            x *= 2 / window_weight * 44100 / 96000;
+            x *= 2 / window_weight * RATE_FROM / RATE_TO;
 
           // zero pad
           vector<float> padded (out);
@@ -114,7 +117,7 @@ main (int argc, char **argv)
               auto re = out_fft[i];
               auto im = out_fft[i + 1];
               auto amp = sqrt (re * re + im * im);
-              auto norm_freq = 96000. / 2 * i / padded.size();
+              auto norm_freq = RATE_TO / 2.0 * i / padded.size();
               //printf ("%f %f\n", norm_freq, db (amp));
               if (fabs (norm_freq - freq) < 20)
                 pass = std::max (pass, amp);
