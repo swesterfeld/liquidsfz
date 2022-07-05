@@ -15,6 +15,12 @@
 - make playhandle point to float rather than data object
 - unload should be a bit later
 
+- fix interpolation for samples close to loop boundary
+- use overlapping pages in sample cache
+- start_pos_ / end_pos_ in play handle
+- make quality configurable
+- implement voice killing
+
 maybe:
 - aria xml index
 - maintain active voice list
