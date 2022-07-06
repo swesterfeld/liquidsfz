@@ -35,6 +35,7 @@ class SampleReader
   int relative_pos_ = 0;
   int end_pos_ = 0;
   int last_pos_ = 0;
+  int sub_pos_ = 0; // FIXME: remove me
   int channels_ = 0;
   int loop_start_ = -1;
   int loop_end_ = -1;
@@ -43,12 +44,12 @@ class SampleReader
   std::array<int, 4> index_;
 public:
   void
-  restart (SampleCache::Entry::PlayHandle *play_handle, const SampleCache::Entry *cached_sample)
+  restart (SampleCache::Entry::PlayHandle *play_handle, const SampleCache::Entry *cached_sample, int upsample)
   {
     channels_ = cached_sample->channels;
     relative_pos_ = 0;
     last_pos_ = 0;
-    end_pos_ = (cached_sample->n_samples / channels_ + 32) * 2;
+    end_pos_ = (cached_sample->n_samples / channels_ + 32) * upsample;
     play_handle_ = play_handle;
     cached_sample_ = cached_sample;
     loop_start_ = loop_end_ = -1;
@@ -65,6 +66,8 @@ public:
 
   template<int CHANNEL>
   float get (int pos);
+
+  template<int UPSAMPLE, int CHANNELS>
   void skip_to (int pos);
 
   bool
@@ -119,6 +122,7 @@ class Voice
   float        pitch_bend_value_ = 0; // [-1:1]
 
   SampleReader sample_reader_;
+  uint         upsample_ = 0;
 
   void set_pitch_bend (int value);
   void update_replay_speed (bool now);
@@ -158,6 +162,8 @@ public:
   void stop (OffMode off_mode);
   void kill();
   void process (float **outputs, uint n_frames);
+  template<int UPSAMPLE, int CHANNELS>
+  void process_impl (float **outputs, uint n_frames);
   void process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames, const float *lfo_cutoff_factor);
   uint off_by();
   void update_cc (int controller);

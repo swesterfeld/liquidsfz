@@ -143,8 +143,15 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 
   state_ = ACTIVE;
 
+  if (upsample_ == 0)
+    {
+      if (getenv ("NO_OVER"))
+        upsample_ = 1;
+      else
+        upsample_ = 2;
+    }
   play_handle_.start_playback (region.cached_sample.get(), synth_->live_mode());
-  sample_reader_.restart (&play_handle_, region.cached_sample.get());
+  sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample_);
   if (loop_enabled_)
     sample_reader_.set_loop (region.loop_start, region.loop_end);
 
@@ -375,11 +382,31 @@ Voice::update_pitch_bend (int bend)
 }
 
 void
-Voice::process (float **orig_outputs, uint orig_n_frames)
+Voice::process (float **outputs, uint n_frames)
 {
   const auto csample = region_->cached_sample;
-  const auto channels = csample->channels;
+  int channels = csample->channels;
 
+  if (upsample_ == 1)
+    {
+      if (channels == 1)
+        process_impl<1, 1> (outputs, n_frames);
+      else
+        process_impl<1, 2> (outputs, n_frames);
+    }
+  else
+    {
+      if (channels == 1)
+        process_impl<2, 2> (outputs, n_frames);
+      else
+        process_impl<2, 2> (outputs, n_frames);
+    }
+}
+
+template<int UPSAMPLE, int CHANNELS>
+void
+Voice::process_impl (float **orig_outputs, uint orig_n_frames)
+{
   /* delay start of voice for delay_samples_ frames */
   uint dframes = std::min (orig_n_frames, delay_samples_);
   delay_samples_ -= dframes;
@@ -430,10 +457,13 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
         {
           const uint ii = ppos_;
           const float frac = ppos_ - ii;
-          sample_reader_.skip_to (ii);
+
+          static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
+          static_assert (CHANNELS == 1 || CHANNELS == 2);
+          sample_reader_.skip_to<UPSAMPLE, CHANNELS> (ii);
 
           const float amp_gain = envelope_.get_next();
-          if (channels == 1)
+          if (CHANNELS == 1)
             {
 #if 0
               const float interp = sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac;
@@ -446,7 +476,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
               out_l[i] = interp * amp_gain;
               out_r[i] = interp * amp_gain;
             }
-          else if (channels == 2)
+          else if (CHANNELS == 2)
             {
               if (0)
                 {
@@ -481,7 +511,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           out_l[i] = 0;
           out_r[i] = 0;
         }
-      ppos_ += replay_speed_.get_next() * lfo_pitch[i] * 2;
+      ppos_ += replay_speed_.get_next() * lfo_pitch[i] * UPSAMPLE;
     }
 
   /* process filters */
@@ -489,7 +519,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   process_filter (fimpl2_, false, out_l, out_r, n_frames, nullptr);
 
   /* add samples to output buffer */
-  if (channels == 2)
+  if (CHANNELS == 2)
     {
       for (uint i = 0; i < n_frames; i++)
         {
@@ -596,14 +626,14 @@ template<int CHANNEL>
 float
 SampleReader::get (int x)
 {
-  int sub_pos = relative_pos_ & 1;
   // FIXME: check offset for correct time alignment
   if (CHANNEL == 0)
-    return left_[2 + x + sub_pos];
+    return left_[2 + x + sub_pos_];
   else
-    return right_[2 + x + sub_pos];
+    return right_[2 + x + sub_pos_];
 }
 
+template<int UPSAMPLE, int CHANNELS>
 void
 SampleReader::skip_to (int pos)
 {
@@ -613,76 +643,95 @@ SampleReader::skip_to (int pos)
 
   if (loop_start_ >= 0)
     {
-      while (relative_pos_ > loop_end_ * 2)
+      while (relative_pos_ > loop_end_ * UPSAMPLE)
         {
-          relative_pos_ -= (loop_end_ - loop_start_ + 1) * 2;
+          relative_pos_ -= (loop_end_ - loop_start_ + 1) * UPSAMPLE;
         }
     }
 
-  const int N = 24;
-  const float *input = nullptr;
-  const int start_x = (relative_pos_ / 2 * channels_) - N * channels_;
-  input = play_handle_->get_n (start_x, N * 2 * channels_);
+  static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
 
-  float input_stack[N * 2 * channels_];
-  if (!input)
+  if (UPSAMPLE == 1)
     {
-      for (int n = 0; n < N * 2 * channels_; n++)
+      for (int c = 0; c < CHANNELS; c++)
         {
-          int x = start_x + n;
-          if (x >= 0)
-            input_stack[n] = play_handle_->get (x);
-          else
-            input_stack[n] = 0;
-        }
-      input = input_stack;
-    }
-  input += N * channels_;
-
-  for (int i = 0; i < 4; i++)
-    {
-      bool need_upsample = true;
-
-      int new_index = relative_pos_ / 2 + i;
-      if (new_index == index_[i])
-        {
-          /* cheap: samples are still correct */
-          need_upsample = false;
-        }
-      else
-        {
-          for (int j = i + 1; j < 4; j++)
+          for (int i = -1; i < 3; i++)
             {
-              if (new_index == index_[j])
+              left_[2 + i] = play_handle_->get ((relative_pos_ + i) * CHANNELS);
+              if (c == 1)
+                right_[2 + i] = play_handle_->get ((relative_pos_ + i) * CHANNELS+ c);
+            }
+        }
+      sub_pos_ = 0;
+    }
+  else
+    {
+      const int N = 24;
+      const float *input = nullptr;
+      const int start_x = (relative_pos_ / 2 * CHANNELS) - N * CHANNELS;
+      input = play_handle_->get_n (start_x, N * 2 * CHANNELS);
+
+      float input_stack[N * 2 * CHANNELS];
+      if (!input)
+        {
+          for (int n = 0; n < N * 2 * CHANNELS; n++)
+            {
+              int x = start_x + n;
+              if (x >= 0)
+                input_stack[n] = play_handle_->get (x);
+              else
+                input_stack[n] = 0;
+            }
+          input = input_stack;
+        }
+      input += N * CHANNELS;
+
+      for (int i = 0; i < 4; i++)
+        {
+          bool need_upsample = true;
+
+          int new_index = relative_pos_ / 2 + i;
+          if (new_index == index_[i])
+            {
+              /* cheap: samples are still correct */
+              need_upsample = false;
+            }
+          else
+            {
+              for (int j = i + 1; j < 4; j++)
                 {
-                  /* cheap: already upsampled this before, so we can move the samples to a new location */
-                  for (int k = 0; k < 2; k++)
+                  if (new_index == index_[j])
                     {
-                      left_[i * 2 + k] = left_[j * 2 + k];
-                      right_[i * 2 + k] = right_[j * 2 + k];
+                      /* cheap: already upsampled this before, so we can move the samples to a new location */
+                      for (int k = 0; k < 2; k++)
+                        {
+                          left_[i * 2 + k] = left_[j * 2 + k];
+                          right_[i * 2 + k] = right_[j * 2 + k];
+                        }
+                      need_upsample = false;
+                      break;
                     }
-                  need_upsample = false;
-                  break;
                 }
             }
-        }
-      if (need_upsample)
-        {
-          /* expensive: we need to really upsample something here */
-          if (channels_ == 1)
+          if (need_upsample)
             {
-              upsample<1> (&input[i - 1],  &left_[2 * i]);
+              /* expensive: we need to really upsample something here */
+              if (CHANNELS == 1)
+                {
+                  upsample<1> (&input[i - 1],  &left_[2 * i]);
+                }
+              else
+                {
+                  float tmp[4];
+                  upsample<2> (&input[i - 2], tmp);
+                  left_[2 * i] = tmp[0];
+                  right_[2 * i] = tmp[1];
+                  left_[2 * i + 1] = tmp[2];
+                  right_[2 * i + 1] = tmp [3];
+                }
             }
-          else
-            {
-              float tmp[4];
-              upsample<2> (&input[i - 2], tmp);
-              left_[2 * i] = tmp[0];
-              right_[2 * i] = tmp[1];
-              left_[2 * i + 1] = tmp[2];
-              right_[2 * i + 1] = tmp [3];
-            }
+          index_[i] = new_index;
         }
-      index_[i] = new_index;
+      sub_pos_ = relative_pos_ & 1;
     }
 }
