@@ -15,6 +15,7 @@
 - unload should be a bit later
 
 - fix interpolation for samples close to loop boundary
+- do we need parameter translation for offset...
 - make quality configurable
 - implement voice killing
 
