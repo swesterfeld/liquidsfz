@@ -12,7 +12,6 @@
 - preload amount should depend on offset
 - make preload / full load selectable via api
 - maybe eliminate rbtree iteration (performance)
-- make playhandle point to float rather than data object
 - unload should be a bit later
 
 - fix interpolation for samples close to loop boundary
