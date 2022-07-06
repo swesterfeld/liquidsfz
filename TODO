@@ -16,7 +16,6 @@
 - unload should be a bit later
 
 - fix interpolation for samples close to loop boundary
-- start_pos_ / end_pos_ in play handle
 - make quality configurable
 - implement voice killing
 
