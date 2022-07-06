@@ -33,6 +33,7 @@ class SampleReader
   SampleCache::Entry::PlayHandle *play_handle_ = nullptr;
   const SampleCache::Entry *cached_sample_ = nullptr;
   int relative_pos_ = 0;
+  int end_pos_ = 0;
   int last_pos_ = 0;
   int channels_ = 0;
   int loop_start_ = -1;
@@ -44,9 +45,10 @@ public:
   void
   restart (SampleCache::Entry::PlayHandle *play_handle, const SampleCache::Entry *cached_sample)
   {
+    channels_ = cached_sample->channels;
     relative_pos_ = 0;
     last_pos_ = 0;
-    channels_ = cached_sample->channels;
+    end_pos_ = (cached_sample->n_samples / channels_ + 32) * 2;
     play_handle_ = play_handle;
     cached_sample_ = cached_sample;
     loop_start_ = loop_end_ = -1;
@@ -64,7 +66,12 @@ public:
   template<int CHANNEL>
   float get (int pos);
   void skip_to (int pos);
-  bool done();
+
+  bool
+  done()
+  {
+    return relative_pos_ > end_pos_;
+  }
 };
 
 class Voice

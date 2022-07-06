@@ -686,9 +686,3 @@ SampleReader::skip_to (int pos)
       index_[i] = new_index;
     }
 }
-
-bool
-SampleReader::done()
-{
-  return relative_pos_ / 2 * channels_ > int (cached_sample_->n_samples + 4 * channels_);
-}
