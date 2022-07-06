@@ -622,7 +622,7 @@ SampleReader::skip_to (int pos)
       // FIXME: may want to have more states:
       //  (a) entered loop
       //  (b) reached end of loop (n times) to implement loop_count opcode
-      in_loop = (relative_pos_ >= loop_start_) * UPSAMPLE;
+      in_loop = (relative_pos_ >= loop_start_ * UPSAMPLE);
 
       while (relative_pos_ > loop_end_ * UPSAMPLE)
         {
@@ -632,9 +632,9 @@ SampleReader::skip_to (int pos)
 
   static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
 
-  auto close_to_loop_point = [this] (int n)
+  auto close_to_loop_point = [&] (int n)
     {
-      return (relative_pos_ / UPSAMPLE - loop_start_ < n) || (loop_end_ - relative_pos_ / UPSAMPLE < n);
+      return in_loop && ((relative_pos_ / UPSAMPLE - loop_start_ < n) || (loop_end_ - relative_pos_ / UPSAMPLE < n));
     };
   if (UPSAMPLE == 1)
     {
