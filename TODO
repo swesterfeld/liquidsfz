@@ -12,8 +12,11 @@
 - preload amount should depend on offset
 - make preload / full load selectable via api
 - maybe eliminate rbtree iteration (performance)
-- make playhandle point to float rather than data object
 - unload should be a bit later
+
+- do we need parameter translation for offset...
+- make quality configurable
+- implement voice killing
 
 maybe:
 - aria xml index

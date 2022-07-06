@@ -60,6 +60,14 @@ AC_DEFUN([AC_LV2_REQUIREMENTS],
   PKG_CHECK_MODULES([LV2], [[lv2 >= 1.2.0]])
 ])
 
+dnl
+dnl fftw (testing)
+dnl
+AC_DEFUN([AC_FFTW_REQUIREMENTS],
+[
+  PKG_CHECK_MODULES(FFTW, [fftw3 fftw3f])
+])
+
 AC_SNDFILE_REQUIREMENTS
 
 dnl -------------------- jack support is optional ---------------------------
@@ -76,6 +84,14 @@ if test "x$with_lv2" != "xno"; then
   AC_LV2_REQUIREMENTS
 fi
 AM_CONDITIONAL([COND_WITH_LV2], [test "x$with_lv2" != "xno"])
+dnl -------------------------------------------------------------------------
+
+dnl -------------------- fftw is optional ----------------------------
+AC_ARG_WITH([fftw], [AS_HELP_STRING([--with-fftw], [build against fftw library - testing])], [], [with_fftw=no])
+if test "x$with_fftw" != "xno"; then
+  AC_FFTW_REQUIREMENTS
+fi
+AM_CONDITIONAL([COND_WITH_FFTW], [test "x$with_fftw" != "xno"])
 dnl -------------------------------------------------------------------------
 
 dnl determine static/shared library to use for lv2 plugin
@@ -120,6 +136,7 @@ echo "  Build static library . .: $enable_static"
 echo "  Build shared library . .: $enable_shared"
 echo "  LV2 plug-in support  . .: $with_lv2"
 echo "  JACK support . . . . . .: $with_jack"
+echo "  Use FFTW library . . . .: $with_fftw"
 echo "  Install prefix . . . . .: $prefix"
 echo
 if test "x$enable_shared" = "xyes"; then

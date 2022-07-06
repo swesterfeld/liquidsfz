@@ -45,6 +45,7 @@ main (int argc, char **argv)
     }
   Synth synth;
   synth.set_sample_rate (sample_rate);
+  synth.set_live_mode (false);
   if (!synth.load (args[0]))
     {
       fprintf (stderr, "parse error: exiting\n");

@@ -4,6 +4,8 @@ AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
 noinst_PROGRAMS = testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter
 
+EXTRA_DIST = gen-upsample.py testupsample.sfz
+
 testliquid_SOURCES = testliquid.cc
 testliquid_LDADD = $(LIQUIDSFZ_LIBS)
 
@@ -27,3 +29,9 @@ testmidnam_LDADD = $(LIQUIDSFZ_LIBS)
 
 testfilter_SOURCES = testfilter.cc
 testfilter_LDADD = $(LIQUIDSFZ_LIBS)
+
+if COND_WITH_FFTW
+noinst_PROGRAMS += testupsample
+testupsample_SOURCES = testupsample.cc
+testupsample_LDADD = $(LIQUIDSFZ_LIBS) $(FFTW_LIBS)
+endif

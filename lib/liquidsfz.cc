@@ -50,6 +50,12 @@ Synth::set_max_voices (uint n_voices)
   impl->synth.set_max_voices (n_voices);
 }
 
+void
+Synth::set_live_mode (bool live_mode)
+{
+  impl->synth.set_live_mode (live_mode);
+}
+
 uint
 Synth::active_voice_count() const
 {

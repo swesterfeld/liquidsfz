@@ -102,6 +102,7 @@ class Synth
   Log log_level_ = Log::INFO;
   static Global global_;
   float gain_ = 1.0;
+  bool  live_mode_ = true;
   std::array<bool, 128> is_key_switch_;
   std::array<bool, 128> is_supported_cc_;
 
@@ -153,6 +154,16 @@ public:
     voices_.clear();
     for (uint i = 0; i < n_voices; i++)
       voices_.emplace_back (this, limits_);
+  }
+  void
+  set_live_mode (bool live_mode)
+  {
+    live_mode_ = live_mode;
+  }
+  bool
+  live_mode() const
+  {
+    return live_mode_;
   }
   void
   set_channels (uint n_channels)

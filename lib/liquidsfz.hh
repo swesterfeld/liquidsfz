@@ -154,6 +154,18 @@ public:
   void set_max_voices (uint n_voices);
 
   /**
+   * \brief Set live mode
+   *
+   * @param live_mode  new value for live mode
+   *
+   * Usually, liquidsfz loads samples on demand without blocking which is the
+   * correct thing to do when used live in a real time audio thread. This
+   * function can be used to make liquidsfz process() function wait for the
+   * samples to be loaded.
+   */
+  void set_live_mode (bool live_mode);
+
+  /**
    * \brief Get active voice count
    *
    * The maximum number of voices can be set using \ref set_max_voices.

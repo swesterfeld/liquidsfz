@@ -39,6 +39,7 @@ main (int argc, char **argv)
     }
   Synth synth;
   synth.set_sample_rate (48000);
+  synth.set_live_mode (false);
   if (!synth.load (argv[1]))
     {
       fprintf (stderr, "parse error: exiting\n");
@@ -49,6 +50,14 @@ main (int argc, char **argv)
 
   float *outputs[2] = { out_left.data(), out_right.data() };
   synth.add_event_note_on (0, 0, 60, 127);
+
+  /* since we are in non-live mode, we wait for samples to be
+   * loaded by processing lots of blocks before we start measuring
+   */
+  uint n_warmup_blocks = 2000000 / block_size;
+  for (uint pos = 0; pos < n_warmup_blocks; pos++)
+    synth.process (outputs, block_size);
+
   const double time_start = get_time();
   uint samples = 0;
   uint n_blocks = 20000000 / block_size;

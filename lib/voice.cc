@@ -24,6 +24,7 @@
 
 #include "voice.hh"
 #include "synth.hh"
+#include "upsample.hh"
 
 using namespace LiquidSFZInternal;
 
@@ -141,7 +142,19 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   envelope_.start (region, sample_rate_);
 
   state_ = ACTIVE;
-  play_handle_.start_playback (region.cached_sample.get());
+
+  if (upsample_ == 0)
+    {
+      if (getenv ("NO_OVER"))
+        upsample_ = 1;
+      else
+        upsample_ = 2;
+    }
+  play_handle_.start_playback (region.cached_sample.get(), synth_->live_mode());
+  sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample_);
+  if (loop_enabled_)
+    sample_reader_.set_loop (region.loop_start, region.loop_end);
+
   synth_->debug ("location %s\n", region.location.c_str());
   synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
 
@@ -369,72 +382,31 @@ Voice::update_pitch_bend (int bend)
 }
 
 void
-Voice::process (float **orig_outputs, uint orig_n_frames)
+Voice::process (float **outputs, uint n_frames)
 {
   const auto csample = region_->cached_sample;
-  const auto channels = csample->channels;
+  int channels = csample->channels;
 
-  auto get_samples_mono = [csample, this] (uint x, auto& fsamples) -> const float *
+  if (upsample_ == 1)
     {
-      uint end_pos = loop_enabled_ ? region_->loop_end : csample->n_samples;
-
-      if (x + fsamples.size() <= end_pos) // usually this quicker version can be used
-        {
-          const float *f = play_handle_.get_n (x, fsamples.size());
-          if (f)
-            return f;
-        }
-
-      for (uint i = 0; i < fsamples.size(); i++)
-        {
-          if (x >= csample->n_samples)
-            {
-              fsamples[i] = 0;
-            }
-          else
-            {
-              fsamples[i] = play_handle_.get (x);
-              x++;
-
-              if (loop_enabled_)
-                if (x > uint (region_->loop_end))
-                  x = region_->loop_start;
-            }
-        }
-      return &fsamples[0];
-    };
-
-  auto get_samples_stereo = [csample, this] (uint x, auto& fsamples) -> const float *
+      if (channels == 1)
+        process_impl<1, 1> (outputs, n_frames);
+      else
+        process_impl<1, 2> (outputs, n_frames);
+    }
+  else
     {
-      uint end_pos = loop_enabled_ ? (region_->loop_end * 2) : csample->n_samples;
+      if (channels == 1)
+        process_impl<2, 1> (outputs, n_frames);
+      else
+        process_impl<2, 2> (outputs, n_frames);
+    }
+}
 
-      if (x + fsamples.size() <= end_pos) // usually this quicker version can be used
-        {
-          const float *f = play_handle_.get_n (x, fsamples.size());
-          if (f)
-            return f;
-        }
-
-      for (uint i = 0; i < fsamples.size(); i += 2)
-        {
-          if (x >= csample->n_samples)
-            {
-              fsamples[i]     = 0;
-              fsamples[i + 1] = 0;
-            }
-          else
-            {
-              fsamples[i]     = play_handle_.get (x);
-              fsamples[i + 1] = play_handle_.get (x + 1);
-              x += 2;
-
-              if (loop_enabled_)
-                if (x > uint (region_->loop_end * 2))
-                  x = region_->loop_start * 2;
-            }
-        }
-      return &fsamples[0];
-    };
+template<int UPSAMPLE, int CHANNELS>
+void
+Voice::process_impl (float **orig_outputs, uint orig_n_frames)
+{
   /* delay start of voice for delay_samples_ frames */
   uint dframes = std::min (orig_n_frames, delay_samples_);
   delay_samples_ -= dframes;
@@ -459,34 +431,57 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   if (!lfo_volume)
     lfo_volume = synth_->const_block_1();
 
+  // from: Polynomial Interpolators for High-Quality Resampling of Oversampled Audio
+  // by Olli Niemitalo in October 2001
+  auto optimal_2x_4p = [] (float ym1, float y0, float y1, float y2, float frac) -> float
+  {
+    // Optimal 2x (4-point, 4th-order) (z-form)
+    float z = frac - 0.5f;
+    float even1 = y1+y0, odd1 = y1-y0;
+    float even2 = y2+ym1, odd2 = y2-ym1;
+    float c0 = even1*0.45645918406487612f + even2*0.04354173901996461f;
+    float c1 = odd1*0.47236675362442071f + odd2*0.17686613581136501f;
+    float c2 = even1*-0.253674794204558521f + even2*0.25371918651882464f;
+    float c3 = odd1*-0.37917091811631082f + odd2*0.11952965967158000f;
+    float c4 = even1*0.04252164479749607f + even2*-0.04289144034653719f;
+    return (((c4*z+c3)*z+c2)*z+c1)*z+c0;
+  };
+
   /* render voice */
   float out_l[n_frames];
   float out_r[n_frames];
 
   for (uint i = 0; i < n_frames; i++)
     {
-      const uint ii = ppos_;
-      const uint x = ii * channels;
-      const float frac = ppos_ - ii;
-      if (x < csample->n_samples && !envelope_.done())
+      if (!sample_reader_.done() && !envelope_.done())
         {
-          const float amp_gain = envelope_.get_next();
-          if (channels == 1)
-            {
-              std::array<float, 2> fsamples_stack;
-              const float *fsamples = get_samples_mono (x, fsamples_stack);
+          const uint ii = ppos_;
+          const float frac = ppos_ - ii;
 
-              const float interp = fsamples[0] * (1 - frac) + fsamples[1] * frac;
+          static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
+          static_assert (CHANNELS == 1 || CHANNELS == 2);
+
+          const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS> (ii);
+
+          const float amp_gain = envelope_.get_next();
+          if (CHANNELS == 1)
+            {
+#if 0
+              const float interp = sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac;
+#endif
+              const float interp = optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac);
+
               out_l[i] = interp * amp_gain;
               out_r[i] = interp * amp_gain;
             }
-          else if (channels == 2)
+          else if (CHANNELS == 2)
             {
-              std::array<float, 4> fsamples_stack;
-              const float *fsamples = get_samples_stereo (x, fsamples_stack);
-
-              out_l[i] = (fsamples[0] * (1 - frac) + fsamples[2] * frac) * amp_gain;
-              out_r[i] = (fsamples[1] * (1 - frac) + fsamples[3] * frac) * amp_gain;
+#if 0
+              out_l[i] = (sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac) * amp_gain;
+              out_r[i] = (sample_reader_.get<1> (0) * (1 - frac) + sample_reader_.get<1> (1) * frac) * amp_gain;
+#endif
+              out_l[i] = optimal_2x_4p (samples[0], samples[2], samples[4], samples[6], frac) * amp_gain;
+              out_r[i] = optimal_2x_4p (samples[1], samples[3], samples[5], samples[7], frac) * amp_gain;
             }
           else
             {
@@ -502,10 +497,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
           out_l[i] = 0;
           out_r[i] = 0;
         }
-      ppos_ += replay_speed_.get_next() * lfo_pitch[i];
-      if (loop_enabled_)
-        while (ppos_ > region_->loop_end)
-          ppos_ -= (region_->loop_end - region_->loop_start);
+      ppos_ += replay_speed_.get_next() * lfo_pitch[i] * UPSAMPLE;
     }
 
   /* process filters */
@@ -513,7 +505,7 @@ Voice::process (float **orig_outputs, uint orig_n_frames)
   process_filter (fimpl2_, false, out_l, out_r, n_frames, nullptr);
 
   /* add samples to output buffer */
-  if (channels == 2)
+  if (CHANNELS == 2)
     {
       for (uint i = 0; i < n_frames; i++)
         {
@@ -613,5 +605,134 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
               return Filter::CR (cutoff, mod_resonance[i]);
             });
         }
+    }
+}
+
+template<int UPSAMPLE, int CHANNELS>
+const float *
+SampleReader::skip_to (int pos)
+{
+  assert (pos >= last_pos_);
+  relative_pos_ += pos - last_pos_;
+  last_pos_ = pos;
+
+  bool in_loop = false;
+  if (loop_start_ >= 0)
+    {
+      // FIXME: may want to have more states:
+      //  (a) entered loop
+      //  (b) reached end of loop (n times) to implement loop_count opcode
+      in_loop = (relative_pos_ >= loop_start_) * UPSAMPLE;
+
+      while (relative_pos_ > loop_end_ * UPSAMPLE)
+        {
+          relative_pos_ -= (loop_end_ - loop_start_ + 1) * UPSAMPLE;
+        }
+    }
+
+  static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
+
+  auto close_to_loop_point = [this] (int n)
+    {
+      return (relative_pos_ / UPSAMPLE - loop_start_ < n) || (loop_end_ - relative_pos_ / UPSAMPLE < n);
+    };
+  if (UPSAMPLE == 1)
+    {
+      const float *samples = nullptr;
+
+      if (!close_to_loop_point (INTERP_POINTS))
+        samples = play_handle_->get_n ((relative_pos_ - 1) * CHANNELS, INTERP_POINTS * CHANNELS);
+
+      if (samples)
+        {
+          return samples;
+        }
+      else
+        {
+          for (int i = 0; i < INTERP_POINTS; i++)
+            {
+              int x = relative_pos_ - 1 + i;
+              if (in_loop)
+                {
+                  while (x < loop_start_)
+                    x += loop_end_ - loop_start_ + 1;
+                  while (x > loop_end_)
+                    x -= loop_end_ - loop_start_ + 1;
+                }
+              for (int c = 0; c < CHANNELS; c++)
+                {
+                  samples_[i * CHANNELS + c] = play_handle_->get (x * CHANNELS + c);
+                }
+            }
+
+          return &samples_[0];
+        }
+    }
+  else
+    {
+      const int N = 24;
+      const float *input = nullptr;
+
+      if (!close_to_loop_point (N))
+        {
+          const int start_x = (relative_pos_ / 2 * CHANNELS) - N * CHANNELS;
+          input = play_handle_->get_n (start_x, N * 2 * CHANNELS);
+        }
+
+      float input_stack[N * 2 * CHANNELS];
+      if (!input)
+        {
+          for (int n = 0; n < N * 2; n++)
+            {
+              int x = (relative_pos_ / 2) + n - N;
+
+              if (in_loop)
+                {
+                  while (x > loop_end_)
+                    x -= (loop_end_ - loop_start_ + 1);
+                  while (x < loop_start_)
+                    x += (loop_end_ - loop_start_ + 1);
+                }
+              for (int c = 0; c < CHANNELS; c++)
+                {
+                  input_stack[n * CHANNELS + c] = play_handle_->get (x * CHANNELS + c);
+                }
+            }
+          input = input_stack;
+        }
+      input += N * CHANNELS;
+
+      for (int i = 0; i < INTERP_POINTS; i++)
+        {
+          bool need_upsample = true;
+          int new_index = relative_pos_ / 2 + i;
+
+          if (new_index == index_[i])
+            {
+              /* cheap: samples are still correct */
+              need_upsample = false;
+            }
+          for (int j = i + 1; j < INTERP_POINTS; j++)
+            {
+              if (new_index == index_[j])
+                {
+                  /* cheap: already upsampled this before, so we can move the samples to a new location */
+                  for (int k = 0; k < CHANNELS * 2; k++)
+                    {
+                      samples_[2 * CHANNELS * i + k] = samples_[2 * CHANNELS * j + k];
+                    }
+                  need_upsample = false;
+                  break;
+                }
+            }
+          if (need_upsample)
+            {
+              /* expensive: we need to really upsample something here */
+              upsample<CHANNELS> (&input[(i - 1) * CHANNELS], &samples_[2 * CHANNELS * i]);
+            }
+          index_[i] = new_index;
+        }
+      // FIXME: check time alignment
+      return &samples_[2 + (relative_pos_ & 1) * CHANNELS];
     }
 }
