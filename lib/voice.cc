@@ -621,9 +621,8 @@ SampleReader::skip_to (int pos)
 
   const int N = 24;
   const float *input = nullptr;
-  int start_x = (relative_pos_ / 2 * channels_) - N * channels_;
-  if (start_x >= 0)
-    input = play_handle_->get_n (start_x, N * 2 * channels_);
+  const int start_x = (relative_pos_ / 2 * channels_) - N * channels_;
+  input = play_handle_->get_n (start_x, N * 2 * channels_);
 
   float input_stack[N * 2 * channels_];
   if (!input)

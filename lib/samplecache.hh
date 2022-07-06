@@ -40,9 +40,12 @@ namespace LiquidSFZInternal
 
 class SampleCache;
 
+typedef sf_count_t sample_count_t;
+
 struct SampleBuffer
 {
-  static constexpr size_t frames_per_buffer = 1000;
+  static constexpr sample_count_t frames_per_buffer = 1000;
+  static constexpr sample_count_t frames_overlap = 64;
 
   class Data
   {
@@ -65,7 +68,7 @@ struct SampleBuffer
         delete this;
     }
     std::vector<float> samples;
-    size_t             start_n_values = 0;
+    sample_count_t     start_n_values = 0;
   };
 
   std::atomic<Data *> data = nullptr;
@@ -227,7 +230,7 @@ public:
         start_playback (nullptr, live_mode_);
       }
       const float *
-      get_n (size_t pos, size_t n)
+      get_n (sample_count_t pos, sample_count_t n)
       {
         /* usually this succeeds quickly */
         if (last_data_ && pos >= last_data_->start_n_values)
@@ -236,59 +239,51 @@ public:
             if (sample_index + n <= last_data_->samples.size())
               return &last_data_->samples[sample_index];
           }
-        /* but it can fail */
+        /* if not, we try to find a matching block */
+        if (lookup (pos))
+          {
+            size_t sample_index = pos - last_data_->start_n_values;
+
+            if (sample_index < last_data_->samples.size())
+              return &last_data_->samples[sample_index];
+          }
+        /* finally we fail */
         return nullptr;
       }
       float
-      get (size_t pos)
+      get (sample_count_t pos)
       {
-        /* typically we can simply take the sample from the data block we used last time */
-        if (last_data_ && pos >= last_data_->start_n_values)
-          {
-            size_t sample_index = pos - last_data_->start_n_values;
-            if (sample_index < last_data_->samples.size())
-              return last_data_->samples[sample_index];
-          }
+        const float *sample = get_n (pos, 1);
 
-        /* rare case: we need to lookup a new data block */
-        int buffer_index = pos / (SampleBuffer::frames_per_buffer * entry_->channels);
-        entry_->update_max_buffer_index (buffer_index);
-
-        if (buffer_index < int (entry_->buffers.size()))
+        return sample ? *sample : 0;
+      }
+    private:
+      bool
+      lookup (sample_count_t pos)
+      {
+        int buffer_index = (pos + SampleBuffer::frames_overlap * entry_->channels) / (SampleBuffer::frames_per_buffer * entry_->channels);
+        if (buffer_index >= 0 && buffer_index < int (entry_->buffers.size()))
           {
+            entry_->update_max_buffer_index (buffer_index);
+
             const SampleBuffer::Data *data = entry_->buffers[buffer_index].data.load();
-
             if (!live_mode_)
               {
-                /* when not in live mode, we need to block until the background thread has completed
-                 *  - loading the block
-                 *  - resampling the block (if oversampling is active)
+                /* when not in live mode, we need to block until the background
+                 * thread has completed loading the block
                  */
-                bool loaded = false;
-                while (!loaded)
+                while (!data)
                   {
-                    if (data)
-                      {
-                        loaded = true;
-                      }
-                    else
-                      {
-                        usleep (20 * 1000); // FIXME: may want to synchronize without sleeping
-                        data = entry_->buffers[buffer_index].data.load();
-                      }
+                    usleep (20 * 1000); // FIXME: may want to synchronize without sleeping
+                    data = entry_->buffers[buffer_index].data.load();
                   }
               }
             last_data_ = data;
-
-            if (data)
-              {
-                size_t sample_index = pos - data->start_n_values;
-
-                if (sample_index < data->samples.size())
-                  return data->samples[sample_index];
-              }
+            if (last_data_)
+              return true;
           }
-        return 0;
+        last_data_ = nullptr;
+        return false;
       }
     };
 
@@ -311,7 +306,6 @@ private:
   std::map<std::string, std::weak_ptr<Entry>> cache;
   std::mutex mutex;
   std::thread loader_thread;
-  std::vector<SampleBuffer::Data *> data_entries;
   int64_t n_total_bytes = 0;
   SFPool sf_pool;
   double last_cleanup_time = 0;
@@ -420,16 +414,22 @@ public:
     auto& buffer = entry->buffers[b];
     if (!buffer.data)
       {
-        auto data = new SampleBuffer::Data (this, SampleBuffer::frames_per_buffer * entry->channels);
-        data->start_n_values = b * SampleBuffer::frames_per_buffer * entry->channels;
-        buffer.data = data;
-        data_entries.push_back (data);
+        auto data = new SampleBuffer::Data (this, (SampleBuffer::frames_per_buffer + SampleBuffer::frames_overlap) * entry->channels);
+        data->start_n_values = (b * SampleBuffer::frames_per_buffer - SampleBuffer::frames_overlap) * entry->channels;
 
+        // FIXME: may want to check return codes
         sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
+        sf_readf_float (sndfile, &data->samples[SampleBuffer::frames_overlap * entry->channels], SampleBuffer::frames_per_buffer);
 
-        sf_count_t count = sf_readf_float (sndfile, &data->samples[0], data->samples.size() / entry->channels);
-        if (count > 0)
-          data->samples.resize (count * entry->channels);
+        if (b > 0)
+          {
+            // copy last samples from last buffer to first samples from this buffer to make buffers overlap
+            const auto last_data = entry->buffers[b - 1].data.load();
+            const float *from_samples = &last_data->samples[SampleBuffer::frames_per_buffer * entry->channels];
+            std::copy_n (from_samples, SampleBuffer::frames_overlap * entry->channels, &data->samples[0]);
+          }
+
+        buffer.data = data;
       }
   }
   void
