@@ -397,7 +397,7 @@ Voice::process (float **outputs, uint n_frames)
   else
     {
       if (channels == 1)
-        process_impl<2, 2> (outputs, n_frames);
+        process_impl<2, 1> (outputs, n_frames);
       else
         process_impl<2, 2> (outputs, n_frames);
     }
@@ -460,7 +460,8 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 
           static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
           static_assert (CHANNELS == 1 || CHANNELS == 2);
-          sample_reader_.skip_to<UPSAMPLE, CHANNELS> (ii);
+
+          const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS> (ii);
 
           const float amp_gain = envelope_.get_next();
           if (CHANNELS == 1)
@@ -468,34 +469,19 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 #if 0
               const float interp = sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac;
 #endif
-              const float interp = optimal_2x_4p (sample_reader_.get<0> (-1),
-                                                  sample_reader_.get<0> (0),
-                                                  sample_reader_.get<0> (1),
-                                                  sample_reader_.get<0> (2),
-                                                  frac);
+              const float interp = optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac);
+
               out_l[i] = interp * amp_gain;
               out_r[i] = interp * amp_gain;
             }
           else if (CHANNELS == 2)
             {
-              if (0)
-                {
-                  out_l[i] = (sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac) * amp_gain;
-                  out_r[i] = (sample_reader_.get<1> (0) * (1 - frac) + sample_reader_.get<1> (1) * frac) * amp_gain;
-                }
-              else
-                {
-                  out_l[i] = optimal_2x_4p (sample_reader_.get<0> (-1),
-                                            sample_reader_.get<0> (0),
-                                            sample_reader_.get<0> (1),
-                                            sample_reader_.get<0> (2),
-                                            frac) * amp_gain;
-                  out_r[i] = optimal_2x_4p (sample_reader_.get<1> (-1),
-                                            sample_reader_.get<1> (0),
-                                            sample_reader_.get<1> (1),
-                                            sample_reader_.get<1> (2),
-                                            frac) * amp_gain;
-                }
+#if 0
+              out_l[i] = (sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac) * amp_gain;
+              out_r[i] = (sample_reader_.get<1> (0) * (1 - frac) + sample_reader_.get<1> (1) * frac) * amp_gain;
+#endif
+              out_l[i] = optimal_2x_4p (samples[0], samples[2], samples[4], samples[6], frac) * amp_gain;
+              out_r[i] = optimal_2x_4p (samples[1], samples[3], samples[5], samples[7], frac) * amp_gain;
             }
           else
             {
@@ -622,19 +608,8 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
     }
 }
 
-template<int CHANNEL>
-float
-SampleReader::get (int x)
-{
-  // FIXME: check offset for correct time alignment
-  if (CHANNEL == 0)
-    return left_[2 + x + sub_pos_];
-  else
-    return right_[2 + x + sub_pos_];
-}
-
 template<int UPSAMPLE, int CHANNELS>
-void
+const float *
 SampleReader::skip_to (int pos)
 {
   assert (pos >= last_pos_);
@@ -653,16 +628,18 @@ SampleReader::skip_to (int pos)
 
   if (UPSAMPLE == 1)
     {
-      for (int c = 0; c < CHANNELS; c++)
+      const float *samples = play_handle_->get_n ((relative_pos_ - 1) * CHANNELS, INTERP_POINTS * CHANNELS);
+      if (samples)
         {
-          for (int i = -1; i < 3; i++)
-            {
-              left_[2 + i] = play_handle_->get ((relative_pos_ + i) * CHANNELS);
-              if (c == 1)
-                right_[2 + i] = play_handle_->get ((relative_pos_ + i) * CHANNELS+ c);
-            }
+          return samples;
         }
-      sub_pos_ = 0;
+      else
+        {
+          for (int i = 0; i < INTERP_POINTS * CHANNELS; i++)
+            samples_[i] = play_handle_->get ((relative_pos_ - 1) * CHANNELS + i);
+
+          return &samples_[0];
+        }
     }
   else
     {
@@ -686,52 +663,37 @@ SampleReader::skip_to (int pos)
         }
       input += N * CHANNELS;
 
-      for (int i = 0; i < 4; i++)
+      for (int i = 0; i < INTERP_POINTS; i++)
         {
           bool need_upsample = true;
-
           int new_index = relative_pos_ / 2 + i;
+
           if (new_index == index_[i])
             {
               /* cheap: samples are still correct */
               need_upsample = false;
             }
-          else
+          for (int j = i + 1; j < INTERP_POINTS; j++)
             {
-              for (int j = i + 1; j < 4; j++)
+              if (new_index == index_[j])
                 {
-                  if (new_index == index_[j])
+                  /* cheap: already upsampled this before, so we can move the samples to a new location */
+                  for (int k = 0; k < CHANNELS * 2; k++)
                     {
-                      /* cheap: already upsampled this before, so we can move the samples to a new location */
-                      for (int k = 0; k < 2; k++)
-                        {
-                          left_[i * 2 + k] = left_[j * 2 + k];
-                          right_[i * 2 + k] = right_[j * 2 + k];
-                        }
-                      need_upsample = false;
-                      break;
+                      samples_[2 * CHANNELS * i + k] = samples_[2 * CHANNELS * j + k];
                     }
+                  need_upsample = false;
+                  break;
                 }
             }
           if (need_upsample)
             {
               /* expensive: we need to really upsample something here */
-              if (CHANNELS == 1)
-                {
-                  upsample<1> (&input[i - 1],  &left_[2 * i]);
-                }
-              else
-                {
-                  float tmp[4];
-                  upsample<2> (&input[i - 2], tmp);
-                  left_[2 * i] = tmp[0];
-                  right_[2 * i] = tmp[1];
-                  left_[2 * i + 1] = tmp[2];
-                  right_[2 * i + 1] = tmp [3];
-                }
+              upsample<CHANNELS> (&input[(i - 1) * CHANNELS], &samples_[2 * CHANNELS * i]);
             }
           index_[i] = new_index;
         }
-      sub_pos_ = relative_pos_ & 1;
+      // FIXME: check time alignment
+      return &samples_[2 + (relative_pos_ & 1) * CHANNELS];
     }
 }
