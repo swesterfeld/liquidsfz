@@ -616,8 +616,14 @@ SampleReader::skip_to (int pos)
   relative_pos_ += pos - last_pos_;
   last_pos_ = pos;
 
+  bool in_loop = false;
   if (loop_start_ >= 0)
     {
+      // FIXME: may want to have more states:
+      //  (a) entered loop
+      //  (b) reached end of loop (n times) to implement loop_count opcode
+      in_loop = (relative_pos_ >= loop_start_) * UPSAMPLE;
+
       while (relative_pos_ > loop_end_ * UPSAMPLE)
         {
           relative_pos_ -= (loop_end_ - loop_start_ + 1) * UPSAMPLE;
@@ -626,17 +632,38 @@ SampleReader::skip_to (int pos)
 
   static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
 
+  auto close_to_loop_point = [this] (int n)
+    {
+      return (relative_pos_ / UPSAMPLE - loop_start_ < n) || (loop_end_ - relative_pos_ / UPSAMPLE < n);
+    };
   if (UPSAMPLE == 1)
     {
-      const float *samples = play_handle_->get_n ((relative_pos_ - 1) * CHANNELS, INTERP_POINTS * CHANNELS);
+      const float *samples = nullptr;
+
+      if (!close_to_loop_point (INTERP_POINTS))
+        samples = play_handle_->get_n ((relative_pos_ - 1) * CHANNELS, INTERP_POINTS * CHANNELS);
+
       if (samples)
         {
           return samples;
         }
       else
         {
-          for (int i = 0; i < INTERP_POINTS * CHANNELS; i++)
-            samples_[i] = play_handle_->get ((relative_pos_ - 1) * CHANNELS + i);
+          for (int i = 0; i < INTERP_POINTS; i++)
+            {
+              int x = relative_pos_ - 1 + i;
+              if (in_loop)
+                {
+                  while (x < loop_start_)
+                    x += loop_end_ - loop_start_ + 1;
+                  while (x > loop_end_)
+                    x -= loop_end_ - loop_start_ + 1;
+                }
+              for (int c = 0; c < CHANNELS; c++)
+                {
+                  samples_[i * CHANNELS + c] = play_handle_->get (x * CHANNELS + c);
+                }
+            }
 
           return &samples_[0];
         }
@@ -645,19 +672,31 @@ SampleReader::skip_to (int pos)
     {
       const int N = 24;
       const float *input = nullptr;
-      const int start_x = (relative_pos_ / 2 * CHANNELS) - N * CHANNELS;
-      input = play_handle_->get_n (start_x, N * 2 * CHANNELS);
+
+      if (!close_to_loop_point (N))
+        {
+          const int start_x = (relative_pos_ / 2 * CHANNELS) - N * CHANNELS;
+          input = play_handle_->get_n (start_x, N * 2 * CHANNELS);
+        }
 
       float input_stack[N * 2 * CHANNELS];
       if (!input)
         {
-          for (int n = 0; n < N * 2 * CHANNELS; n++)
+          for (int n = 0; n < N * 2; n++)
             {
-              int x = start_x + n;
-              if (x >= 0)
-                input_stack[n] = play_handle_->get (x);
-              else
-                input_stack[n] = 0;
+              int x = (relative_pos_ / 2) + n - N;
+
+              if (in_loop)
+                {
+                  while (x > loop_end_)
+                    x -= (loop_end_ - loop_start_ + 1);
+                  while (x < loop_start_)
+                    x += (loop_end_ - loop_start_ + 1);
+                }
+              for (int c = 0; c < CHANNELS; c++)
+                {
+                  input_stack[n * CHANNELS + c] = play_handle_->get (x * CHANNELS + c);
+                }
             }
           input = input_stack;
         }
