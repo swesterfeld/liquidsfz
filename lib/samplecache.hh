@@ -186,9 +186,12 @@ public:
     class PlayHandle
     {
     private:
-      Entry *entry_                        = nullptr;
-      const SampleBuffer::Data *last_data_ = nullptr;
-      bool                      live_mode_ = false;
+      Entry           *entry_     = nullptr;
+      bool             live_mode_ = false;
+
+      const float     *samples_   = nullptr;
+      sample_count_t   start_pos_ = 0;
+      sample_count_t   end_pos_   = 0;
 
     public:
       PlayHandle (const PlayHandle& p)
@@ -220,7 +223,8 @@ public:
             if (entry_)
               entry_->start_playback();
 
-            last_data_ = nullptr;
+            samples_ = nullptr;
+            start_pos_ = end_pos_ = 0;
           }
         live_mode_ = live_mode;
       }
@@ -233,19 +237,15 @@ public:
       get_n (sample_count_t pos, sample_count_t n)
       {
         /* usually this succeeds quickly */
-        if (last_data_ && pos >= last_data_->start_n_values)
-          {
-            size_t sample_index = pos - last_data_->start_n_values;
-            if (sample_index + n <= last_data_->samples.size())
-              return &last_data_->samples[sample_index];
-          }
+        sample_count_t offset = pos - start_pos_;
+        if (offset >= 0 && pos + n < end_pos_)
+          return samples_ + offset;
+
         /* if not, we try to find a matching block */
         if (lookup (pos))
           {
-            size_t sample_index = pos - last_data_->start_n_values;
-
-            if (sample_index < last_data_->samples.size())
-              return &last_data_->samples[sample_index];
+            if (pos + n < end_pos_)
+              return samples_ + pos - start_pos_;
           }
         /* finally we fail */
         return nullptr;
@@ -278,11 +278,19 @@ public:
                     data = entry_->buffers[buffer_index].data.load();
                   }
               }
-            last_data_ = data;
-            if (last_data_)
-              return true;
+            if (data)
+              {
+                assert (pos >= data->start_n_values);
+
+                samples_   = &data->samples[0];
+                start_pos_ = data->start_n_values;
+                end_pos_   = start_pos_ + data->samples.size();
+
+                return true;
+              }
           }
-        last_data_ = nullptr;
+        samples_ = nullptr;
+        start_pos_ = end_pos_ = 0;
         return false;
       }
     };
