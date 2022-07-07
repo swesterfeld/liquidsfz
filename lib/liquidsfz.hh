@@ -154,6 +154,15 @@ public:
   void set_max_voices (uint n_voices);
 
   /**
+   * \brief Get maximum number of voices
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
+   *
+   * @returns maximum number of voices (maximum polyphony)
+   */
+  uint max_voices();
+
+  /**
    * \brief Set live mode
    *
    * @param live_mode  new value for live mode
@@ -371,6 +380,34 @@ public:
    * @param progress_function function to be called
    */
   void set_progress_function (std::function<void (double)> progress_function);
+
+  /**
+   * \brief Get memory used by sample cache
+   *
+   * The sample cache is shared between all liquidsfz Synth instances, so the
+   * value returned by this function is the total memory used for all samples
+   * used by all instance together.
+   *
+   * <em>This function is real-time safe and can be safely called from any
+   * thread at any time without synchronization.</em>
+   *
+   * @returns the size of the sample cache in bytes
+   */
+  size_t cache_size();
+
+  /**
+   * \brief Get number of cached samples
+   *
+   * The sample cache is shared between all liquidsfz Synth instances, so the
+   * number of cached sample files returned by this function is the total
+   * number of samples used by all instance together.
+   *
+   * <em>This function is real-time safe and can be safely called from any
+   * thread at any time without synchronization.</em>
+   *
+   * @returns number of cached samples
+   */
+  uint cache_file_count();
 };
 
 

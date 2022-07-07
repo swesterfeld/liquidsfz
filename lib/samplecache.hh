@@ -1,7 +1,7 @@
 /*
  * liquidsfz - sfz sampler
  *
- * Copyright (C) 2019  Stefan Westerfeld
+ * Copyright (C) 2019-2022  Stefan Westerfeld
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -314,7 +314,8 @@ private:
   std::map<std::string, std::weak_ptr<Entry>> cache;
   std::mutex mutex;
   std::thread loader_thread;
-  int64_t n_total_bytes = 0;
+  std::atomic<size_t> atomic_n_total_bytes_ = 0;
+  std::atomic<uint>   atomic_cache_file_count_ = 0;
   SFPool sf_pool;
   double last_cleanup_time = 0;
   std::vector<EntryP> playback_entries;
@@ -341,6 +342,7 @@ protected:
             it++;
           }
       }
+    atomic_cache_file_count_ = cache.size();
   }
 public:
   EntryP
@@ -414,6 +416,7 @@ public:
           load_buffer (new_entry.get(), sndfile, b);
       }
     cache[filename] = new_entry;
+    atomic_cache_file_count_ = cache.size();
     return new_entry;
   }
   void
@@ -544,14 +547,25 @@ public:
   void
   update_size_bytes (int delta_bytes)
   {
-    n_total_bytes += delta_bytes;
+    atomic_n_total_bytes_ += delta_bytes;
   }
   std::string
   cache_stats()
   {
-    return string_printf ("cache holds %.2f MB in %zd entries", n_total_bytes / 1024. / 1024., cache.size());
+    return string_printf ("cache holds %.2f MB in %d entries", atomic_n_total_bytes_ / 1024. / 1024., atomic_cache_file_count_.load());
   }
-
+  size_t
+  cache_size()
+  {
+    static_assert (decltype (atomic_n_total_bytes_)::is_always_lock_free);
+    return atomic_n_total_bytes_;
+  }
+  uint
+  cache_file_count()
+  {
+    static_assert (decltype (atomic_cache_file_count_)::is_always_lock_free);
+    return atomic_cache_file_count_;
+  }
   SampleCache()
   {
     loader_thread = std::thread (&SampleCache::background_loader, this);

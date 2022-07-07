@@ -155,6 +155,11 @@ public:
     for (uint i = 0; i < n_voices; i++)
       voices_.emplace_back (this, limits_);
   }
+  uint
+  max_voices()
+  {
+    return voices_.size();
+  }
   void
   set_live_mode (bool live_mode)
   {
@@ -257,6 +262,16 @@ public:
       if (v.state_ != Voice::IDLE)
         c++;
     return c;
+  }
+  size_t
+  cache_size()
+  {
+    return global_.sample_cache->cache_size();
+  }
+  uint
+  cache_file_count()
+  {
+    return global_.sample_cache->cache_file_count();
   }
   void
   note_on (int chan, int key, int vel)

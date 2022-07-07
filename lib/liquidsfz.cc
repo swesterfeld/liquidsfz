@@ -50,6 +50,12 @@ Synth::set_max_voices (uint n_voices)
   impl->synth.set_max_voices (n_voices);
 }
 
+uint
+Synth::max_voices()
+{
+  return impl->synth.max_voices();
+}
+
 void
 Synth::set_live_mode (bool live_mode)
 {
@@ -132,6 +138,18 @@ void
 Synth::set_progress_function (std::function<void (double)> progress_function)
 {
   impl->synth.set_progress_function (progress_function);
+}
+
+size_t
+Synth::cache_size()
+{
+  return impl->synth.cache_size();
+}
+
+uint
+Synth::cache_file_count()
+{
+  return impl->synth.cache_file_count();
 }
 
 /*----------------- CCInfo --------------*/
