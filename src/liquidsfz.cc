@@ -39,6 +39,9 @@
 #include "argparser.hh"
 #include "config.h"
 
+#include <term.h>
+#include <sys/resource.h>
+
 using std::vector;
 using std::string;
 
@@ -46,6 +49,8 @@ using namespace LiquidSFZ;
 
 using LiquidSFZInternal::path_join;
 using LiquidSFZInternal::ArgParser;
+using LiquidSFZInternal::string_printf;
+using LiquidSFZInternal::get_time;
 
 namespace Options
 {
@@ -290,6 +295,7 @@ public:
         printf ("keys                - show keys supported by the sfz\n");
         printf ("switches            - show switches supported by the sfz\n");
         printf ("ccs                 - show ccs supported by the sfz\n");
+        printf ("stats               - show voices/cache/cpu usage\n");
         printf ("voice_count         - print number of active synthesis voices\n");
         printf ("sleep time_ms       - sleep for some milliseconds\n");
         printf ("source filename     - load a file and execute each line as command\n");
@@ -350,6 +356,10 @@ public:
         cmd_q.wait_all();
         printf ("%d\n", v);
       }
+    else if (cli_parser.command ("stats"))
+      {
+        show_stats();
+      }
     else if (cli_parser.command ("sleep", dvalue))
       {
         usleep (lrint (dvalue * 1000));
@@ -381,9 +391,9 @@ public:
   bool
   load (const string& filename)
   {
-    synth.set_progress_function ([] (double percent)
+    synth.set_progress_function ([this] (double percent)
       {
-        printf ("Loading: %.1f %%\r", percent);
+        printf ("Loading: %.1f %% / %.1f MB\r", percent, synth.cache_size() / 1024. / 1024.);
         fflush (stdout);
       });
 
@@ -395,6 +405,7 @@ public:
     ccs = synth.list_ccs();
 
     printf ("%30s\r", ""); // overwrite progress message
+    printf ("Preloaded %d samples, %.1f MB.\n\n", synth.cache_file_count(), synth.cache_size() / 1024. / 1024.);
     return true;
   }
   void
@@ -425,6 +436,66 @@ public:
           }
         printf ("\n");
       }
+  }
+  void
+  show_stats()
+  {
+    termios tio_orig;
+
+    tcgetattr (STDIN_FILENO, &tio_orig);
+
+    termios tio_new = tio_orig;
+    tio_new.c_lflag &= ~(ICANON|ECHO); /* Clear ICANON and ECHO. */
+    tio_new.c_cc[VMIN] = 0;
+    tio_new.c_cc[VTIME] = 1; /* 0.1 seconds */
+    tcsetattr (STDIN_FILENO, TCSANOW, &tio_new);
+
+    double last_rusage_time = 0;
+    double last_time = 0;
+    double cpu_usage = 0;
+    string old_stats;
+    while (1)
+      {
+        int voices = -1;
+        int max_voices = -1;
+        size_t cache_size = 0;
+        int cache_file_count = 0;
+
+        cmd_q.append ([&]() {
+          voices = synth.active_voice_count();
+          max_voices = synth.max_voices();
+          cache_size = synth.cache_size();
+          cache_file_count = synth.cache_file_count();
+        });
+        cmd_q.wait_all();
+
+        double time = get_time();
+        if (fabs (time - last_time) > 2)
+          {
+            rusage ru;
+            getrusage (RUSAGE_SELF, &ru);
+            auto tv_to_sec = [] (auto tv) { return tv.tv_sec + tv.tv_usec / 1000000.0; };
+            double rusage_time = tv_to_sec (ru.ru_utime) + tv_to_sec (ru.ru_stime);
+            cpu_usage = (rusage_time - last_rusage_time) / (time - last_time) * 100;
+            last_time = time;
+            last_rusage_time = rusage_time;
+          }
+
+        string stats = string_printf ("Voices: %d/%d ~ Cache: %d samples | %.1f MB ~ CPU: %.1f%%", voices, max_voices, cache_file_count, cache_size / 1024. / 1024., cpu_usage);
+        if (stats != old_stats)
+          {
+            printf ("%s     \r", stats.c_str());
+            fflush (stdout);
+
+            old_stats = stats;
+          }
+        char buffer[1024];
+        int r = read (0, buffer, sizeof (buffer));
+        if (r > 0)
+          break;
+      }
+    printf ("\n");
+    tcsetattr (STDIN_FILENO, TCSANOW, &tio_orig);
   }
 };
 
