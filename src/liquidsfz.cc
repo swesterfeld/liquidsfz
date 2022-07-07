@@ -55,6 +55,7 @@ using LiquidSFZInternal::get_time;
 namespace Options
 {
   bool debug = false;
+  int  quality = -1;
 }
 
 class CommandQueue
@@ -156,6 +157,8 @@ public:
   {
     if (Options::debug)
       synth.set_log_level (Log::DEBUG);
+    if (Options::quality > 0)
+      synth.set_sample_quality (Options::quality);
 
     synth.set_sample_rate (jack_get_sample_rate (client));
     midi_input_port = jack_port_register (client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
@@ -506,6 +509,7 @@ print_usage()
   printf ("\n");
   printf ("Options:\n");
   printf ("  --debug      enable debugging output\n");
+  printf ("  --quality    set sample playback quality (1-3) [3]\n");
 }
 
 int
@@ -527,6 +531,7 @@ main (int argc, char **argv)
     {
       Options::debug = true;
     }
+  ap.parse_opt ("--quality", Options::quality);
 
   vector<string> args;
   if (!ap.parse_args (1, args))
