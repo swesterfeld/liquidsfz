@@ -118,7 +118,7 @@ class Voice
   float        pitch_bend_value_ = 0; // [-1:1]
 
   SampleReader sample_reader_;
-  uint         upsample_ = 0;
+  int          quality_ = 0;
 
   void set_pitch_bend (int value);
   void update_replay_speed (bool now);
@@ -158,7 +158,7 @@ public:
   void stop (OffMode off_mode);
   void kill();
   void process (float **outputs, uint n_frames);
-  template<int UPSAMPLE, int CHANNELS>
+  template<int QUALITY, int CHANNELS>
   void process_impl (float **outputs, uint n_frames);
   void process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames, const float *lfo_cutoff_factor);
   uint off_by();

@@ -62,6 +62,18 @@ Synth::set_live_mode (bool live_mode)
   impl->synth.set_live_mode (live_mode);
 }
 
+void
+Synth::set_sample_quality (int sample_quality)
+{
+  impl->synth.set_sample_quality (sample_quality);
+}
+
+int
+Synth::sample_quality()
+{
+  return impl->synth.sample_quality();
+}
+
 uint
 Synth::active_voice_count() const
 {

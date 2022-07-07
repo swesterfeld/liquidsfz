@@ -142,16 +142,11 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   envelope_.start (region, sample_rate_);
 
   state_ = ACTIVE;
+  quality_ = synth_->sample_quality();
+  auto upsample = quality_ == 3 ? 2 : 1; // upsample for best quality interpolator
 
-  if (upsample_ == 0)
-    {
-      if (getenv ("NO_OVER"))
-        upsample_ = 1;
-      else
-        upsample_ = 2;
-    }
   play_handle_.start_playback (region.cached_sample.get(), synth_->live_mode());
-  sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample_);
+  sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample);
   if (loop_enabled_)
     sample_reader_.set_loop (region.loop_start, region.loop_end);
 
@@ -387,26 +382,37 @@ Voice::process (float **outputs, uint n_frames)
   const auto csample = region_->cached_sample;
   int channels = csample->channels;
 
-  if (upsample_ == 1)
+  if (quality_ == 1)
     {
       if (channels == 1)
         process_impl<1, 1> (outputs, n_frames);
       else
         process_impl<1, 2> (outputs, n_frames);
     }
-  else
+  else if (quality_ == 2)
     {
       if (channels == 1)
         process_impl<2, 1> (outputs, n_frames);
       else
         process_impl<2, 2> (outputs, n_frames);
     }
+  else if (quality_ == 3)
+    {
+      if (channels == 1)
+        process_impl<3, 1> (outputs, n_frames);
+      else
+        process_impl<3, 2> (outputs, n_frames);
+    }
 }
 
-template<int UPSAMPLE, int CHANNELS>
+template<int QUALITY, int CHANNELS>
 void
 Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 {
+  static_assert (QUALITY >= 1 || QUALITY <= 3);
+  static_assert (CHANNELS == 1 || CHANNELS == 2);
+  constexpr int UPSAMPLE = QUALITY == 3 ? 2 : 1;
+
   /* delay start of voice for delay_samples_ frames */
   uint dframes = std::min (orig_n_frames, delay_samples_);
   delay_samples_ -= dframes;
@@ -458,30 +464,34 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
           const uint ii = ppos_;
           const float frac = ppos_ - ii;
 
-          static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
-          static_assert (CHANNELS == 1 || CHANNELS == 2);
 
           const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS> (ii);
 
           const float amp_gain = envelope_.get_next();
           if (CHANNELS == 1)
             {
-#if 0
-              const float interp = sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac;
-#endif
-              const float interp = optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac);
+              float interp;
+
+              if (QUALITY == 1)
+                interp = samples[1] + frac * (samples[2] - samples[1]);
+              else
+                interp = optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac);
 
               out_l[i] = interp * amp_gain;
               out_r[i] = interp * amp_gain;
             }
           else if (CHANNELS == 2)
             {
-#if 0
-              out_l[i] = (sample_reader_.get<0> (0) * (1 - frac) + sample_reader_.get<0> (1) * frac) * amp_gain;
-              out_r[i] = (sample_reader_.get<1> (0) * (1 - frac) + sample_reader_.get<1> (1) * frac) * amp_gain;
-#endif
-              out_l[i] = optimal_2x_4p (samples[0], samples[2], samples[4], samples[6], frac) * amp_gain;
-              out_r[i] = optimal_2x_4p (samples[1], samples[3], samples[5], samples[7], frac) * amp_gain;
+              if (QUALITY == 1)
+                {
+                  out_l[i] = (samples[2] + frac * (samples[4] - samples[2])) * amp_gain;
+                  out_r[i] = (samples[3] + frac * (samples[5] - samples[3])) * amp_gain;
+                }
+              else // FIXME: use different polynomial for QUALITY == 2
+                {
+                  out_l[i] = optimal_2x_4p (samples[0], samples[2], samples[4], samples[6], frac) * amp_gain;
+                  out_r[i] = optimal_2x_4p (samples[1], samples[3], samples[5], samples[7], frac) * amp_gain;
+                }
             }
           else
             {

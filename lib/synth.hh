@@ -103,6 +103,7 @@ class Synth
   static Global global_;
   float gain_ = 1.0;
   bool  live_mode_ = true;
+  int   sample_quality_ = 3;
   std::array<bool, 128> is_key_switch_;
   std::array<bool, 128> is_supported_cc_;
 
@@ -169,6 +170,16 @@ public:
   live_mode() const
   {
     return live_mode_;
+  }
+  void
+  set_sample_quality (int sample_quality)
+  {
+    sample_quality_ = std::clamp (sample_quality, 1, 3);
+  }
+  int
+  sample_quality()
+  {
+    return sample_quality_;
   }
   void
   set_channels (uint n_channels)

@@ -175,6 +175,35 @@ public:
   void set_live_mode (bool live_mode);
 
   /**
+   * \brief Set sample quality
+   *
+   * @param sample_quality new value for sample quality
+   *
+   * Select interpolation quality (this is called sample_quality, because there
+   * is an SFZ2 opcode called sample_quality that does just this). Currently
+   * liquidsfz implements 3 different levels for the interpolation quality.
+   *
+   * 1. linear interpolation
+   * 2. polynomial interpolation
+   * 3. high quality interpolation (hybrid 2x upsampling + polynomial interpolation)
+   *
+   * The default for this value is 3, which provides the best quality at a
+   * reasonable performance on modern systems.
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
+   */
+  void set_sample_quality (int sample_quality);
+
+  /**
+   * \brief Get sample quality
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
+   *
+   * @returns current sample quality
+   */
+  int sample_quality();
+
+  /**
    * \brief Get active voice count
    *
    * The maximum number of voices can be set using \ref set_max_voices.
