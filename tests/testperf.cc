@@ -30,16 +30,20 @@ int
 main (int argc, char **argv)
 {
   size_t block_size = 1024;
-  if (argc == 3)
-    block_size = atoi (argv[2]);
-  else if (argc != 2)
+  if (argc >= 4)
+    block_size = atoi (argv[3]);
+  if (argc < 2 || argc > 4)
     {
-      fprintf (stderr, "usage: testperf <sfz_filename>\n");
+      fprintf (stderr, "usage: testperf <sfz_filename> [ <quality> ] [ <block_size> ]\n");
       return 1;
     }
   Synth synth;
   synth.set_sample_rate (48000);
   synth.set_live_mode (false);
+
+  if (argc >= 3)
+    synth.set_sample_quality (atoi(argv[2]));
+
   if (!synth.load (argv[1]))
     {
       fprintf (stderr, "parse error: exiting\n");

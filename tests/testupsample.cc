@@ -53,9 +53,10 @@ db (double x)
 int
 main (int argc, char **argv)
 {
-  if (argc == 2 && string (argv[1]) == "synth")
+  if (argc == 3 && string (argv[1]) == "synth")
     {
       //float freq = atof (argv[2]);
+      int sample_quality = atoi (argv[2]);
       for (float freq = 50; freq < 22050; freq += 25)
         {
           static constexpr int RATE_FROM = 44100;
@@ -89,6 +90,7 @@ main (int argc, char **argv)
           LiquidSFZ::Synth synth;
           synth.set_sample_rate (RATE_TO);
           synth.set_live_mode (false);
+          synth.set_sample_quality (sample_quality);
           if (!synth.load ("testupsample.sfz"))
             {
               fprintf (stderr, "parse error: exiting\n");
