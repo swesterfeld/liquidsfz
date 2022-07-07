@@ -1,4 +1,4 @@
-AC_INIT([liquidsfz], [0.2.3])
+AC_INIT([liquidsfz], [0.3.0])
 AC_CONFIG_SRCDIR([src/liquidsfz.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
