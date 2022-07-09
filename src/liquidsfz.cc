@@ -296,6 +296,7 @@ public:
         printf ("pitch_bend chan val - send pitch bend event (0 <= val <= 16383)\n");
         printf ("gain value          - set gain (0 <= value <= 5)\n");
         printf ("max_voices value    - set maximum number of voices\n");
+        printf ("max_cache_size size - set maximum cache size in MB\n");
         printf ("keys                - show keys supported by the sfz\n");
         printf ("switches            - show switches supported by the sfz\n");
         printf ("ccs                 - show ccs supported by the sfz\n");
@@ -347,6 +348,16 @@ public:
         std::lock_guard lg (synth_mutex);
 
         synth.set_max_voices (std::clamp (value, 0, 4096));
+      }
+    else if (cli_parser.command ("max_cache_size", dvalue))
+      {
+        // atomic (no synchronization necessary)
+        synth.set_max_cache_size (std::clamp<double> (dvalue, 0, 256 * 1024) * 1024 * 1024);
+      }
+    else if (cli_parser.command ("max_cache_size"))
+      {
+        // atomic (no synchronization necessary)
+        printf ("Maximum cache size: %.1f MB\n", synth.max_cache_size() / 1024. / 1024.);
       }
     else if (cli_parser.command ("keys"))
       {
