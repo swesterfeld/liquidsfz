@@ -751,37 +751,41 @@ SampleReader::skip_to (int pos)
         }
       input += N * CHANNELS;
 
-      for (int i = 0; i < INTERP_POINTS; i++)
+      const int diff = relative_pos_ / 2 - last_index_;
+      if (diff == 0)
         {
-          bool need_upsample = true;
-          int new_index = relative_pos_ / 2 + i;
-
-          if (new_index == index_[i])
-            {
-              /* cheap: samples are still correct */
-              need_upsample = false;
-            }
-          for (int j = i + 1; j < INTERP_POINTS; j++)
-            {
-              if (new_index == index_[j])
-                {
-                  /* cheap: already upsampled this before, so we can move the samples to a new location */
-                  for (int k = 0; k < CHANNELS * 2; k++)
-                    {
-                      samples_[2 * CHANNELS * i + k] = samples_[2 * CHANNELS * j + k];
-                    }
-                  need_upsample = false;
-                  break;
-                }
-            }
-          if (need_upsample)
-            {
-              /* expensive: we need to really upsample something here */
-              upsample<CHANNELS> (&input[(i - 1) * CHANNELS], &samples_[2 * CHANNELS * i]);
-            }
-          index_[i] = new_index;
+          // all buffered samples are up to date
         }
-      // FIXME: check time alignment
-      return &samples_[2 + (relative_pos_ & 1) * CHANNELS];
+      else
+        {
+          int i;
+          if (diff == 1)
+            {
+              // keep 2 buffered samples, upsample 1
+              std::copy_n (&samples_[2 * CHANNELS], 4 * CHANNELS, &samples_[0]);
+
+              i = 2;
+            }
+          else if (diff == 2)
+            {
+              // keep 1 buffered sample, upsample 2
+              std::copy_n (&samples_[4 * CHANNELS], 2 * CHANNELS, &samples_[0]);
+
+              i = 1;
+            }
+          else
+            {
+              // upsample 3 samples
+              i = 0;
+            }
+          while (i < 3)
+            {
+              upsample<CHANNELS> (&input[(i - 1) * CHANNELS], &samples_[2 * CHANNELS * i]);
+              i++;
+            }
+        }
+      last_index_ = relative_pos_ / 2;
+
+      return &samples_[(relative_pos_ & 1) * CHANNELS];
     }
 }

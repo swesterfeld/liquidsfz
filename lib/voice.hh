@@ -35,12 +35,11 @@ class SampleReader
   int relative_pos_ = 0;
   int end_pos_ = 0;
   int last_pos_ = 0;
-  int sub_pos_ = 0; // FIXME: remove me
   int channels_ = 0;
   int loop_start_ = -1;
   int loop_end_ = -1;
   std::array<float, 6 * 4> samples_; // max: 2x upsampling, stereo, 6pt interpolation
-  std::array<int, 4> index_;
+  int last_index_ = -1000;
 public:
   void
   restart (SampleCache::Entry::PlayHandle *play_handle, const SampleCache::Entry *cached_sample, int upsample)
@@ -52,7 +51,7 @@ public:
     play_handle_ = play_handle;
     cached_sample_ = cached_sample;
     loop_start_ = loop_end_ = -1;
-    index_.fill (-1);
+    last_index_ = -1000;
     samples_.fill (0);
   }
   void
