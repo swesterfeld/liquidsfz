@@ -481,29 +481,24 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
           const float amp_gain = envelope_.get_next();
           if (CHANNELS == 1)
             {
-              float interp;
-
               if constexpr (QUALITY == 1)
                 {
                   const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 2> (ippos);
 
-                  interp = samples[0] + frac * (samples[1] - samples[0]);
+                  out_l[i] = (samples[0] + frac * (samples[1] - samples[0])) * amp_gain;
                 }
               if constexpr (QUALITY == 2)
                 {
                   const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 6> (ippos);
 
-                  interp = interp_hermite_6p3o (samples[0], samples[1], samples[2], samples[3], samples[4], samples[5], frac);
+                  out_l[i] = interp_hermite_6p3o (samples[0], samples[1], samples[2], samples[3], samples[4], samples[5], frac) * amp_gain;
                 }
               if constexpr (QUALITY == 3)
                 {
                   const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 4> (ippos);
 
-                  interp = interp_optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac);
+                  out_l[i] = interp_optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac) * amp_gain;
                 }
-
-              out_l[i] = interp * amp_gain;
-              out_r[i] = interp * amp_gain;
             }
           else if (CHANNELS == 2)
             {
