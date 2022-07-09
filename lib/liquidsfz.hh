@@ -422,7 +422,7 @@ public:
    *
    * @returns the size of the sample cache in bytes
    */
-  size_t cache_size();
+  size_t cache_size() const;
 
   /**
    * \brief Get number of cached samples
@@ -436,7 +436,35 @@ public:
    *
    * @returns number of cached samples
    */
-  uint cache_file_count();
+  uint cache_file_count() const;
+
+  /**
+   * \brief Set maximum memory used by sample cache
+   *
+   * @param max_cache_size maximum number of bytes to use for the cache
+   *
+   * Set maximum memory used by sample cache. Note that in some cases, the
+   * preloading requirements will make it impossible to free memory, so this
+   * limit can't always be enforced by the sample cache.
+   *
+   * The sample cache is shared between all liquidsfz Synth instances, this
+   * limit affects all instances.
+   *
+   * <em>This function is real-time safe and can be safely called from any
+   * thread at any time without synchronization.</em>
+   */
+  void set_max_cache_size (size_t max_cache_size);
+
+  /**
+   * \brief Get maximum memory used by sample cache
+   *
+   * This function returns the limit for the number of bytes used by the
+   * sample cache, see @ref set_max_cache_size().
+   *
+   * <em>This function is real-time safe and can be safely called from any
+   * thread at any time without synchronization.</em>.
+   */
+  size_t max_cache_size() const;
 };
 
 

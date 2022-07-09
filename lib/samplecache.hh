@@ -172,6 +172,10 @@ public:
     std::atomic<int>            max_buffer_index = 0;
     bool                        playing = false;
 
+    // cache unload
+    int64_t                     last_update = 0;
+    bool                        unload_possible = false;
+
     std::string                 filename;
 
     std::vector<std::function<void()>> free_functions;
@@ -276,6 +280,23 @@ public:
       playback_count--;
       sample_cache->playback_entries_need_update.store (true);
     }
+
+    void
+    free_unused_data()
+    {
+      if (!playback_count.load()) // check to be sure no readers exist
+        {
+          /*
+           * we can safely free the old data structures here because there cannot
+           * be any threads that are reading an old version of the sample buffer vector
+           * at this point
+           */
+          for (auto func : free_functions)
+            func();
+
+          free_functions.clear();
+        }
+    }
   };
   typedef std::shared_ptr<SampleCache::Entry> EntryP;
 private:
@@ -284,10 +305,12 @@ private:
   std::thread loader_thread;
   std::atomic<size_t> atomic_n_total_bytes_ = 0;
   std::atomic<uint>   atomic_cache_file_count_ = 0;
+  std::atomic<size_t> atomic_max_cache_size_ = 1024 * 1024 * 512;
   SFPool sf_pool;
   double last_cleanup_time = 0;
   std::vector<EntryP> playback_entries;
   std::atomic<bool>   playback_entries_need_update = false;
+  int64_t             update_counter = 0;
 
   bool quit_background_loader = false;
 
@@ -409,6 +432,8 @@ public:
           }
 
         buffer.data = data;
+
+        entry->last_update = update_counter++;
       }
   }
   void
@@ -425,6 +450,7 @@ public:
               {
                 //printf ("loading %s / buffer %zd\n", entry->filename.c_str(), b);
                 load_buffer (entry, sf->sndfile, b);
+                entry->unload_possible = true;
               }
           }
       }
@@ -471,6 +497,7 @@ public:
       }
     auto free_function = entry->buffers.take_atomically (new_buffers);
     entry->free_functions.push_back (free_function);
+    entry->unload_possible = false;
 
   }
   void
@@ -489,28 +516,38 @@ public:
               {
                 if (entry->playing)
                   {
-                    unload (entry.get());
-                    // printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
-
                     entry->max_buffer_index = 0;
                     entry->playing = false;
                   }
               }
-            if (!entry->playback_count.load()) // need to repeat this check to be sure no new readers exist
-              {
-                /*
-                 * we can safely free the old data structures here because there cannot
-                 * be any threads that are reading an old version of the sample buffer vector
-                 * at this point
-                 */
-                for (auto func : entry->free_functions)
-                  func();
-
-                entry->free_functions.clear();
-              }
+            entry->free_unused_data();
           }
       }
     sf_pool.cleanup();
+    if (atomic_n_total_bytes_ > atomic_max_cache_size_)
+      {
+        std::vector<EntryP> entries;
+
+        for (const auto& [key, value] : cache)
+          {
+            auto entry = value.lock();
+            if (entry && !entry->playing && entry->unload_possible)
+              entries.push_back (entry);
+          }
+
+        std::sort (entries.begin(), entries.end(), [](const auto& a, const auto& b) { return a->last_update < b->last_update; });
+        for (auto entry : entries)
+          {
+            unload (entry.get());
+
+            entry->free_unused_data();
+
+            //printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
+
+            if (atomic_n_total_bytes_ < atomic_max_cache_size_)
+              break;
+          }
+      }
   }
   void
   update_size_bytes (int delta_bytes)
@@ -533,6 +570,17 @@ public:
   {
     static_assert (decltype (atomic_cache_file_count_)::is_always_lock_free);
     return atomic_cache_file_count_;
+  }
+  void
+  set_max_cache_size (size_t max_cache_size)
+  {
+    static_assert (decltype (atomic_max_cache_size_)::is_always_lock_free);
+    atomic_max_cache_size_ = max_cache_size;
+  }
+  size_t
+  max_cache_size()
+  {
+    return atomic_max_cache_size_;
   }
   SampleCache()
   {

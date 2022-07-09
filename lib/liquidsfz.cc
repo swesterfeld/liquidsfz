@@ -153,15 +153,27 @@ Synth::set_progress_function (std::function<void (double)> progress_function)
 }
 
 size_t
-Synth::cache_size()
+Synth::cache_size() const
 {
   return impl->synth.cache_size();
 }
 
 uint
-Synth::cache_file_count()
+Synth::cache_file_count() const
 {
   return impl->synth.cache_file_count();
+}
+
+void
+Synth::set_max_cache_size (size_t max_cache_size)
+{
+  impl->synth.set_max_cache_size (max_cache_size);
+}
+
+size_t
+Synth::max_cache_size() const
+{
+  return impl->synth.max_cache_size();
 }
 
 /*----------------- CCInfo --------------*/

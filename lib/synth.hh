@@ -285,6 +285,16 @@ public:
     return global_.sample_cache->cache_file_count();
   }
   void
+  set_max_cache_size (size_t max_cache_size)
+  {
+    global_.sample_cache->set_max_cache_size (max_cache_size);
+  }
+  size_t
+  max_cache_size()
+  {
+    return global_.sample_cache->max_cache_size();
+  }
+  void
   note_on (int chan, int key, int vel)
   {
     /* kill overlapping notes */
