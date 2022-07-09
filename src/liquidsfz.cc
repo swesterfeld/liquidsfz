@@ -295,6 +295,7 @@ public:
         printf ("cc chan ctrl value  - send controller event\n");
         printf ("pitch_bend chan val - send pitch bend event (0 <= val <= 16383)\n");
         printf ("gain value          - set gain (0 <= value <= 5)\n");
+        printf ("max_voices value    - set maximum number of voices\n");
         printf ("keys                - show keys supported by the sfz\n");
         printf ("switches            - show switches supported by the sfz\n");
         printf ("ccs                 - show ccs supported by the sfz\n");
@@ -339,6 +340,13 @@ public:
     else if (cli_parser.command ("gain", dvalue))
       {
         cmd_q.append ([=]() { synth.set_gain (std::clamp (dvalue, 0., 5.)); });
+      }
+    else if (cli_parser.command ("max_voices", value))
+      {
+        // NOTE: this is not RT safe so we have to use the lock here
+        std::lock_guard lg (synth_mutex);
+
+        synth.set_max_voices (std::clamp (value, 0, 4096));
       }
     else if (cli_parser.command ("keys"))
       {
@@ -396,7 +404,7 @@ public:
   {
     synth.set_progress_function ([this] (double percent)
       {
-        printf ("Loading: %.1f %% / %.1f MB\r", percent, synth.cache_size() / 1024. / 1024.);
+        printf ("Loading: %.1f %%\r", percent);
         fflush (stdout);
       });
 
