@@ -405,6 +405,34 @@ Voice::process (float **outputs, uint n_frames)
     }
 }
 
+/*----- interpolation helpers -----*/
+// from: Polynomial Interpolators for High-Quality Resampling of Oversampled Audio
+// by Olli Niemitalo in October 2001
+static inline float
+interp_optimal_2x_4p (float ym1, float y0, float y1, float y2, float x)
+{
+  // Optimal 2x (4-point, 4th-order) (z-form)
+  float z = x - 0.5f;
+  float even1 = y1+y0, odd1 = y1-y0;
+  float even2 = y2+ym1, odd2 = y2-ym1;
+  float c0 = even1*0.45645918406487612f + even2*0.04354173901996461f;
+  float c1 = odd1*0.47236675362442071f + odd2*0.17686613581136501f;
+  float c2 = even1*-0.253674794204558521f + even2*0.25371918651882464f;
+  float c3 = odd1*-0.37917091811631082f + odd2*0.11952965967158000f;
+  float c4 = even1*0.04252164479749607f + even2*-0.04289144034653719f;
+  return (((c4*z+c3)*z+c2)*z+c1)*z+c0;
+}
+
+static inline float
+interp_hermite_6p3o (float ym2, float ym1, float y0, float y1, float y2, float y3, float x)
+{
+  // 6-point, 3rd-order Hermite (x-form)
+  float c1 = ym2 - y2 + 8 * (y1 - ym1);
+  float c2 = 15 * ym1 - 28 * y0 + 20 * y1 - 6 * y2 + y3 - 2 * ym2;
+  float c3 = ym2 - y3 + 7 * (y2 - ym1) + 16 * (y0 - y1);
+  return (((c3*x+c2)*x+c1)*x) * (1/12.0f) + y0;
+}
+
 template<int QUALITY, int CHANNELS>
 void
 Voice::process_impl (float **orig_outputs, uint orig_n_frames)
@@ -437,22 +465,6 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
   if (!lfo_volume)
     lfo_volume = synth_->const_block_1();
 
-  // from: Polynomial Interpolators for High-Quality Resampling of Oversampled Audio
-  // by Olli Niemitalo in October 2001
-  auto optimal_2x_4p = [] (float ym1, float y0, float y1, float y2, float frac) -> float
-  {
-    // Optimal 2x (4-point, 4th-order) (z-form)
-    float z = frac - 0.5f;
-    float even1 = y1+y0, odd1 = y1-y0;
-    float even2 = y2+ym1, odd2 = y2-ym1;
-    float c0 = even1*0.45645918406487612f + even2*0.04354173901996461f;
-    float c1 = odd1*0.47236675362442071f + odd2*0.17686613581136501f;
-    float c2 = even1*-0.253674794204558521f + even2*0.25371918651882464f;
-    float c3 = odd1*-0.37917091811631082f + odd2*0.11952965967158000f;
-    float c4 = even1*0.04252164479749607f + even2*-0.04289144034653719f;
-    return (((c4*z+c3)*z+c2)*z+c1)*z+c0;
-  };
-
   /* render voice */
   float out_l[n_frames];
   float out_r[n_frames];
@@ -461,36 +473,60 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
     {
       if (!sample_reader_.done() && !envelope_.done())
         {
-          const uint ii = ppos_;
-          const float frac = ppos_ - ii;
+          const uint ippos = ppos_;
+          const float frac = ppos_ - ippos;
 
-
-          const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS> (ii);
+          ppos_ += replay_speed_.get_next() * lfo_pitch[i] * UPSAMPLE;
 
           const float amp_gain = envelope_.get_next();
           if (CHANNELS == 1)
             {
               float interp;
 
-              if (QUALITY == 1)
-                interp = samples[1] + frac * (samples[2] - samples[1]);
-              else
-                interp = optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac);
+              if constexpr (QUALITY == 1)
+                {
+                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 2> (ippos);
+
+                  interp = samples[0] + frac * (samples[1] - samples[0]);
+                }
+              if constexpr (QUALITY == 2)
+                {
+                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 6> (ippos);
+
+                  interp = interp_hermite_6p3o (samples[0], samples[1], samples[2], samples[3], samples[4], samples[5], frac);
+                }
+              if constexpr (QUALITY == 3)
+                {
+                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 4> (ippos);
+
+                  interp = interp_optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac);
+                }
 
               out_l[i] = interp * amp_gain;
               out_r[i] = interp * amp_gain;
             }
           else if (CHANNELS == 2)
             {
-              if (QUALITY == 1)
+              if constexpr (QUALITY == 1)
                 {
-                  out_l[i] = (samples[2] + frac * (samples[4] - samples[2])) * amp_gain;
-                  out_r[i] = (samples[3] + frac * (samples[5] - samples[3])) * amp_gain;
+                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 2> (ippos);
+
+                  out_l[i] = (samples[0] + frac * (samples[2] - samples[0])) * amp_gain;
+                  out_r[i] = (samples[1] + frac * (samples[3] - samples[1])) * amp_gain;
                 }
-              else // FIXME: use different polynomial for QUALITY == 2
+              if constexpr (QUALITY == 2)
                 {
-                  out_l[i] = optimal_2x_4p (samples[0], samples[2], samples[4], samples[6], frac) * amp_gain;
-                  out_r[i] = optimal_2x_4p (samples[1], samples[3], samples[5], samples[7], frac) * amp_gain;
+                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 6> (ippos);
+
+                  out_l[i] = interp_hermite_6p3o (samples[0], samples[2], samples[4], samples[6], samples[8], samples[10], frac) * amp_gain;
+                  out_r[i] = interp_hermite_6p3o (samples[1], samples[3], samples[5], samples[7], samples[9], samples[11], frac) * amp_gain;
+                }
+              if constexpr (QUALITY == 3)
+                {
+                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 4> (ippos);
+
+                  out_l[i] = interp_optimal_2x_4p (samples[0], samples[2], samples[4], samples[6], frac) * amp_gain;
+                  out_r[i] = interp_optimal_2x_4p (samples[1], samples[3], samples[5], samples[7], frac) * amp_gain;
                 }
             }
           else
@@ -507,7 +543,6 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
           out_l[i] = 0;
           out_r[i] = 0;
         }
-      ppos_ += replay_speed_.get_next() * lfo_pitch[i] * UPSAMPLE;
     }
 
   /* process filters */
@@ -618,8 +653,8 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
     }
 }
 
-template<int UPSAMPLE, int CHANNELS>
-const float *
+template<int UPSAMPLE, int CHANNELS, int INTERP_POINTS>
+inline const float *
 SampleReader::skip_to (int pos)
 {
   assert (pos >= last_pos_);
@@ -641,17 +676,19 @@ SampleReader::skip_to (int pos)
     }
 
   static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
+  static_assert (INTERP_POINTS % 2 == 0);
 
   auto close_to_loop_point = [&] (int n)
     {
       return in_loop && ((relative_pos_ / UPSAMPLE - loop_start_ < n) || (loop_end_ - relative_pos_ / UPSAMPLE < n));
     };
-  if (UPSAMPLE == 1)
+  if constexpr (UPSAMPLE == 1)
     {
+      const int start_x = relative_pos_ - (INTERP_POINTS - 2) / 2;
       const float *samples = nullptr;
 
       if (!close_to_loop_point (INTERP_POINTS))
-        samples = play_handle_->get_n ((relative_pos_ - 1) * CHANNELS, INTERP_POINTS * CHANNELS);
+        samples = play_handle_->get_n (start_x * CHANNELS, INTERP_POINTS * CHANNELS);
 
       if (samples)
         {
@@ -661,7 +698,7 @@ SampleReader::skip_to (int pos)
         {
           for (int i = 0; i < INTERP_POINTS; i++)
             {
-              int x = relative_pos_ - 1 + i;
+              int x = start_x + i;
               if (in_loop)
                 {
                   while (x < loop_start_)
@@ -678,8 +715,10 @@ SampleReader::skip_to (int pos)
           return &samples_[0];
         }
     }
-  else
+  if constexpr (UPSAMPLE == 2)
     {
+      static_assert (INTERP_POINTS == 4);
+
       const int N = 24;
       const float *input = nullptr;
 

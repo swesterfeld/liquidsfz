@@ -39,8 +39,7 @@ class SampleReader
   int channels_ = 0;
   int loop_start_ = -1;
   int loop_end_ = -1;
-  static constexpr int INTERP_POINTS = 4;
-  std::array<float, INTERP_POINTS * 4> samples_; // max: 2x upsampling, stereo
+  std::array<float, 6 * 4> samples_; // max: 2x upsampling, stereo, 6pt interpolation
   std::array<int, 4> index_;
 public:
   void
@@ -63,7 +62,7 @@ public:
     loop_end_ = loop_end;
   }
 
-  template<int UPSAMPLE, int CHANNELS>
+  template<int UPSAMPLE, int CHANNELS, int INTERP_POINTS>
   const float *skip_to (int pos);
 
   bool

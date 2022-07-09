@@ -34,6 +34,7 @@
 #include <unistd.h>
 
 #include "sfpool.hh"
+#include "log.hh"
 
 namespace LiquidSFZInternal
 {
@@ -259,40 +260,7 @@ public:
       }
     private:
       bool
-      lookup (sample_count_t pos)
-      {
-        int buffer_index = (pos + SampleBuffer::frames_overlap * entry_->channels) / (SampleBuffer::frames_per_buffer * entry_->channels);
-        if (buffer_index >= 0 && buffer_index < int (entry_->buffers.size()))
-          {
-            entry_->update_max_buffer_index (buffer_index);
-
-            const SampleBuffer::Data *data = entry_->buffers[buffer_index].data.load();
-            if (!live_mode_)
-              {
-                /* when not in live mode, we need to block until the background
-                 * thread has completed loading the block
-                 */
-                while (!data)
-                  {
-                    usleep (20 * 1000); // FIXME: may want to synchronize without sleeping
-                    data = entry_->buffers[buffer_index].data.load();
-                  }
-              }
-            if (data)
-              {
-                assert (pos >= data->start_n_values);
-
-                samples_   = &data->samples[0];
-                start_pos_ = data->start_n_values;
-                end_pos_   = start_pos_ + data->samples.size();
-
-                return true;
-              }
-          }
-        samples_ = nullptr;
-        start_pos_ = end_pos_ = 0;
-        return false;
-      }
+      lookup (sample_count_t pos);
     };
 
     void

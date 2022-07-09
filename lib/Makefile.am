@@ -6,7 +6,7 @@ libliquidsfz_la_SOURCES = liquidsfz.cc liquidsfz.hh loader.cc loader.hh log.hh l
 			  envelope.hh curve.hh hydrogenimport.cc hydrogenimport.hh \
 			  pugixml.hh pugiconfig.hh midnam.cc midnam.hh filter.hh \
 			  lfogen.cc lfogen.hh argparser.cc argparser.hh sfpool.hh sfpool.cc \
-			  upsample.hh
+			  upsample.hh samplecache.cc
 
 EXTRA_DIST = pugixml.cc
 

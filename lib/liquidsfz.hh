@@ -184,8 +184,8 @@ public:
    * liquidsfz implements 3 different levels for the interpolation quality.
    *
    * 1. linear interpolation
-   * 2. polynomial interpolation
-   * 3. high quality interpolation (hybrid 2x upsampling + polynomial interpolation)
+   * 2. polynomial interpolation (hermite 6 point, 3rd order)
+   * 3. high quality interpolation (hybrid 2x upsampling + 4 point polynomial interpolation)
    *
    * The default for this value is 3, which provides the best quality at a
    * reasonable performance on modern systems.
