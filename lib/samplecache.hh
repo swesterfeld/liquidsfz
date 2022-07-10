@@ -344,14 +344,14 @@ private:
   std::atomic<size_t> atomic_max_cache_size_ = 1024 * 1024 * 512;
   SFPool              sf_pool_;
   double              last_cleanup_time_ = 0;
-  std::vector<SampleP> playback_entries_;
-  std::atomic<bool>   playback_entries_need_update_ = false;
+  std::vector<SampleP> playback_samples_;
+  std::atomic<bool>   playback_samples_need_update_ = false;
   int64_t             update_counter_ = 0;
 
   bool quit_background_loader_ = false;
 
   void remove_expired_entries();
-  void load_data_for_playback_entries();
+  void load_data_for_playback_samples();
   void background_loader();
   void cleanup_unused_data();
 
@@ -367,9 +367,9 @@ public:
   LoadResult load (const std::string& filename, uint preload_time_ms, uint offset);
 
   void
-  playback_entries_need_update()
+  playback_samples_need_update()
   {
-    playback_entries_need_update_.store (true);
+    playback_samples_need_update_.store (true);
   }
   int64_t
   next_update_counter()
@@ -435,14 +435,14 @@ inline void
 Sample::start_playback()
 {
   playback_count_++;
-  sample_cache_->playback_entries_need_update();
+  sample_cache_->playback_samples_need_update();
 }
 
 inline void
 Sample::end_playback()
 {
   playback_count_--;
-  sample_cache_->playback_entries_need_update();
+  sample_cache_->playback_samples_need_update();
 }
 
 }

@@ -215,7 +215,7 @@ Sample::load()
 
           if (sf->sndfile)
             {
-              //printf ("loading %s / buffer %zd\n", entry->filename.c_str(), b);
+              //printf ("loading %s / buffer %zd\n", filename_.c_str(), b);
               load_buffer (sf->sndfile, b);
               unload_possible_ = true;
             }
@@ -234,11 +234,11 @@ Sample::unload()
   {
       if (b < n_preload)
         {
-          new_buffers[b].data   = buffers_[b].data.load();
+          new_buffers[b].data = buffers_[b].data.load();
         }
       else
         {
-          new_buffers[b].data   = nullptr;
+          new_buffers[b].data = nullptr;
         }
     }
   auto free_function = buffers_.take_atomically (new_buffers);
@@ -279,11 +279,11 @@ SampleCache::~SampleCache()
 
   for (auto it : cache_)
     {
-      auto entry = it.second.lock();
-      if (entry)
+      auto sample = it.second.lock();
+      if (sample)
         {
-          entry->free_unused_data();
-          // FIXME: entry->buffers.clear();
+          sample->free_unused_data();
+          // FIXME: sample->buffers.clear();
         }
     }
 
@@ -300,9 +300,8 @@ SampleCache::background_loader()
       {
         std::lock_guard lg (mutex_);
 
-        load_data_for_playback_entries();
+        load_data_for_playback_samples();
         cleanup_unused_data();
-
       }
       usleep (20 * 1000);
     }
@@ -314,26 +313,26 @@ SampleCache::load (const string& filename, uint preload_time_ms, uint offset)
   std::lock_guard lg (mutex_);
 
   LoadResult result;
-  SampleP cached_entry = cache_[filename].lock();
-  if (cached_entry) /* already in cache? -> nothing to do */
+  SampleP cached_sample = cache_[filename].lock();
+  if (cached_sample) /* already in cache? */
     {
-      result.sample = cached_entry;
-      result.preload_info = cached_entry->add_preload (preload_time_ms, offset);
+      result.sample = cached_sample;
+      result.preload_info = cached_sample->add_preload (preload_time_ms, offset);
 
       return result;
     }
 
   remove_expired_entries();
 
-  auto new_entry = std::make_shared<Sample> (this);
-  auto preload_info = new_entry->add_preload (preload_time_ms, offset);
+  auto sample = std::make_shared<Sample> (this);
+  auto preload_info = sample->add_preload (preload_time_ms, offset);
 
-  if (new_entry->preload (filename))
+  if (sample->preload (filename))
     {
-      result.sample = new_entry;
+      result.sample = sample;
       result.preload_info = preload_info;
 
-      cache_[filename] = new_entry;
+      cache_[filename] = sample;
       atomic_cache_file_count_ = cache_.size();
     }
   return result;
@@ -366,32 +365,34 @@ SampleCache::cleanup_unused_data()
   double now = get_time();
   if (fabs (now - last_cleanup_time_) < 0.5)
     return;
+
   last_cleanup_time_ = now;
   for (const auto& [key, value] : cache_)
     {
-      auto entry = value.lock();
-      if (entry)
-        entry->free_unused_data();
+      auto sample = value.lock();
+      if (sample)
+        sample->free_unused_data();
     }
   sf_pool_.cleanup();
+
   if (atomic_n_total_bytes_ > atomic_max_cache_size_)
     {
-      vector<SampleP> entries;
+      vector<SampleP> samples;
 
       for (const auto& [key, value] : cache_)
         {
-          auto entry = value.lock();
-          if (entry && !entry->playing() && entry->unload_possible())
-            entries.push_back (entry);
+          auto sample = value.lock();
+          if (sample && !sample->playing() && sample->unload_possible())
+            samples.push_back (sample);
         }
 
-      std::sort (entries.begin(), entries.end(), [](const auto& a, const auto& b) { return a->last_update() < b->last_update(); });
-      for (auto entry : entries)
+      std::sort (samples.begin(), samples.end(), [](const auto& a, const auto& b) { return a->last_update() < b->last_update(); });
+      for (auto sample : samples)
         {
-          entry->unload();
-          entry->free_unused_data();
+          sample->unload();
+          sample->free_unused_data();
 
-          //printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
+          //printf ("unloaded %s / %s\n", filename_.c_str(), cache_stats().c_str());
 
           if (atomic_n_total_bytes_ < atomic_max_cache_size_)
             break;
@@ -400,23 +401,23 @@ SampleCache::cleanup_unused_data()
 }
 
 void
-SampleCache::load_data_for_playback_entries()
+SampleCache::load_data_for_playback_samples()
 {
-  if (playback_entries_need_update_.load())
+  if (playback_samples_need_update_.load())
     {
-      playback_entries_need_update_.store (false);
+      playback_samples_need_update_.store (false);
 
-      playback_entries_.clear();
+      playback_samples_.clear();
       for (const auto& [key, value] : cache_)
         {
-          auto entry = value.lock();
+          auto sample = value.lock();
 
-          if (entry && entry->playing())
-            playback_entries_.push_back (entry);
+          if (sample && sample->playing())
+            playback_samples_.push_back (sample);
         }
     }
-  for (const auto& entry : playback_entries_)
-    entry->load();
+  for (const auto& sample : playback_samples_)
+    sample->load();
 }
 
 }
