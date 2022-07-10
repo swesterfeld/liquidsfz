@@ -157,6 +157,8 @@ class Sample {
   SampleBufferVector          buffers_;
   SFPool::EntryP              mmap_sf_;
 
+  std::atomic<int>            playback_count_ = 0;
+
   uint preload_buffer_count();
 public:
   SampleCache                *sample_cache = nullptr;
@@ -169,9 +171,7 @@ public:
   uint                        channels;
   size_t                      n_samples = 0;
 
-  std::atomic<int>            playback_count = 0;
   std::atomic<int>            max_buffer_index = 0;
-  bool                        playing = false;
 
   // cache unload
   int64_t                     last_update = 0;
@@ -187,6 +187,11 @@ public:
     int prev_max_index = max_buffer_index;
     while (prev_max_index < value && !max_buffer_index.compare_exchange_weak (prev_max_index, value))
       ;
+  }
+  bool
+  playing()
+  {
+    return playback_count_.load() > 0;
   }
   class PlayHandle
   {
@@ -285,8 +290,9 @@ public:
   void
   free_unused_data()
   {
-    if (!playback_count.load()) // check to be sure no readers exist
+    if (!playback_count_.load()) // check to be sure no readers exist
       {
+        max_buffer_index = 0;
         /*
          * we can safely free the old data structures here because there cannot
          * be any threads that are reading an old version of the sample buffer vector
@@ -427,14 +433,9 @@ public:
         for (const auto& [key, value] : cache)
           {
             auto entry = value.lock();
-            if (entry)
-              {
-                if (entry->playback_count.load())
-                  {
-                    playback_entries.push_back (entry);
-                    entry->playing = true;
-                  }
-              }
+
+            if (entry && entry->playing())
+              playback_entries.push_back (entry);
           }
       }
     for (const auto& entry : playback_entries)
@@ -466,17 +467,7 @@ public:
       {
         auto entry = value.lock();
         if (entry)
-          {
-            if (!entry->playback_count.load())
-              {
-                if (entry->playing)
-                  {
-                    entry->max_buffer_index = 0;
-                    entry->playing = false;
-                  }
-              }
-            entry->free_unused_data();
-          }
+          entry->free_unused_data();
       }
     sf_pool_.cleanup();
     if (atomic_n_total_bytes_ > atomic_max_cache_size_)
@@ -486,7 +477,7 @@ public:
         for (const auto& [key, value] : cache)
           {
             auto entry = value.lock();
-            if (entry && !entry->playing && entry->unload_possible)
+            if (entry && !entry->playing() && entry->unload_possible)
               entries.push_back (entry);
           }
 
@@ -600,14 +591,14 @@ SampleBuffer::Data::~Data()
 inline void
 Sample::start_playback()
 {
-  playback_count++;
+  playback_count_++;
   sample_cache->playback_entries_need_update();
 }
 
 inline void
 Sample::end_playback()
 {
-  playback_count--;
+  playback_count_--;
   sample_cache->playback_entries_need_update();
 }
 
