@@ -29,11 +29,11 @@ bool
 Sample::PlayHandle::lookup (sample_count_t pos)
 {
   int buffer_index = (pos + SampleBuffer::frames_overlap * sample_->channels) / (SampleBuffer::frames_per_buffer * sample_->channels);
-  if (buffer_index >= 0 && buffer_index < int (sample_->buffers.size()))
+  if (buffer_index >= 0 && buffer_index < int (sample_->buffers_.size()))
     {
       sample_->update_max_buffer_index (buffer_index);
 
-      const SampleBuffer::Data *data = sample_->buffers[buffer_index].data.load();
+      const SampleBuffer::Data *data = sample_->buffers_[buffer_index].data.load();
       if (!live_mode_)
         {
           /* when not in live mode, we need to block until the background
@@ -42,7 +42,7 @@ Sample::PlayHandle::lookup (sample_count_t pos)
           while (!data)
             {
               usleep (20 * 1000); // FIXME: may want to synchronize without sleeping
-              data = sample_->buffers[buffer_index].data.load();
+              data = sample_->buffers_[buffer_index].data.load();
             }
         }
       if (data)
@@ -99,13 +99,80 @@ Sample::preload (SFPool::EntryP sf)
       n_buffers++;
       pos += SampleBuffer::frames_per_buffer;
     }
-  buffers.resize (n_buffers);
+  buffers_.resize (n_buffers);
   for (size_t b = 0; b < n_buffers; b++)
     {
       if (b < n_preload)
-        sample_cache->load_buffer (this, sf->sndfile, b);
+        load_buffer (sf->sndfile, b);
     }
 }
 
+void
+Sample::load_buffer (SNDFILE *sndfile, size_t b)
+{
+  auto& buffer = buffers_[b];
+  if (!buffer.data)
+    {
+      auto data = new SampleBuffer::Data (sample_cache, (SampleBuffer::frames_per_buffer + SampleBuffer::frames_overlap) * channels);
+      data->start_n_values = (b * SampleBuffer::frames_per_buffer - SampleBuffer::frames_overlap) * channels;
+
+      // FIXME: may want to check return codes
+      sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
+      sf_readf_float (sndfile, &data->samples[SampleBuffer::frames_overlap * channels], SampleBuffer::frames_per_buffer);
+
+      if (b > 0)
+        {
+          // copy last samples from last buffer to first samples from this buffer to make buffers overlap
+          const auto last_data = buffers_[b - 1].data.load();
+          const float *from_samples = &last_data->samples[SampleBuffer::frames_per_buffer * channels];
+          std::copy_n (from_samples, SampleBuffer::frames_overlap * channels, &data->samples[0]);
+        }
+
+      buffer.data = data;
+
+      last_update = sample_cache->next_update_counter();
+    }
+}
+
+void
+Sample::load()
+{
+  for (size_t b = 0; b < buffers_.size(); b++)
+    {
+      if (!buffers_[b].data && b < size_t (max_buffer_index.load() + 20)) // FIXME: preload time ms
+        {
+          SF_INFO sfinfo;
+          auto sf = SFPool::use_mmap ? mmap_sf : sample_cache->sf_pool().open (filename, &sfinfo);
+
+          if (sf->sndfile)
+            {
+              //printf ("loading %s / buffer %zd\n", entry->filename.c_str(), b);
+              load_buffer (sf->sndfile, b);
+              unload_possible = true;
+            }
+        }
+    }
+}
+
+void
+Sample::unload()
+{
+  SampleBufferVector new_buffers;
+  new_buffers.resize (buffers_.size());
+  for (size_t b = 0; b < buffers_.size(); b++)
+  {
+      if (b > 20) // FIXME: preload time ms
+        {
+          new_buffers[b].data   = nullptr;
+        }
+      else
+        {
+          new_buffers[b].data   = buffers_[b].data.load();
+        }
+    }
+  auto free_function = buffers_.take_atomically (new_buffers);
+  free_functions.push_back (free_function);
+  unload_possible = false;
+}
 
 }

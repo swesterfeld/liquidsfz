@@ -153,7 +153,8 @@ public:
   }
 };
 
-struct Sample {
+class Sample {
+  SampleBufferVector          buffers_;
 public:
   SampleCache                *sample_cache = nullptr;
 
@@ -161,7 +162,6 @@ public:
   int                         loop_start = 0;
   int                         loop_end = 0;
 
-  SampleBufferVector          buffers;
   uint                        sample_rate;
   uint                        channels;
   size_t                      n_samples = 0;
@@ -276,6 +276,9 @@ public:
 
   PreloadInfoP add_preload (uint time_ms, uint offset);
   void preload (SFPool::EntryP sf);
+  void load_buffer (SNDFILE *sndfile, size_t b);
+  void load();
+  void unload();
 
   void
   free_unused_data()
@@ -307,8 +310,8 @@ private:
   std::atomic<size_t> atomic_n_total_bytes_ = 0;
   std::atomic<uint>   atomic_cache_file_count_ = 0;
   std::atomic<size_t> atomic_max_cache_size_ = 1024 * 1024 * 512;
-  SFPool sf_pool;
-  double last_cleanup_time = 0;
+  SFPool              sf_pool_;
+  double              last_cleanup_time = 0;
   std::vector<SampleP> playback_entries;
   std::atomic<bool>   playback_entries_need_update_ = false;
   int64_t             update_counter = 0;
@@ -363,7 +366,7 @@ public:
     auto new_entry = std::make_shared<Sample>();
 
     SF_INFO sfinfo = { 0, };
-    auto sf = sf_pool.open (filename, &sfinfo);
+    auto sf = sf_pool_.open (filename, &sfinfo);
     SNDFILE *sndfile = sf->sndfile;
 
     if (!sndfile)
@@ -416,51 +419,6 @@ public:
     return result;
   }
   void
-  load_buffer (Sample *entry, SNDFILE *sndfile, size_t b)
-  {
-    auto& buffer = entry->buffers[b];
-    if (!buffer.data)
-      {
-        auto data = new SampleBuffer::Data (this, (SampleBuffer::frames_per_buffer + SampleBuffer::frames_overlap) * entry->channels);
-        data->start_n_values = (b * SampleBuffer::frames_per_buffer - SampleBuffer::frames_overlap) * entry->channels;
-
-        // FIXME: may want to check return codes
-        sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
-        sf_readf_float (sndfile, &data->samples[SampleBuffer::frames_overlap * entry->channels], SampleBuffer::frames_per_buffer);
-
-        if (b > 0)
-          {
-            // copy last samples from last buffer to first samples from this buffer to make buffers overlap
-            const auto last_data = entry->buffers[b - 1].data.load();
-            const float *from_samples = &last_data->samples[SampleBuffer::frames_per_buffer * entry->channels];
-            std::copy_n (from_samples, SampleBuffer::frames_overlap * entry->channels, &data->samples[0]);
-          }
-
-        buffer.data = data;
-
-        entry->last_update = update_counter++;
-      }
-  }
-  void
-  load (Sample *entry)
-  {
-    for (size_t b = 0; b < entry->buffers.size(); b++)
-      {
-        if (!entry->buffers[b].data && b < size_t (entry->max_buffer_index.load() + 20))
-          {
-            SF_INFO sfinfo;
-            auto sf = SFPool::use_mmap ? entry->mmap_sf : sf_pool.open (entry->filename, &sfinfo);
-
-            if (sf->sndfile)
-              {
-                //printf ("loading %s / buffer %zd\n", entry->filename.c_str(), b);
-                load_buffer (entry, sf->sndfile, b);
-                entry->unload_possible = true;
-              }
-          }
-      }
-  }
-  void
   load_data_for_playback_entries()
   {
     if (playback_entries_need_update_.load())
@@ -482,33 +440,22 @@ public:
           }
       }
     for (const auto& entry : playback_entries)
-      load (entry.get());
-  }
-  void
-  unload (Sample *entry)
-  {
-    SampleBufferVector new_buffers;
-    new_buffers.resize (entry->buffers.size());
-    for (size_t b = 0; b < entry->buffers.size(); b++)
-    {
-        if (b > 20)
-          {
-            new_buffers[b].data   = nullptr;
-          }
-        else
-          {
-            new_buffers[b].data   = entry->buffers[b].data.load();
-          }
-      }
-    auto free_function = entry->buffers.take_atomically (new_buffers);
-    entry->free_functions.push_back (free_function);
-    entry->unload_possible = false;
-
+      entry->load();
   }
   void
   playback_entries_need_update()
   {
     playback_entries_need_update_.store (true);
+  }
+  int64_t
+  next_update_counter()
+  {
+    return ++update_counter;
+  }
+  SFPool&
+  sf_pool()
+  {
+    return sf_pool_;
   }
   void
   cleanup_unused_data()
@@ -533,7 +480,7 @@ public:
             entry->free_unused_data();
           }
       }
-    sf_pool.cleanup();
+    sf_pool_.cleanup();
     if (atomic_n_total_bytes_ > atomic_max_cache_size_)
       {
         std::vector<SampleP> entries;
@@ -548,8 +495,7 @@ public:
         std::sort (entries.begin(), entries.end(), [](const auto& a, const auto& b) { return a->last_update < b->last_update; });
         for (auto entry : entries)
           {
-            unload (entry.get());
-
+            entry->unload();
             entry->free_unused_data();
 
             //printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
@@ -613,7 +559,7 @@ public:
               func();
 
             entry->free_functions.clear();
-            entry->buffers.clear();
+            // FIXME: entry->buffers.clear();
           }
       }
 
