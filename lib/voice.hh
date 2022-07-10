@@ -30,8 +30,8 @@ namespace LiquidSFZInternal
 
 class SampleReader
 {
-  SampleCache::Entry::PlayHandle *play_handle_ = nullptr;
-  const SampleCache::Entry *cached_sample_ = nullptr;
+  Sample::PlayHandle *play_handle_ = nullptr;
+  const Sample *cached_sample_ = nullptr;
   int relative_pos_ = 0;
   int end_pos_ = 0;
   int last_pos_ = 0;
@@ -42,7 +42,7 @@ class SampleReader
   int last_index_ = -1000;
 public:
   void
-  restart (SampleCache::Entry::PlayHandle *play_handle, const SampleCache::Entry *cached_sample, int upsample)
+  restart (Sample::PlayHandle *play_handle, const Sample *cached_sample, int upsample)
   {
     channels_ = cached_sample->channels;
     relative_pos_ = 0;
@@ -83,7 +83,7 @@ class Voice
     const FilterParams *params;
   } fimpl_, fimpl2_;
 
-  SampleCache::Entry::PlayHandle play_handle_;
+  Sample::PlayHandle play_handle_;
 
   Envelope filter_envelope_;
   float    filter_envelope_depth_ = 0;

@@ -24,14 +24,14 @@ namespace LiquidSFZInternal {
 
 // this is slow anyway, and we do not want this to be inlined
 bool
-SampleCache::Entry::PlayHandle::lookup (sample_count_t pos)
+Sample::PlayHandle::lookup (sample_count_t pos)
 {
-  int buffer_index = (pos + SampleBuffer::frames_overlap * entry_->channels) / (SampleBuffer::frames_per_buffer * entry_->channels);
-  if (buffer_index >= 0 && buffer_index < int (entry_->buffers.size()))
+  int buffer_index = (pos + SampleBuffer::frames_overlap * sample_->channels) / (SampleBuffer::frames_per_buffer * sample_->channels);
+  if (buffer_index >= 0 && buffer_index < int (sample_->buffers.size()))
     {
-      entry_->update_max_buffer_index (buffer_index);
+      sample_->update_max_buffer_index (buffer_index);
 
-      const SampleBuffer::Data *data = entry_->buffers[buffer_index].data.load();
+      const SampleBuffer::Data *data = sample_->buffers[buffer_index].data.load();
       if (!live_mode_)
         {
           /* when not in live mode, we need to block until the background
@@ -40,7 +40,7 @@ SampleCache::Entry::PlayHandle::lookup (sample_count_t pos)
           while (!data)
             {
               usleep (20 * 1000); // FIXME: may want to synchronize without sleeping
-              data = entry_->buffers[buffer_index].data.load();
+              data = sample_->buffers[buffer_index].data.load();
             }
         }
       if (data)

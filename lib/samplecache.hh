@@ -153,154 +153,144 @@ public:
   }
 };
 
-class SampleCache
-{
-public:
-  struct Entry {
-    SampleCache                *sample_cache = nullptr;
+struct Sample {
+  SampleCache                *sample_cache = nullptr;
 
-    bool                        loop = false;
-    int                         loop_start = 0;
-    int                         loop_end = 0;
+  bool                        loop = false;
+  int                         loop_start = 0;
+  int                         loop_end = 0;
 
-    SampleBufferVector          buffers;
-    uint                        sample_rate;
-    uint                        channels;
-    size_t                      n_samples = 0;
+  SampleBufferVector          buffers;
+  uint                        sample_rate;
+  uint                        channels;
+  size_t                      n_samples = 0;
 
-    std::atomic<int>            playback_count = 0;
-    std::atomic<int>            max_buffer_index = 0;
-    bool                        playing = false;
+  std::atomic<int>            playback_count = 0;
+  std::atomic<int>            max_buffer_index = 0;
+  bool                        playing = false;
 
-    // cache unload
-    int64_t                     last_update = 0;
-    bool                        unload_possible = false;
+  // cache unload
+  int64_t                     last_update = 0;
+  bool                        unload_possible = false;
 
-    std::string                 filename;
+  std::string                 filename;
 
-    std::vector<std::function<void()>> free_functions;
-    SFPool::EntryP              mmap_sf;
+  std::vector<std::function<void()>> free_functions;
+  SFPool::EntryP              mmap_sf;
 
-    void
-    update_max_buffer_index (int value)
+  void
+  update_max_buffer_index (int value)
+  {
+    int prev_max_index = max_buffer_index;
+    while (prev_max_index < value && !max_buffer_index.compare_exchange_weak (prev_max_index, value))
+      ;
+  }
+  class PlayHandle
+  {
+  private:
+    Sample          *sample_    = nullptr;
+    bool             live_mode_ = false;
+
+    const float     *samples_   = nullptr;
+    sample_count_t   start_pos_ = 0;
+    sample_count_t   end_pos_   = 0;
+
+  public:
+    PlayHandle (const PlayHandle& p)
     {
-      int prev_max_index = max_buffer_index;
-      while (prev_max_index < value && !max_buffer_index.compare_exchange_weak (prev_max_index, value))
-        ;
+      start_playback (p.sample_, p.live_mode_);
     }
-    class PlayHandle
+    PlayHandle&
+    operator= (const PlayHandle& p)
     {
-    private:
-      Entry           *entry_     = nullptr;
-      bool             live_mode_ = false;
-
-      const float     *samples_   = nullptr;
-      sample_count_t   start_pos_ = 0;
-      sample_count_t   end_pos_   = 0;
-
-    public:
-      PlayHandle (const PlayHandle& p)
-      {
-        start_playback (p.entry_, p.live_mode_);
-      }
-      PlayHandle&
-      operator= (const PlayHandle& p)
-      {
-        start_playback (p.entry_, p.live_mode_);
-        return *this;
-      }
-      PlayHandle()
-      {
-      }
-      ~PlayHandle()
-      {
-        end_playback();
-      }
-      void
-      start_playback (Entry *entry, bool live_mode)
-      {
-        if (entry != entry_)
-          {
-            if (entry_)
-              entry_->end_playback();
-
-            entry_ = entry;
-            if (entry_)
-              entry_->start_playback();
-
-            samples_ = nullptr;
-            start_pos_ = end_pos_ = 0;
-          }
-        live_mode_ = live_mode;
-      }
-      void
-      end_playback()
-      {
-        start_playback (nullptr, live_mode_);
-      }
-      const float *
-      get_n (sample_count_t pos, sample_count_t n)
-      {
-        /* usually this succeeds quickly */
-        sample_count_t offset = pos - start_pos_;
-        if (offset >= 0 && pos + n < end_pos_)
-          return samples_ + offset;
-
-        /* if not, we try to find a matching block */
-        if (lookup (pos))
-          {
-            if (pos + n < end_pos_)
-              return samples_ + pos - start_pos_;
-          }
-        /* finally we fail */
-        return nullptr;
-      }
-      float
-      get (sample_count_t pos)
-      {
-        const float *sample = get_n (pos, 1);
-
-        return sample ? *sample : 0;
-      }
-    private:
-      bool
-      lookup (sample_count_t pos);
-    };
-
-    void
-    start_playback()
-    {
-      playback_count++;
-      sample_cache->playback_entries_need_update.store (true);
+      start_playback (p.sample_, p.live_mode_);
+      return *this;
     }
+    PlayHandle()
+    {
+    }
+    ~PlayHandle()
+    {
+      end_playback();
+    }
+    void
+    start_playback (Sample *sample, bool live_mode)
+    {
+      if (sample != sample_)
+        {
+          if (sample_)
+            sample_->end_playback();
 
+          sample_ = sample;
+          if (sample_)
+            sample_->start_playback();
+
+          samples_ = nullptr;
+          start_pos_ = end_pos_ = 0;
+        }
+      live_mode_ = live_mode;
+    }
     void
     end_playback()
     {
-      playback_count--;
-      sample_cache->playback_entries_need_update.store (true);
+      start_playback (nullptr, live_mode_);
     }
-
-    void
-    free_unused_data()
+    const float *
+    get_n (sample_count_t pos, sample_count_t n)
     {
-      if (!playback_count.load()) // check to be sure no readers exist
-        {
-          /*
-           * we can safely free the old data structures here because there cannot
-           * be any threads that are reading an old version of the sample buffer vector
-           * at this point
-           */
-          for (auto func : free_functions)
-            func();
+      /* usually this succeeds quickly */
+      sample_count_t offset = pos - start_pos_;
+      if (offset >= 0 && pos + n < end_pos_)
+        return samples_ + offset;
 
-          free_functions.clear();
+      /* if not, we try to find a matching block */
+      if (lookup (pos))
+        {
+          if (pos + n < end_pos_)
+            return samples_ + pos - start_pos_;
         }
+      /* finally we fail */
+      return nullptr;
     }
+    float
+    get (sample_count_t pos)
+    {
+      const float *sample = get_n (pos, 1);
+
+      return sample ? *sample : 0;
+    }
+  private:
+    bool
+    lookup (sample_count_t pos);
   };
-  typedef std::shared_ptr<SampleCache::Entry> EntryP;
+
+  void start_playback();
+
+  void end_playback();
+
+  void
+  free_unused_data()
+  {
+    if (!playback_count.load()) // check to be sure no readers exist
+      {
+        /*
+         * we can safely free the old data structures here because there cannot
+         * be any threads that are reading an old version of the sample buffer vector
+         * at this point
+         */
+        for (auto func : free_functions)
+          func();
+
+        free_functions.clear();
+      }
+  }
+};
+typedef std::shared_ptr<Sample> SampleP;
+
+class SampleCache
+{
 private:
-  std::map<std::string, std::weak_ptr<Entry>> cache;
+  std::map<std::string, std::weak_ptr<Sample>> cache;
   std::mutex mutex;
   std::thread loader_thread;
   std::atomic<size_t> atomic_n_total_bytes_ = 0;
@@ -308,8 +298,8 @@ private:
   std::atomic<size_t> atomic_max_cache_size_ = 1024 * 1024 * 512;
   SFPool sf_pool;
   double last_cleanup_time = 0;
-  std::vector<EntryP> playback_entries;
-  std::atomic<bool>   playback_entries_need_update = false;
+  std::vector<SampleP> playback_entries;
+  std::atomic<bool>   playback_entries_need_update_ = false;
   int64_t             update_counter = 0;
 
   bool quit_background_loader = false;
@@ -336,18 +326,18 @@ protected:
     atomic_cache_file_count_ = cache.size();
   }
 public:
-  EntryP
+  SampleP
   load (const std::string& filename)
   {
     std::lock_guard lg (mutex);
 
-    EntryP cached_entry = cache[filename].lock();
+    SampleP cached_entry = cache[filename].lock();
     if (cached_entry) /* already in cache? -> nothing to do */
       return cached_entry;
 
     remove_expired_entries();
 
-    auto new_entry = std::make_shared<Entry>();
+    auto new_entry = std::make_shared<Sample>();
 
     SF_INFO sfinfo = { 0, };
     auto sf = sf_pool.open (filename, &sfinfo);
@@ -411,7 +401,7 @@ public:
     return new_entry;
   }
   void
-  load_buffer (Entry *entry, SNDFILE *sndfile, size_t b)
+  load_buffer (Sample *entry, SNDFILE *sndfile, size_t b)
   {
     auto& buffer = entry->buffers[b];
     if (!buffer.data)
@@ -437,7 +427,7 @@ public:
       }
   }
   void
-  load (Entry *entry)
+  load (Sample *entry)
   {
     for (size_t b = 0; b < entry->buffers.size(); b++)
       {
@@ -458,9 +448,9 @@ public:
   void
   load_data_for_playback_entries()
   {
-    if (playback_entries_need_update.load())
+    if (playback_entries_need_update_.load())
       {
-        playback_entries_need_update.store (false);
+        playback_entries_need_update_.store (false);
 
         playback_entries.clear();
         for (const auto& [key, value] : cache)
@@ -480,7 +470,7 @@ public:
       load (entry.get());
   }
   void
-  unload (Entry *entry)
+  unload (Sample *entry)
   {
     SampleBufferVector new_buffers;
     new_buffers.resize (entry->buffers.size());
@@ -499,6 +489,11 @@ public:
     entry->free_functions.push_back (free_function);
     entry->unload_possible = false;
 
+  }
+  void
+  playback_entries_need_update()
+  {
+    playback_entries_need_update_.store (true);
   }
   void
   cleanup_unused_data()
@@ -526,7 +521,7 @@ public:
     sf_pool.cleanup();
     if (atomic_n_total_bytes_ > atomic_max_cache_size_)
       {
-        std::vector<EntryP> entries;
+        std::vector<SampleP> entries;
 
         for (const auto& [key, value] : cache)
           {
@@ -641,6 +636,20 @@ inline
 SampleBuffer::Data::~Data()
 {
   sample_cache_->update_size_bytes (-n_samples_ * sizeof (decltype (samples)::value_type));
+}
+
+inline void
+Sample::start_playback()
+{
+  playback_count++;
+  sample_cache->playback_entries_need_update();
+}
+
+inline void
+Sample::end_playback()
+{
+  playback_count--;
+  sample_cache->playback_entries_need_update();
 }
 
 }

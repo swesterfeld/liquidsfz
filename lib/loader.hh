@@ -235,7 +235,7 @@ struct Limits
 struct Region
 {
   std::string sample;
-  std::shared_ptr<SampleCache::Entry> cached_sample;
+  SampleP     cached_sample;
   std::string location;
 
   bool switch_match = true;
