@@ -155,6 +155,9 @@ public:
 
 class Sample {
   SampleBufferVector          buffers_;
+  SFPool::EntryP              mmap_sf_;
+
+  uint preload_buffer_count();
 public:
   SampleCache                *sample_cache = nullptr;
 
@@ -177,7 +180,6 @@ public:
   std::string                 filename;
 
   std::vector<std::function<void()>> free_functions;
-  SFPool::EntryP              mmap_sf;
 
   void
   update_max_buffer_index (int value)
@@ -383,10 +385,6 @@ public:
         return nullptr;
       }
 #endif
-
-    /* if we use mmap, we keep the file open */
-    if (SFPool::use_mmap)
-      new_entry->mmap_sf = sf;
 
     /* load loop points */
     SF_INSTRUMENT instrument = {0,};

@@ -76,26 +76,18 @@ Sample::add_preload (uint time_ms, uint offset)
 void
 Sample::preload (SFPool::EntryP sf)
 {
-  uint preload_time_ms = 0;
-  for (auto info_weak : preload_infos)
-    {
-      auto info = info_weak.lock();
-      if (info)
-        {
-          preload_time_ms = max (preload_time_ms, info->time_ms);
-        }
-    }
+  /* if we use mmap, we keep the file open */
+  if (SFPool::use_mmap)
+    mmap_sf_ = sf;
+
   /* preload sample data */
   sf_count_t pos = 0;
   sf_count_t frames = n_samples / channels;
 
   size_t n_buffers = 0;
-  size_t n_preload = 0;
+  size_t n_preload = preload_buffer_count();
   while (pos < frames)
     {
-      double time_ms = pos * 1000. / sample_rate;
-      if (time_ms < preload_time_ms)
-        n_preload++;
       n_buffers++;
       pos += SampleBuffer::frames_per_buffer;
     }
@@ -105,6 +97,34 @@ Sample::preload (SFPool::EntryP sf)
       if (b < n_preload)
         load_buffer (sf->sndfile, b);
     }
+}
+
+uint
+Sample::preload_buffer_count()
+{
+  uint preload_time_ms = 0;
+  for (auto info_weak : preload_infos)
+    {
+      auto info = info_weak.lock();
+      if (info)
+        {
+          preload_time_ms = max (preload_time_ms, info->time_ms);
+        }
+    }
+
+  uint n_preload = 0;
+
+  sf_count_t frames = n_samples / channels;
+  sf_count_t pos = 0;
+  while (pos < frames)
+    {
+      double time_ms = pos * 1000. / sample_rate;
+      if (time_ms < preload_time_ms)
+        n_preload++;
+
+      pos += SampleBuffer::frames_per_buffer;
+    }
+  return n_preload;
 }
 
 void
@@ -137,12 +157,14 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
 void
 Sample::load()
 {
+  uint max_b = max_buffer_index.load() + preload_buffer_count();
+
   for (size_t b = 0; b < buffers_.size(); b++)
     {
-      if (!buffers_[b].data && b < size_t (max_buffer_index.load() + 20)) // FIXME: preload time ms
+      if (!buffers_[b].data && b < max_b)
         {
           SF_INFO sfinfo;
-          auto sf = SFPool::use_mmap ? mmap_sf : sample_cache->sf_pool().open (filename, &sfinfo);
+          auto sf = SFPool::use_mmap ? mmap_sf_ : sample_cache->sf_pool().open (filename, &sfinfo);
 
           if (sf->sndfile)
             {
@@ -157,17 +179,19 @@ Sample::load()
 void
 Sample::unload()
 {
+  uint n_preload = preload_buffer_count();
+
   SampleBufferVector new_buffers;
   new_buffers.resize (buffers_.size());
   for (size_t b = 0; b < buffers_.size(); b++)
   {
-      if (b > 20) // FIXME: preload time ms
+      if (b < n_preload)
         {
-          new_buffers[b].data   = nullptr;
+          new_buffers[b].data   = buffers_[b].data.load();
         }
       else
         {
-          new_buffers[b].data   = buffers_[b].data.load();
+          new_buffers[b].data   = nullptr;
         }
     }
   auto free_function = buffers_.take_atomically (new_buffers);
