@@ -175,6 +175,27 @@ public:
   void set_live_mode (bool live_mode);
 
   /**
+   * \brief Set preload time
+   *
+   * @param time_ms  new value for the preload time in milliseconds
+   *
+   * Configure preload time for samples in milliseconds. This function must be
+   * called before @ref load(). In some cases (for instance if the offset opcode
+   * is used), the actual preload time will be higher than this value. The
+   * default value for the preload time is 500ms.
+   */
+  void set_preload_time (uint time_ms);
+
+  /**
+   * \brief Get preload time
+   *
+   * See @ref set_preload_time().
+   *
+   * @returns preload time in milliseconds
+   */
+  uint preload_time() const;
+
+  /**
    * \brief Set sample quality
    *
    * @param sample_quality new value for sample quality

@@ -20,6 +20,8 @@
 
 #include "samplecache.hh"
 
+using std::max;
+
 namespace LiquidSFZInternal {
 
 // this is slow anyway, and we do not want this to be inlined
@@ -58,5 +60,52 @@ Sample::PlayHandle::lookup (sample_count_t pos)
   start_pos_ = end_pos_ = 0;
   return false;
 }
+
+Sample::PreloadInfoP
+Sample::add_preload (uint time_ms, uint offset)
+{
+  auto preload_info = std::make_shared<PreloadInfo>();
+
+  preload_info->time_ms = time_ms;
+  preload_info->offset = offset;
+
+  preload_infos.push_back (preload_info);
+  return preload_info;
+}
+
+void
+Sample::preload (SFPool::EntryP sf)
+{
+  uint preload_time_ms = 0;
+  for (auto info_weak : preload_infos)
+    {
+      auto info = info_weak.lock();
+      if (info)
+        {
+          preload_time_ms = max (preload_time_ms, info->time_ms);
+        }
+    }
+  /* preload sample data */
+  sf_count_t pos = 0;
+  sf_count_t frames = n_samples / channels;
+
+  size_t n_buffers = 0;
+  size_t n_preload = 0;
+  while (pos < frames)
+    {
+      double time_ms = pos * 1000. / sample_rate;
+      if (time_ms < preload_time_ms)
+        n_preload++;
+      n_buffers++;
+      pos += SampleBuffer::frames_per_buffer;
+    }
+  buffers.resize (n_buffers);
+  for (size_t b = 0; b < n_buffers; b++)
+    {
+      if (b < n_preload)
+        sample_cache->load_buffer (this, sf->sndfile, b);
+    }
+}
+
 
 }

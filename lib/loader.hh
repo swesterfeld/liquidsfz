@@ -235,8 +235,10 @@ struct Limits
 struct Region
 {
   std::string sample;
-  SampleP     cached_sample;
   std::string location;
+
+  SampleP              cached_sample;
+  Sample::PreloadInfoP preload_info;
 
   bool switch_match = true;
 

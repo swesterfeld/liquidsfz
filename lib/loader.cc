@@ -1192,13 +1192,22 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
     {
       Region& region = regions[i];
 
-      const auto cached_sample = sample_cache.load (region.sample);
-      region.cached_sample = cached_sample;
+      const auto load_result = sample_cache.load (region.sample, synth_->preload_time(), /* FIXME */ 0);
+      region.cached_sample = load_result.sample;
 
-      if (!cached_sample)
+      if (region.cached_sample)
+        {
+          // ensure that the life-time of our preload settings is the same as the life-time of this region
+          //
+          // this also allows having different preload settings for different regions / synth instances
+          // on the same cached sample
+          region.preload_info = load_result.preload_info;
+        }
+
+      if (!region.cached_sample)
         synth_->warning ("%s: missing sample: '%s'\n", filename.c_str(), region.sample.c_str());
 
-      if (cached_sample && cached_sample->loop)
+      if (region.cached_sample && region.cached_sample->loop)
         {
           /* if values have been given explicitely, keep them
            *   -> user can override loop settings from wav file (cached sample)
@@ -1207,10 +1216,10 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
             region.loop_mode = LoopMode::CONTINUOUS;
 
           if (!region.have_loop_start)
-            region.loop_start = cached_sample->loop_start;
+            region.loop_start = region.cached_sample->loop_start;
 
           if (!region.have_loop_end)
-            region.loop_end = cached_sample->loop_end;
+            region.loop_end = region.cached_sample->loop_end;
         }
       if (region.fil.cutoff < 0) /* filter defaults to lpf_2p, but only if cutoff was found */
         region.fil.type = Filter::Type::NONE;

@@ -63,6 +63,18 @@ Synth::set_live_mode (bool live_mode)
 }
 
 void
+Synth::set_preload_time (uint time_ms)
+{
+  impl->synth.set_preload_time (time_ms);
+}
+
+uint
+Synth::preload_time() const
+{
+  return impl->synth.preload_time();
+}
+
+void
 Synth::set_sample_quality (int sample_quality)
 {
   impl->synth.set_sample_quality (sample_quality);

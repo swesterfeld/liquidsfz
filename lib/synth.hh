@@ -104,6 +104,7 @@ class Synth
   float gain_ = 1.0;
   bool  live_mode_ = true;
   int   sample_quality_ = 3;
+  uint  preload_time_ = 500;
   std::array<bool, 128> is_key_switch_;
   std::array<bool, 128> is_supported_cc_;
 
@@ -170,6 +171,16 @@ public:
   live_mode() const
   {
     return live_mode_;
+  }
+  void
+  set_preload_time (uint time_ms)
+  {
+    preload_time_ = time_ms;
+  }
+  uint
+  preload_time()
+  {
+    return preload_time_;
   }
   void
   set_sample_quality (int sample_quality)

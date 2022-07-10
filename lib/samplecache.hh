@@ -154,6 +154,7 @@ public:
 };
 
 struct Sample {
+public:
   SampleCache                *sample_cache = nullptr;
 
   bool                        loop = false;
@@ -265,8 +266,16 @@ struct Sample {
   };
 
   void start_playback();
-
   void end_playback();
+  struct PreloadInfo
+  {
+    uint time_ms = 0;
+    uint offset = 0;
+  };
+  typedef std::shared_ptr<PreloadInfo> PreloadInfoP;
+
+  PreloadInfoP add_preload (uint time_ms, uint offset);
+  void preload (SFPool::EntryP sf);
 
   void
   free_unused_data()
@@ -284,6 +293,8 @@ struct Sample {
         free_functions.clear();
       }
   }
+private:
+  std::vector<std::weak_ptr<PreloadInfo>> preload_infos;
 };
 typedef std::shared_ptr<Sample> SampleP;
 
@@ -326,14 +337,26 @@ protected:
     atomic_cache_file_count_ = cache.size();
   }
 public:
-  SampleP
-  load (const std::string& filename)
+  struct LoadResult
+  {
+    SampleP sample;
+    Sample::PreloadInfoP preload_info;
+  };
+
+  LoadResult
+  load (const std::string& filename, uint preload_time_ms, uint offset)
   {
     std::lock_guard lg (mutex);
 
+    LoadResult result;
     SampleP cached_entry = cache[filename].lock();
     if (cached_entry) /* already in cache? -> nothing to do */
-      return cached_entry;
+      {
+        result.sample = cached_entry;
+        result.preload_info = cached_entry->add_preload (preload_time_ms, offset);
+
+        return result;
+      }
 
     remove_expired_entries();
 
@@ -344,7 +367,7 @@ public:
     SNDFILE *sndfile = sf->sndfile;
 
     if (!sndfile)
-      return nullptr;
+      return result; /* result is nullptr by default */
 
 #if 0
     int error = sf_error (sndfile);
@@ -382,23 +405,15 @@ public:
     new_entry->n_samples = sfinfo.frames * sfinfo.channels;
     new_entry->filename = filename;
 
-    /* preload sample data */
-    sf_count_t pos = 0;
-    size_t n_buffers = 0;
-    while (pos < sfinfo.frames)
-      {
-        n_buffers++;
-        pos += SampleBuffer::frames_per_buffer;
-      }
-    new_entry->buffers.resize (n_buffers);
-    for (size_t b = 0; b < n_buffers; b++)
-      {
-        if (b < 20)
-          load_buffer (new_entry.get(), sndfile, b);
-      }
+    result.sample = new_entry;
+    result.preload_info = new_entry->add_preload (preload_time_ms, offset);
+
+    new_entry->preload (sf);
+
     cache[filename] = new_entry;
     atomic_cache_file_count_ = cache.size();
-    return new_entry;
+
+    return result;
   }
   void
   load_buffer (Sample *entry, SNDFILE *sndfile, size_t b)
