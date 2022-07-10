@@ -56,6 +56,7 @@ namespace Options
 {
   bool debug = false;
   int  quality = -1;
+  int  preload_time = -1;
 }
 
 class CommandQueue
@@ -159,6 +160,8 @@ public:
       synth.set_log_level (Log::DEBUG);
     if (Options::quality > 0)
       synth.set_sample_quality (Options::quality);
+    if (Options::preload_time >= 0)
+      synth.set_preload_time (Options::preload_time);
 
     synth.set_sample_rate (jack_get_sample_rate (client));
     midi_input_port = jack_port_register (client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
@@ -527,8 +530,9 @@ print_usage()
   printf ("usage: liquidsfz [options] <sfz_file>\n");
   printf ("\n");
   printf ("Options:\n");
-  printf ("  --debug      enable debugging output\n");
-  printf ("  --quality    set sample playback quality (1-3) [3]\n");
+  printf ("  --debug         enable debugging output\n");
+  printf ("  --quality       set sample playback quality (1-3) [3]\n");
+  printf ("  --preload-time  set sample preload time in milliseconds [500]\n");
 }
 
 int
@@ -551,6 +555,7 @@ main (int argc, char **argv)
       Options::debug = true;
     }
   ap.parse_opt ("--quality", Options::quality);
+  ap.parse_opt ("--preload-time", Options::preload_time);
 
   vector<string> args;
   if (!ap.parse_args (1, args))
