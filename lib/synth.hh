@@ -55,37 +55,34 @@ struct Channel
 
 class Global
 {
-  std::mutex mutex;
-  int count = 0;
+  static std::mutex            mutex_;
+  static std::weak_ptr<Global> global_;
 
 public:
-  SampleCache *sample_cache = nullptr;
+  SampleCache sample_cache;
 
-  void
-  init()
+  static std::shared_ptr<Global>
+  get()
   {
-    std::lock_guard lg (mutex);
+    std::lock_guard lg (mutex_);
 
-    if (count == 0)
-      sample_cache = new SampleCache();
-    count++;
-  }
-  void
-  free()
-  {
-    std::lock_guard lg (mutex);
-
-    count--;
-    if (count == 0)
+    auto old_instance = global_.lock();
+    if (old_instance)
       {
-        delete sample_cache;
-        sample_cache = nullptr;
+        return old_instance;
+      }
+    else
+      {
+        auto new_instance = std::make_shared<Global>();
+        global_ = new_instance;
+        return new_instance;
       }
   }
 };
 
 class Synth
 {
+  std::shared_ptr<Global> global_;
   std::minstd_rand random_gen;
   std::function<void (Log, const char *)> log_function_;
   std::function<void (double)> progress_function_;
@@ -100,7 +97,6 @@ class Synth
   std::vector<Curve> curves_;
   Limits limits_;
   Log log_level_ = Log::INFO;
-  static Global global_;
   float gain_ = 1.0;
   bool  live_mode_ = true;
   int   sample_quality_ = 3;
@@ -124,11 +120,9 @@ class Synth
       channel.init (control_);
   }
 public:
-  Synth()
+  Synth() :
+    global_ (Global::get()) // init data shared between all Synth instances
   {
-    // init data shared between all Synth instances
-    global_.init();
-
     // preallocate event buffer to avoid malloc in audio thread
     events.reserve (1024);
 
@@ -139,11 +133,6 @@ public:
     // sane defaults:
     set_max_voices (256);
     set_channels (16);
-  }
-  ~Synth()
-  {
-    // free data shared between all Synth instances
-    global_.free();
   }
   void
   set_sample_rate (uint sample_rate)
@@ -217,7 +206,7 @@ public:
   load (const std::string& filename)
   {
     Loader loader (this);
-    if (loader.parse (filename, *global_.sample_cache))
+    if (loader.parse (filename, global_->sample_cache))
       {
         regions_      = loader.regions;
         control_      = loader.control;
@@ -226,6 +215,9 @@ public:
         limits_       = loader.limits;
         curve_table_  = std::move (loader.curve_table);
         curves_       = std::move (loader.curves);
+
+        // old sample data can only be freed after assigning regions_
+        global_->sample_cache.cleanup_post_load();
 
         is_key_switch_.fill (false);
         for (auto k : key_list_)
@@ -288,22 +280,22 @@ public:
   size_t
   cache_size()
   {
-    return global_.sample_cache->cache_size();
+    return global_->sample_cache.cache_size();
   }
   uint
   cache_file_count()
   {
-    return global_.sample_cache->cache_file_count();
+    return global_->sample_cache.cache_file_count();
   }
   void
   set_max_cache_size (size_t max_cache_size)
   {
-    global_.sample_cache->set_max_cache_size (max_cache_size);
+    global_->sample_cache.set_max_cache_size (max_cache_size);
   }
   size_t
   max_cache_size()
   {
-    return global_.sample_cache->max_cache_size();
+    return global_->sample_cache.max_cache_size();
   }
   void
   note_on (int chan, int key, int vel)

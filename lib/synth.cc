@@ -199,6 +199,7 @@ Synth::debug (const char *format, ...) const
     }
 }
 
-Global Synth::global_;
+std::mutex            Global::mutex_;
+std::weak_ptr<Global> Global::global_;
 
 }

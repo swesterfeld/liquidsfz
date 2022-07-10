@@ -188,6 +188,7 @@ class Sample {
   }
 public:
   Sample (SampleCache *sample_cache);
+  ~Sample();
 
   bool
   playing()
@@ -365,6 +366,7 @@ public:
     Sample::PreloadInfoP preload_info;
   };
   LoadResult load (const std::string& filename, uint preload_time_ms, uint offset);
+  void cleanup_post_load();
 
   void
   playback_samples_need_update()

@@ -68,6 +68,18 @@ Sample::Sample (SampleCache *sample_cache)
 {
 }
 
+Sample::~Sample()
+{
+  if (playing())
+    {
+      fprintf (stderr, "liquidsfz: error Sample is deleted while playing (this should not happen)\n");
+    }
+  else
+    {
+      buffers_.clear();
+    }
+}
+
 Sample::PreloadInfoP
 Sample::add_preload (uint time_ms, uint offset)
 {
@@ -322,8 +334,6 @@ SampleCache::load (const string& filename, uint preload_time_ms, uint offset)
       return result;
     }
 
-  remove_expired_entries();
-
   auto sample = std::make_shared<Sample> (this);
   auto preload_info = sample->add_preload (preload_time_ms, offset);
 
@@ -336,6 +346,14 @@ SampleCache::load (const string& filename, uint preload_time_ms, uint offset)
       atomic_cache_file_count_ = cache_.size();
     }
   return result;
+}
+
+void
+SampleCache::cleanup_post_load()
+{
+  std::lock_guard lg (mutex_);
+
+  remove_expired_entries();
 }
 
 void
