@@ -156,6 +156,7 @@ public:
 class Sample {
   SampleBufferVector          buffers_;
   SFPool::EntryP              mmap_sf_;
+  SampleCache                *sample_cache_ = nullptr;
 
   std::atomic<int>            playback_count_ = 0;
 
@@ -186,7 +187,7 @@ class Sample {
       ;
   }
 public:
-  SampleCache                *sample_cache = nullptr;
+  Sample (SampleCache *sample_cache);
 
   bool
   playing()
@@ -411,10 +412,9 @@ public:
 
     remove_expired_entries();
 
-    auto new_entry = std::make_shared<Sample>();
+    auto new_entry = std::make_shared<Sample> (this);
     auto preload_info = new_entry->add_preload (preload_time_ms, offset);
 
-    new_entry->sample_cache = this;
     if (new_entry->preload (filename))
       {
         result.sample = new_entry;
@@ -592,14 +592,14 @@ inline void
 Sample::start_playback()
 {
   playback_count_++;
-  sample_cache->playback_entries_need_update();
+  sample_cache_->playback_entries_need_update();
 }
 
 inline void
 Sample::end_playback()
 {
   playback_count_--;
-  sample_cache->playback_entries_need_update();
+  sample_cache_->playback_entries_need_update();
 }
 
 }

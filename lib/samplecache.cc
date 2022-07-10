@@ -62,6 +62,11 @@ Sample::PlayHandle::lookup (sample_count_t pos)
   return false;
 }
 
+Sample::Sample (SampleCache *sample_cache)
+  : sample_cache_ (sample_cache)
+{
+}
+
 Sample::PreloadInfoP
 Sample::add_preload (uint time_ms, uint offset)
 {
@@ -78,7 +83,7 @@ bool
 Sample::preload (const string& filename)
 {
   SF_INFO sfinfo = { 0, };
-  auto sf = sample_cache->sf_pool().open (filename, &sfinfo);
+  auto sf = sample_cache_->sf_pool().open (filename, &sfinfo);
   SNDFILE *sndfile = sf->sndfile;
 
   if (!sndfile)
@@ -174,7 +179,7 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
   auto& buffer = buffers_[b];
   if (!buffer.data)
     {
-      auto data = new SampleBuffer::Data (sample_cache, (SampleBuffer::frames_per_buffer + SampleBuffer::frames_overlap) * channels_);
+      auto data = new SampleBuffer::Data (sample_cache_, (SampleBuffer::frames_per_buffer + SampleBuffer::frames_overlap) * channels_);
       data->start_n_values = (b * SampleBuffer::frames_per_buffer - SampleBuffer::frames_overlap) * channels_;
 
       // FIXME: may want to check return codes
@@ -191,7 +196,7 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
 
       buffer.data = data;
 
-      last_update_ = sample_cache->next_update_counter();
+      last_update_ = sample_cache_->next_update_counter();
     }
 }
 
@@ -205,7 +210,7 @@ Sample::load()
       if (!buffers_[b].data && b < max_b)
         {
           SF_INFO sfinfo;
-          auto sf = SFPool::use_mmap ? mmap_sf_ : sample_cache->sf_pool().open (filename_, &sfinfo);
+          auto sf = SFPool::use_mmap ? mmap_sf_ : sample_cache_->sf_pool().open (filename_, &sfinfo);
 
           if (sf->sndfile)
             {
