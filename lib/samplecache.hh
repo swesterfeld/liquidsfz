@@ -171,15 +171,12 @@ class Sample {
 
   std::atomic<int>            max_buffer_index_ = 0;
 
+  int64_t                     last_update_ = 0;
+  bool                        unload_possible_ = false;
+
+  std::vector<std::function<void()>> free_functions_;
+
   uint preload_buffer_count();
-public:
-  SampleCache                *sample_cache = nullptr;
-
-  // cache unload
-  int64_t                     last_update = 0;
-  bool                        unload_possible = false;
-
-  std::vector<std::function<void()>> free_functions;
 
   void
   update_max_buffer_index (int value)
@@ -188,6 +185,9 @@ public:
     while (prev_max_index < value && !max_buffer_index_.compare_exchange_weak (prev_max_index, value))
       ;
   }
+public:
+  SampleCache                *sample_cache = nullptr;
+
   bool
   playing()
   {
@@ -222,6 +222,16 @@ public:
   loop_end()
   {
     return loop_end_;
+  }
+  int64_t
+  last_update() const
+  {
+    return last_update_;
+  }
+  bool
+  unload_possible() const
+  {
+    return unload_possible_;
   }
   class PlayHandle
   {
@@ -328,10 +338,10 @@ public:
          * be any threads that are reading an old version of the sample buffer vector
          * at this point
          */
-        for (auto func : free_functions)
+        for (auto func : free_functions_)
           func();
 
-        free_functions.clear();
+        free_functions_.clear();
       }
   }
 private:
@@ -470,11 +480,11 @@ public:
         for (const auto& [key, value] : cache)
           {
             auto entry = value.lock();
-            if (entry && !entry->playing() && entry->unload_possible)
+            if (entry && !entry->playing() && entry->unload_possible())
               entries.push_back (entry);
           }
 
-        std::sort (entries.begin(), entries.end(), [](const auto& a, const auto& b) { return a->last_update < b->last_update; });
+        std::sort (entries.begin(), entries.end(), [](const auto& a, const auto& b) { return a->last_update() < b->last_update(); });
         for (auto entry : entries)
           {
             entry->unload();
@@ -537,10 +547,7 @@ public:
         auto entry = it.second.lock();
         if (entry)
           {
-            for (auto func : entry->free_functions)
-              func();
-
-            entry->free_functions.clear();
+            entry->free_unused_data();
             // FIXME: entry->buffers.clear();
           }
       }

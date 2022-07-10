@@ -191,7 +191,7 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
 
       buffer.data = data;
 
-      last_update = sample_cache->next_update_counter();
+      last_update_ = sample_cache->next_update_counter();
     }
 }
 
@@ -211,7 +211,7 @@ Sample::load()
             {
               //printf ("loading %s / buffer %zd\n", entry->filename.c_str(), b);
               load_buffer (sf->sndfile, b);
-              unload_possible = true;
+              unload_possible_ = true;
             }
         }
     }
@@ -236,8 +236,8 @@ Sample::unload()
         }
     }
   auto free_function = buffers_.take_atomically (new_buffers);
-  free_functions.push_back (free_function);
-  unload_possible = false;
+  free_functions_.push_back (free_function);
+  unload_possible_ = false;
 }
 
 }
