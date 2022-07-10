@@ -21,6 +21,7 @@
 #include "samplecache.hh"
 
 using std::max;
+using std::string;
 
 namespace LiquidSFZInternal {
 
@@ -28,7 +29,7 @@ namespace LiquidSFZInternal {
 bool
 Sample::PlayHandle::lookup (sample_count_t pos)
 {
-  int buffer_index = (pos + SampleBuffer::frames_overlap * sample_->channels) / (SampleBuffer::frames_per_buffer * sample_->channels);
+  int buffer_index = (pos + SampleBuffer::frames_overlap * sample_->channels_) / (SampleBuffer::frames_per_buffer * sample_->channels_);
   if (buffer_index >= 0 && buffer_index < int (sample_->buffers_.size()))
     {
       sample_->update_max_buffer_index (buffer_index);
@@ -73,16 +74,55 @@ Sample::add_preload (uint time_ms, uint offset)
   return preload_info;
 }
 
-void
-Sample::preload (SFPool::EntryP sf)
+bool
+Sample::preload (const string& filename)
 {
+  SF_INFO sfinfo = { 0, };
+  auto sf = sample_cache->sf_pool().open (filename, &sfinfo);
+  SNDFILE *sndfile = sf->sndfile;
+
+  if (!sndfile)
+    return false;
+
+#if 0
+    int error = sf_error (sndfile);
+    if (error)
+      {
+        // sf_strerror (sndfile)
+        if (sndfile)
+          sf_close (sndfile);
+
+        return nullptr;
+      }
+#endif
+
+  /* load loop points */
+  SF_INSTRUMENT instrument = {0,};
+  if (sf_command (sndfile, SFC_GET_INSTRUMENT, &instrument, sizeof (instrument)) == SF_TRUE)
+    {
+      if (instrument.loop_count)
+        {
+          if (instrument.loops[0].mode == SF_LOOP_FORWARD)
+            {
+              loop_ = true;
+              loop_start_ = instrument.loops[0].start;
+              loop_end_ = instrument.loops[0].end;
+            }
+        }
+      }
+
+  sample_rate_ = sfinfo.samplerate;
+  channels_ = sfinfo.channels;
+  n_samples_ = sfinfo.frames * sfinfo.channels;
+  filename_ = filename;
+
   /* if we use mmap, we keep the file open */
   if (SFPool::use_mmap)
     mmap_sf_ = sf;
 
   /* preload sample data */
   sf_count_t pos = 0;
-  sf_count_t frames = n_samples / channels;
+  sf_count_t frames = n_samples_ / channels_;
 
   size_t n_buffers = 0;
   size_t n_preload = preload_buffer_count();
@@ -97,6 +137,7 @@ Sample::preload (SFPool::EntryP sf)
       if (b < n_preload)
         load_buffer (sf->sndfile, b);
     }
+  return true;
 }
 
 uint
@@ -114,11 +155,11 @@ Sample::preload_buffer_count()
 
   uint n_preload = 0;
 
-  sf_count_t frames = n_samples / channels;
+  sf_count_t frames = n_samples_ / channels_;
   sf_count_t pos = 0;
   while (pos < frames)
     {
-      double time_ms = pos * 1000. / sample_rate;
+      double time_ms = pos * 1000. / sample_rate_;
       if (time_ms < preload_time_ms)
         n_preload++;
 
@@ -133,19 +174,19 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
   auto& buffer = buffers_[b];
   if (!buffer.data)
     {
-      auto data = new SampleBuffer::Data (sample_cache, (SampleBuffer::frames_per_buffer + SampleBuffer::frames_overlap) * channels);
-      data->start_n_values = (b * SampleBuffer::frames_per_buffer - SampleBuffer::frames_overlap) * channels;
+      auto data = new SampleBuffer::Data (sample_cache, (SampleBuffer::frames_per_buffer + SampleBuffer::frames_overlap) * channels_);
+      data->start_n_values = (b * SampleBuffer::frames_per_buffer - SampleBuffer::frames_overlap) * channels_;
 
       // FIXME: may want to check return codes
       sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
-      sf_readf_float (sndfile, &data->samples[SampleBuffer::frames_overlap * channels], SampleBuffer::frames_per_buffer);
+      sf_readf_float (sndfile, &data->samples[SampleBuffer::frames_overlap * channels_], SampleBuffer::frames_per_buffer);
 
       if (b > 0)
         {
           // copy last samples from last buffer to first samples from this buffer to make buffers overlap
           const auto last_data = buffers_[b - 1].data.load();
-          const float *from_samples = &last_data->samples[SampleBuffer::frames_per_buffer * channels];
-          std::copy_n (from_samples, SampleBuffer::frames_overlap * channels, &data->samples[0]);
+          const float *from_samples = &last_data->samples[SampleBuffer::frames_per_buffer * channels_];
+          std::copy_n (from_samples, SampleBuffer::frames_overlap * channels_, &data->samples[0]);
         }
 
       buffer.data = data;
@@ -157,14 +198,14 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
 void
 Sample::load()
 {
-  uint max_b = max_buffer_index.load() + preload_buffer_count();
+  uint max_b = max_buffer_index_.load() + preload_buffer_count();
 
   for (size_t b = 0; b < buffers_.size(); b++)
     {
       if (!buffers_[b].data && b < max_b)
         {
           SF_INFO sfinfo;
-          auto sf = SFPool::use_mmap ? mmap_sf_ : sample_cache->sf_pool().open (filename, &sfinfo);
+          auto sf = SFPool::use_mmap ? mmap_sf_ : sample_cache->sf_pool().open (filename_, &sfinfo);
 
           if (sf->sndfile)
             {

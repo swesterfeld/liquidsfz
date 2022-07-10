@@ -1207,7 +1207,7 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
       if (!region.cached_sample)
         synth_->warning ("%s: missing sample: '%s'\n", filename.c_str(), region.sample.c_str());
 
-      if (region.cached_sample && region.cached_sample->loop)
+      if (region.cached_sample && region.cached_sample->loop())
         {
           /* if values have been given explicitely, keep them
            *   -> user can override loop settings from wav file (cached sample)
@@ -1216,10 +1216,10 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
             region.loop_mode = LoopMode::CONTINUOUS;
 
           if (!region.have_loop_start)
-            region.loop_start = region.cached_sample->loop_start;
+            region.loop_start = region.cached_sample->loop_start();
 
           if (!region.have_loop_end)
-            region.loop_end = region.cached_sample->loop_end;
+            region.loop_end = region.cached_sample->loop_end();
         }
       if (region.fil.cutoff < 0) /* filter defaults to lpf_2p, but only if cutoff was found */
         region.fil.type = Filter::Type::NONE;

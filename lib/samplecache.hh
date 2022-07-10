@@ -159,39 +159,69 @@ class Sample {
 
   std::atomic<int>            playback_count_ = 0;
 
+  std::string                 filename_;
+
+  bool                        loop_ = false;
+  int                         loop_start_ = 0;
+  int                         loop_end_ = 0;
+
+  uint                        sample_rate_;
+  uint                        channels_;
+  size_t                      n_samples_ = 0;
+
+  std::atomic<int>            max_buffer_index_ = 0;
+
   uint preload_buffer_count();
 public:
   SampleCache                *sample_cache = nullptr;
 
-  bool                        loop = false;
-  int                         loop_start = 0;
-  int                         loop_end = 0;
-
-  uint                        sample_rate;
-  uint                        channels;
-  size_t                      n_samples = 0;
-
-  std::atomic<int>            max_buffer_index = 0;
-
   // cache unload
   int64_t                     last_update = 0;
   bool                        unload_possible = false;
-
-  std::string                 filename;
 
   std::vector<std::function<void()>> free_functions;
 
   void
   update_max_buffer_index (int value)
   {
-    int prev_max_index = max_buffer_index;
-    while (prev_max_index < value && !max_buffer_index.compare_exchange_weak (prev_max_index, value))
+    int prev_max_index = max_buffer_index_;
+    while (prev_max_index < value && !max_buffer_index_.compare_exchange_weak (prev_max_index, value))
       ;
   }
   bool
   playing()
   {
     return playback_count_.load() > 0;
+  }
+  uint
+  channels() const
+  {
+    return channels_;
+  }
+  sample_count_t
+  n_samples() const
+  {
+    return n_samples_;
+  }
+  uint
+  sample_rate() const
+  {
+    return sample_rate_;
+  }
+  bool
+  loop() const
+  {
+    return loop_;
+  }
+  sample_count_t
+  loop_start()
+  {
+    return loop_start_;
+  }
+  sample_count_t
+  loop_end()
+  {
+    return loop_end_;
   }
   class PlayHandle
   {
@@ -282,7 +312,7 @@ public:
   typedef std::shared_ptr<PreloadInfo> PreloadInfoP;
 
   PreloadInfoP add_preload (uint time_ms, uint offset);
-  void preload (SFPool::EntryP sf);
+  bool preload (const std::string& filename);
   void load_buffer (SNDFILE *sndfile, size_t b);
   void load();
   void unload();
@@ -292,7 +322,7 @@ public:
   {
     if (!playback_count_.load()) // check to be sure no readers exist
       {
-        max_buffer_index = 0;
+        max_buffer_index_ = 0;
         /*
          * we can safely free the old data structures here because there cannot
          * be any threads that are reading an old version of the sample buffer vector
@@ -372,54 +402,17 @@ public:
     remove_expired_entries();
 
     auto new_entry = std::make_shared<Sample>();
+    auto preload_info = new_entry->add_preload (preload_time_ms, offset);
 
-    SF_INFO sfinfo = { 0, };
-    auto sf = sf_pool_.open (filename, &sfinfo);
-    SNDFILE *sndfile = sf->sndfile;
-
-    if (!sndfile)
-      return result; /* result is nullptr by default */
-
-#if 0
-    int error = sf_error (sndfile);
-    if (error)
-      {
-        // sf_strerror (sndfile)
-        if (sndfile)
-          sf_close (sndfile);
-
-        return nullptr;
-      }
-#endif
-
-    /* load loop points */
-    SF_INSTRUMENT instrument = {0,};
-    if (sf_command (sndfile, SFC_GET_INSTRUMENT, &instrument, sizeof (instrument)) == SF_TRUE)
-      {
-        if (instrument.loop_count)
-          {
-            if (instrument.loops[0].mode == SF_LOOP_FORWARD)
-              {
-                new_entry->loop = true;
-                new_entry->loop_start = instrument.loops[0].start;
-                new_entry->loop_end = instrument.loops[0].end;
-              }
-          }
-        }
     new_entry->sample_cache = this;
-    new_entry->sample_rate = sfinfo.samplerate;
-    new_entry->channels = sfinfo.channels;
-    new_entry->n_samples = sfinfo.frames * sfinfo.channels;
-    new_entry->filename = filename;
+    if (new_entry->preload (filename))
+      {
+        result.sample = new_entry;
+        result.preload_info = preload_info;
 
-    result.sample = new_entry;
-    result.preload_info = new_entry->add_preload (preload_time_ms, offset);
-
-    new_entry->preload (sf);
-
-    cache[filename] = new_entry;
-    atomic_cache_file_count_ = cache.size();
-
+        cache[filename] = new_entry;
+        atomic_cache_file_count_ = cache.size();
+      }
     return result;
   }
   void

@@ -44,10 +44,10 @@ public:
   void
   restart (Sample::PlayHandle *play_handle, const Sample *cached_sample, int upsample)
   {
-    channels_ = cached_sample->channels;
+    channels_ = cached_sample->channels();
     relative_pos_ = 0;
     last_pos_ = 0;
-    end_pos_ = (cached_sample->n_samples / channels_ + 32) * upsample;
+    end_pos_ = (cached_sample->n_samples() / channels_ + 32) * upsample;
     play_handle_ = play_handle;
     cached_sample_ = cached_sample;
     loop_start_ = loop_end_ = -1;

@@ -70,7 +70,7 @@ Voice::update_replay_speed (bool now)
 
   semi_tones += synth_->get_cc_vec_value (channel_, region_->tune_cc) * 0.01; // tune_oncc
 
-  replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate / sample_rate_, now);
+  replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate() / sample_rate_, now);
 }
 
 uint
@@ -152,7 +152,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
     sample_reader_.set_loop (region.loop_start, region.loop_end);
 
   synth_->debug ("location %s\n", region.location.c_str());
-  synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels);
+  synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels());
 
   filter_envelope_.set_shape (Envelope::Shape::LINEAR);
   filter_envelope_.set_delay (amp_value (vnorm, region.fileg_delay));
@@ -381,7 +381,7 @@ void
 Voice::process (float **outputs, uint n_frames)
 {
   const auto csample = region_->cached_sample;
-  int channels = csample->channels;
+  int channels = csample->channels();
 
   if (quality_ == 1)
     {
@@ -577,7 +577,7 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
   auto run_filter = [&] (const auto& cr_func)
     {
       const auto csample = region_->cached_sample;
-      const auto channels = csample->channels;
+      const auto channels = csample->channels();
 
       if (channels == 2)
         fi.filter.process_mod (left, right, cr_func, n_frames);
