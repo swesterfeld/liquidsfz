@@ -327,24 +327,7 @@ public:
   void load_buffer (SNDFILE *sndfile, size_t b);
   void load();
   void unload();
-
-  void
-  free_unused_data()
-  {
-    if (!playback_count_.load()) // check to be sure no readers exist
-      {
-        max_buffer_index_ = 0;
-        /*
-         * we can safely free the old data structures here because there cannot
-         * be any threads that are reading an old version of the sample buffer vector
-         * at this point
-         */
-        for (auto func : free_functions_)
-          func();
-
-        free_functions_.clear();
-      }
-  }
+  void free_unused_data();
 private:
   std::vector<std::weak_ptr<PreloadInfo>> preload_infos;
 };
@@ -353,97 +336,36 @@ typedef std::shared_ptr<Sample> SampleP;
 class SampleCache
 {
 private:
-  std::map<std::string, std::weak_ptr<Sample>> cache;
-  std::mutex mutex;
-  std::thread loader_thread;
+  std::map<std::string, std::weak_ptr<Sample>> cache_;
+  std::mutex mutex_;
+  std::thread loader_thread_;
   std::atomic<size_t> atomic_n_total_bytes_ = 0;
   std::atomic<uint>   atomic_cache_file_count_ = 0;
   std::atomic<size_t> atomic_max_cache_size_ = 1024 * 1024 * 512;
   SFPool              sf_pool_;
-  double              last_cleanup_time = 0;
-  std::vector<SampleP> playback_entries;
+  double              last_cleanup_time_ = 0;
+  std::vector<SampleP> playback_entries_;
   std::atomic<bool>   playback_entries_need_update_ = false;
-  int64_t             update_counter = 0;
+  int64_t             update_counter_ = 0;
 
-  bool quit_background_loader = false;
+  bool quit_background_loader_ = false;
 
-protected:
-  void
-  remove_expired_entries()
-  {
-    /* the deletion of the actual cache entry is done automatically (shared ptr)
-     * this just removes entries in the std::map for filenames with a null weak ptr
-     */
-    auto it = cache.begin();
-    while (it != cache.end())
-      {
-        if (it->second.expired())
-          {
-            it = cache.erase (it);
-          }
-        else
-          {
-            it++;
-          }
-      }
-    atomic_cache_file_count_ = cache.size();
-  }
+  void remove_expired_entries();
+  void load_data_for_playback_entries();
+  void background_loader();
+  void cleanup_unused_data();
+
 public:
+  SampleCache();
+  ~SampleCache();
+
   struct LoadResult
   {
     SampleP sample;
     Sample::PreloadInfoP preload_info;
   };
+  LoadResult load (const std::string& filename, uint preload_time_ms, uint offset);
 
-  LoadResult
-  load (const std::string& filename, uint preload_time_ms, uint offset)
-  {
-    std::lock_guard lg (mutex);
-
-    LoadResult result;
-    SampleP cached_entry = cache[filename].lock();
-    if (cached_entry) /* already in cache? -> nothing to do */
-      {
-        result.sample = cached_entry;
-        result.preload_info = cached_entry->add_preload (preload_time_ms, offset);
-
-        return result;
-      }
-
-    remove_expired_entries();
-
-    auto new_entry = std::make_shared<Sample> (this);
-    auto preload_info = new_entry->add_preload (preload_time_ms, offset);
-
-    if (new_entry->preload (filename))
-      {
-        result.sample = new_entry;
-        result.preload_info = preload_info;
-
-        cache[filename] = new_entry;
-        atomic_cache_file_count_ = cache.size();
-      }
-    return result;
-  }
-  void
-  load_data_for_playback_entries()
-  {
-    if (playback_entries_need_update_.load())
-      {
-        playback_entries_need_update_.store (false);
-
-        playback_entries.clear();
-        for (const auto& [key, value] : cache)
-          {
-            auto entry = value.lock();
-
-            if (entry && entry->playing())
-              playback_entries.push_back (entry);
-          }
-      }
-    for (const auto& entry : playback_entries)
-      entry->load();
-  }
   void
   playback_entries_need_update()
   {
@@ -452,50 +374,12 @@ public:
   int64_t
   next_update_counter()
   {
-    return ++update_counter;
+    return ++update_counter_;
   }
   SFPool&
   sf_pool()
   {
     return sf_pool_;
-  }
-  void
-  cleanup_unused_data()
-  {
-    double now = get_time();
-    if (fabs (now - last_cleanup_time) < 0.5)
-      return;
-    last_cleanup_time = now;
-    for (const auto& [key, value] : cache)
-      {
-        auto entry = value.lock();
-        if (entry)
-          entry->free_unused_data();
-      }
-    sf_pool_.cleanup();
-    if (atomic_n_total_bytes_ > atomic_max_cache_size_)
-      {
-        std::vector<SampleP> entries;
-
-        for (const auto& [key, value] : cache)
-          {
-            auto entry = value.lock();
-            if (entry && !entry->playing() && entry->unload_possible())
-              entries.push_back (entry);
-          }
-
-        std::sort (entries.begin(), entries.end(), [](const auto& a, const auto& b) { return a->last_update() < b->last_update(); });
-        for (auto entry : entries)
-          {
-            entry->unload();
-            entry->free_unused_data();
-
-            //printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
-
-            if (atomic_n_total_bytes_ < atomic_max_cache_size_)
-              break;
-          }
-      }
   }
   void
   update_size_bytes (int delta_bytes)
@@ -529,47 +413,6 @@ public:
   max_cache_size()
   {
     return atomic_max_cache_size_;
-  }
-  SampleCache()
-  {
-    loader_thread = std::thread (&SampleCache::background_loader, this);
-  }
-  ~SampleCache()
-  {
-    {
-      std::lock_guard lg (mutex);
-      quit_background_loader = true;
-    }
-    loader_thread.join();
-
-    for (auto it : cache)
-      {
-        auto entry = it.second.lock();
-        if (entry)
-          {
-            entry->free_unused_data();
-            // FIXME: entry->buffers.clear();
-          }
-      }
-
-    remove_expired_entries();
-
-    printf ("cache stats in SampleCache destructor: %s\n", cache_stats().c_str());
-  }
-  void
-  background_loader()
-  {
-    while (!quit_background_loader)
-      {
-        {
-          std::lock_guard lg (mutex);
-
-          load_data_for_playback_entries();
-          cleanup_unused_data();
-
-        }
-        usleep (20 * 1000);
-      }
   }
 };
 

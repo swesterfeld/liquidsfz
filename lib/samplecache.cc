@@ -22,6 +22,7 @@
 
 using std::max;
 using std::string;
+using std::vector;
 
 namespace LiquidSFZInternal {
 
@@ -243,6 +244,179 @@ Sample::unload()
   auto free_function = buffers_.take_atomically (new_buffers);
   free_functions_.push_back (free_function);
   unload_possible_ = false;
+}
+
+void
+Sample::free_unused_data()
+{
+  if (!playback_count_.load()) // check to be sure no readers exist
+    {
+      max_buffer_index_ = 0;
+      /*
+       * we can safely free the old data structures here because there cannot
+       * be any threads that are reading an old version of the sample buffer vector
+       * at this point
+       */
+      for (auto func : free_functions_)
+        func();
+
+      free_functions_.clear();
+    }
+}
+
+SampleCache::SampleCache()
+{
+  loader_thread_ = std::thread (&SampleCache::background_loader, this);
+}
+
+SampleCache::~SampleCache()
+{
+  {
+    std::lock_guard lg (mutex_);
+    quit_background_loader_ = true;
+  }
+  loader_thread_.join();
+
+  for (auto it : cache_)
+    {
+      auto entry = it.second.lock();
+      if (entry)
+        {
+          entry->free_unused_data();
+          // FIXME: entry->buffers.clear();
+        }
+    }
+
+  remove_expired_entries();
+
+  printf ("cache stats in SampleCache destructor: %s\n", cache_stats().c_str());
+}
+
+void
+SampleCache::background_loader()
+{
+  while (!quit_background_loader_)
+    {
+      {
+        std::lock_guard lg (mutex_);
+
+        load_data_for_playback_entries();
+        cleanup_unused_data();
+
+      }
+      usleep (20 * 1000);
+    }
+}
+
+SampleCache::LoadResult
+SampleCache::load (const string& filename, uint preload_time_ms, uint offset)
+{
+  std::lock_guard lg (mutex_);
+
+  LoadResult result;
+  SampleP cached_entry = cache_[filename].lock();
+  if (cached_entry) /* already in cache? -> nothing to do */
+    {
+      result.sample = cached_entry;
+      result.preload_info = cached_entry->add_preload (preload_time_ms, offset);
+
+      return result;
+    }
+
+  remove_expired_entries();
+
+  auto new_entry = std::make_shared<Sample> (this);
+  auto preload_info = new_entry->add_preload (preload_time_ms, offset);
+
+  if (new_entry->preload (filename))
+    {
+      result.sample = new_entry;
+      result.preload_info = preload_info;
+
+      cache_[filename] = new_entry;
+      atomic_cache_file_count_ = cache_.size();
+    }
+  return result;
+}
+
+void
+SampleCache::remove_expired_entries()
+{
+  /* the deletion of the actual cache entry is done automatically (shared ptr)
+   * this just removes entries in the std::map for filenames with a null weak ptr
+   */
+  auto it = cache_.begin();
+  while (it != cache_.end())
+    {
+      if (it->second.expired())
+        {
+          it = cache_.erase (it);
+        }
+      else
+        {
+          it++;
+        }
+    }
+  atomic_cache_file_count_ = cache_.size();
+}
+
+void
+SampleCache::cleanup_unused_data()
+{
+  double now = get_time();
+  if (fabs (now - last_cleanup_time_) < 0.5)
+    return;
+  last_cleanup_time_ = now;
+  for (const auto& [key, value] : cache_)
+    {
+      auto entry = value.lock();
+      if (entry)
+        entry->free_unused_data();
+    }
+  sf_pool_.cleanup();
+  if (atomic_n_total_bytes_ > atomic_max_cache_size_)
+    {
+      vector<SampleP> entries;
+
+      for (const auto& [key, value] : cache_)
+        {
+          auto entry = value.lock();
+          if (entry && !entry->playing() && entry->unload_possible())
+            entries.push_back (entry);
+        }
+
+      std::sort (entries.begin(), entries.end(), [](const auto& a, const auto& b) { return a->last_update() < b->last_update(); });
+      for (auto entry : entries)
+        {
+          entry->unload();
+          entry->free_unused_data();
+
+          //printf ("unloaded %s / %s\n", entry->filename.c_str(), cache_stats().c_str());
+
+          if (atomic_n_total_bytes_ < atomic_max_cache_size_)
+            break;
+        }
+    }
+}
+
+void
+SampleCache::load_data_for_playback_entries()
+{
+  if (playback_entries_need_update_.load())
+    {
+      playback_entries_need_update_.store (false);
+
+      playback_entries_.clear();
+      for (const auto& [key, value] : cache_)
+        {
+          auto entry = value.lock();
+
+          if (entry && entry->playing())
+            playback_entries_.push_back (entry);
+        }
+    }
+  for (const auto& entry : playback_entries_)
+    entry->load();
 }
 
 }
