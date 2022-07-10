@@ -123,6 +123,9 @@ public:
   Synth() :
     global_ (Global::get()) // init data shared between all Synth instances
   {
+    std::random_device random_dev;
+    random_gen.seed (random_dev());
+
     // preallocate event buffer to avoid malloc in audio thread
     events.reserve (1024);
 
