@@ -1187,12 +1187,18 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   if (!active_curve_section.empty())
     add_curve (active_curve_section);
 
+  // finalize curves
+  for (auto& c : curves)
+    curve_table.expand_curve (c);
+
   synth_->progress (0);
   for (size_t i = 0; i < regions.size(); i++)
     {
       Region& region = regions[i];
 
-      const auto load_result = sample_cache.load (region.sample, synth_->preload_time(), /* FIXME */ 0);
+      uint max_offset = region.offset + region.offset_random + lrint (get_cc_vec_max (region.offset_cc));
+
+      const auto load_result = sample_cache.load (region.sample, synth_->preload_time(), max_offset);
       region.cached_sample = load_result.sample;
 
       if (region.cached_sample)
@@ -1262,10 +1268,6 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
       return a.cc < b.cc;
     });
 
-  // finalize curves
-  for (auto& c : curves)
-    curve_table.expand_curve (c);
-
   for (auto& region : regions)
     {
       // convert SFZ1 lfos to SFZ2 lfos
@@ -1286,4 +1288,34 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   synth_->debug ("*** limits: max_lfos=%zd max_lfo_mods=%zd\n", limits.max_lfos, limits.max_lfo_mods);
   synth_->debug ("*** regions: %zd\n", regions.size());
   return true;
+}
+
+float
+Loader::get_cc_curve_max (const CCParamVec::Entry& entry)
+{
+  int curvecc = entry.curvecc;
+  if (curvecc >= 0 && curvecc < int (curves.size()))
+    {
+      if (!curves[curvecc].empty())
+        {
+          /* find maximum factor for the curve */
+          float max_factor = 0;
+
+          for (int cc_value = 0; cc_value < 128; cc_value++)
+            max_factor = std::max (max_factor, curves[entry.curvecc].get (cc_value));
+
+          return max_factor;
+        }
+    }
+  return 1;
+}
+
+float
+Loader::get_cc_vec_max (const CCParamVec& cc_param_vec)
+{
+  float max_value = 0;
+  for (const auto& entry : cc_param_vec)
+    max_value += get_cc_curve_max (entry) * entry.value;
+
+  return max_value;
 }

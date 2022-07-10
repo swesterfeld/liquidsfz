@@ -161,19 +161,24 @@ Sample::preload (const string& filename)
 uint
 Sample::preload_buffer_count()
 {
+  sf_count_t frames = n_samples_ / channels_;
+
+  auto offset_to_ms = [&] (sf_count_t offset) -> uint
+    {
+      return std::clamp<sf_count_t> (offset, 0, frames) * 1000. / sample_rate_;
+    };
   uint preload_time_ms = 0;
   for (auto info_weak : preload_infos)
     {
       auto info = info_weak.lock();
       if (info)
         {
-          preload_time_ms = max (preload_time_ms, info->time_ms);
+          preload_time_ms = max (preload_time_ms, info->time_ms + offset_to_ms (info->offset));
         }
     }
 
   uint n_preload = 0;
 
-  sf_count_t frames = n_samples_ / channels_;
   sf_count_t pos = 0;
   while (pos < frames)
     {

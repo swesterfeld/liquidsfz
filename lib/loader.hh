@@ -403,6 +403,8 @@ class Loader
   bool parse_lfo_param (Region& region, const std::string& key, const std::string& value);
   bool parse_simple_lfo_param (Region& region, const std::string& type, SimpleLFO& lfo, const std::string& key, const std::string& value);
   void convert_lfo (Region& region, SimpleLFO& simple_lfo, SimpleLFO::Type type);
+  float get_cc_vec_max (const CCParamVec& cc_param_vec);
+  float get_cc_curve_max (const CCParamVec::Entry& entry);
 
   static constexpr int MAX_INCLUDE_DEPTH = 25;
 public:
