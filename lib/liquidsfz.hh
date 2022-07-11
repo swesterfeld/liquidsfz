@@ -147,6 +147,13 @@ public:
   void set_sample_rate (uint sample_rate);
 
   /**
+   * \brief Get sample rate
+   *
+   * @returns the sample rate
+   */
+  uint sample_rate() const;
+
+  /**
    * \brief Set maximum number of voices
    *
    * @param n_voices   maximum number of voices
@@ -160,7 +167,7 @@ public:
    *
    * @returns maximum number of voices (maximum polyphony)
    */
-  uint max_voices();
+  uint max_voices() const;
 
   /**
    * \brief Set live mode

@@ -142,6 +142,11 @@ public:
   {
     sample_rate_ = sample_rate;
   }
+  uint
+  sample_rate()
+  {
+    return sample_rate_;
+  }
   void
   set_max_voices (uint n_voices)
   {

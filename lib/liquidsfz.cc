@@ -44,6 +44,12 @@ Synth::set_sample_rate (uint sample_rate)
   impl->synth.set_sample_rate (sample_rate);
 }
 
+uint
+Synth::sample_rate() const
+{
+  return impl->synth.sample_rate();
+}
+
 void
 Synth::set_max_voices (uint n_voices)
 {
@@ -51,7 +57,7 @@ Synth::set_max_voices (uint n_voices)
 }
 
 uint
-Synth::max_voices()
+Synth::max_voices() const
 {
   return impl->synth.max_voices();
 }
