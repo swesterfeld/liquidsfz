@@ -300,10 +300,12 @@ public:
         printf ("gain value          - set gain (0 <= value <= 5)\n");
         printf ("max_voices value    - set maximum number of voices\n");
         printf ("max_cache_size size - set maximum cache size in MB\n");
+        printf ("preload_time time   - set preload time in ms\n");
         printf ("keys                - show keys supported by the sfz\n");
         printf ("switches            - show switches supported by the sfz\n");
         printf ("ccs                 - show ccs supported by the sfz\n");
         printf ("stats               - show voices/cache/cpu usage\n");
+        printf ("info                - show information\n");
         printf ("voice_count         - print number of active synthesis voices\n");
         printf ("sleep time_ms       - sleep for some milliseconds\n");
         printf ("source filename     - load a file and execute each line as command\n");
@@ -362,6 +364,10 @@ public:
         // atomic (no synchronization necessary)
         printf ("Maximum cache size: %.1f MB\n", synth.max_cache_size() / 1024. / 1024.);
       }
+    else if (cli_parser.command ("preload_time", value))
+      {
+        cmd_q.append ([=]() { synth.set_preload_time (value); });
+      }
     else if (cli_parser.command ("keys"))
       {
         show_keys (false);
@@ -384,6 +390,10 @@ public:
     else if (cli_parser.command ("stats"))
       {
         show_stats();
+      }
+    else if (cli_parser.command ("info"))
+      {
+        show_info();
       }
     else if (cli_parser.command ("sleep", dvalue))
       {
@@ -461,6 +471,49 @@ public:
           }
         printf ("\n");
       }
+  }
+  void
+  show_info()
+  {
+    int voices = -1;
+    int max_voices = -1;
+    size_t cache_size = 0;
+    size_t max_cache_size = 0;
+    int cache_file_count = 0;
+    int preload_time_ms = 0;
+    int sample_rate = 0;
+    int sample_quality = 0;
+
+    cmd_q.append ([&]() {
+      voices = synth.active_voice_count();
+      max_voices = synth.max_voices();
+      cache_size = synth.cache_size();
+      max_cache_size = synth.max_cache_size();
+      cache_file_count = synth.cache_file_count();
+      preload_time_ms = synth.preload_time();
+      sample_rate = synth.sample_rate();
+      sample_quality = synth.sample_quality();
+    });
+    cmd_q.wait_all();
+
+    string sample_quality_str;
+    switch (sample_quality)
+      {
+        case 1: sample_quality_str = "low";
+                break;
+        case 2: sample_quality_str = "medium";
+                break;
+        case 3: sample_quality_str = "high";
+                break;
+      }
+    printf ("Active Voices            : %d\n", voices);
+    printf ("Maximum Number of Voices : %d\n", max_voices);
+    printf ("Sample Quality           : %d (%s)\n", sample_quality, sample_quality_str.c_str());
+    printf ("Preload Time             : %d ms\n", preload_time_ms);
+    printf ("Cached Samples           : %d\n", cache_file_count);
+    printf ("Cache Size               : %.1f MB\n", cache_size / 1024. / 1024.);
+    printf ("Maximum Cache Size       : %.1f MB\n", max_cache_size / 1024. / 1024.);
+    printf ("Sample Rate              : %d\n", sample_rate);
   }
   void
   show_stats()
