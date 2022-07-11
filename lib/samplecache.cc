@@ -142,8 +142,9 @@ Sample::preload (const string& filename)
   sf_count_t pos = 0;
   sf_count_t frames = n_samples_ / channels_;
 
+  update_preload_and_read_ahead();
+
   size_t n_buffers = 0;
-  size_t n_preload = preload_buffer_count();
   while (pos < frames)
     {
       n_buffers++;
@@ -152,43 +153,54 @@ Sample::preload (const string& filename)
   buffers_.resize (n_buffers);
   for (size_t b = 0; b < n_buffers; b++)
     {
-      if (b < n_preload)
+      if (b < n_preload_buffers_)
         load_buffer (sf->sndfile, b);
     }
   return true;
 }
 
-uint
-Sample::preload_buffer_count()
+void
+Sample::update_preload_and_read_ahead()
 {
   sf_count_t frames = n_samples_ / channels_;
 
-  auto offset_to_ms = [&] (sf_count_t offset) -> uint
+  auto offset_to_ms = [&] (sample_count_t offset) -> uint
     {
-      return std::clamp<sf_count_t> (offset, 0, frames) * 1000. / sample_rate_;
+      return std::clamp<sample_count_t> (offset, 0, frames) * 1000. / sample_rate_;
     };
   uint preload_time_ms = 0;
+  uint read_ahead_time_ms = 0;
+  bool cleanup = false;
   for (auto info_weak : preload_infos)
     {
       auto info = info_weak.lock();
       if (info)
         {
           preload_time_ms = max (preload_time_ms, info->time_ms + offset_to_ms (info->offset));
+          read_ahead_time_ms = max (read_ahead_time_ms, info->time_ms);
+        }
+      else
+        {
+          cleanup = true;
         }
     }
 
-  uint n_preload = 0;
+  double buffer_size_ms = 1000.0 * SampleBuffer::frames_per_buffer / sample_rate_;
+  n_preload_buffers_ = std::max<size_t> (preload_time_ms / buffer_size_ms + 1, 1);
+  n_read_ahead_buffers_ = std::max<size_t> (read_ahead_time_ms / buffer_size_ms + 1, 1);
 
-  sf_count_t pos = 0;
-  while (pos < frames)
+  if (cleanup)
     {
-      double time_ms = pos * 1000. / sample_rate_;
-      if (time_ms < preload_time_ms)
-        n_preload++;
-
-      pos += SampleBuffer::frames_per_buffer;
+      // removes old (no longer active) entries
+      auto is_old = [] (const auto& info_weak)
+        {
+          return !info_weak.lock();
+        };
+      preload_infos.erase (std::remove_if (preload_infos.begin(),
+                                           preload_infos.end(),
+                                           is_old),
+                           preload_infos.end());
     }
-  return n_preload;
 }
 
 void
@@ -221,7 +233,9 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
 void
 Sample::load()
 {
-  uint max_b = max_buffer_index_.load() + preload_buffer_count();
+  update_preload_and_read_ahead();
+
+  size_t max_b = max_buffer_index_.load() + n_read_ahead_buffers_;
 
   for (size_t b = 0; b < buffers_.size(); b++)
     {
@@ -243,13 +257,13 @@ Sample::load()
 void
 Sample::unload()
 {
-  uint n_preload = preload_buffer_count();
+  update_preload_and_read_ahead();
 
   SampleBufferVector new_buffers;
   new_buffers.resize (buffers_.size());
   for (size_t b = 0; b < buffers_.size(); b++)
   {
-      if (b < n_preload)
+      if (b < n_preload_buffers_)
         {
           new_buffers[b].data = buffers_[b].data.load();
         }

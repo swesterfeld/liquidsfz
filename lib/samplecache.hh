@@ -171,13 +171,15 @@ class Sample {
   size_t                      n_samples_ = 0;
 
   std::atomic<int>            max_buffer_index_ = 0;
+  size_t                      n_preload_buffers_ = 0;
+  size_t                      n_read_ahead_buffers_ = 0;
 
   int64_t                     last_update_ = 0;
   bool                        unload_possible_ = false;
 
   std::vector<std::function<void()>> free_functions_;
 
-  uint preload_buffer_count();
+  void update_preload_and_read_ahead();
 
   void
   update_max_buffer_index (int value)
