@@ -1271,9 +1271,14 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   for (auto& region : regions)
     {
       // convert SFZ1 lfos to SFZ2 lfos
-      convert_lfo (region, region.pitchlfo, SimpleLFO::PITCH);
-      convert_lfo (region, region.amplfo, SimpleLFO::AMP);
-      convert_lfo (region, region.fillfo, SimpleLFO::FIL);
+      if (region.pitchlfo.used)
+        convert_lfo (region, region.pitchlfo, SimpleLFO::PITCH);
+
+      if (region.amplfo.used)
+        convert_lfo (region, region.amplfo, SimpleLFO::AMP);
+
+      if (region.fillfo.used)
+        convert_lfo (region, region.fillfo, SimpleLFO::FIL);
 
       // find memory requirements for lfos
       limits.max_lfos = std::max (limits.max_lfos, region.lfos.size());
