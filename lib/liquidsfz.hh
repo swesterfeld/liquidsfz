@@ -183,6 +183,8 @@ public:
    * called before @ref load(). In some cases (for instance if the offset opcode
    * is used), the actual preload time will be higher than this value. The
    * default value for the preload time is 500ms.
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void set_preload_time (uint time_ms);
 
@@ -190,6 +192,8 @@ public:
    * \brief Get preload time
    *
    * See @ref set_preload_time().
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    *
    * @returns preload time in milliseconds
    */
