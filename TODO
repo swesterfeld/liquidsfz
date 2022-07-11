@@ -4,24 +4,15 @@
 - implement better interpolation (windowed sinc, bandlimited interpolation)
 - possibly contstrain parameters (however, sforzando doesn't always constrain either)
 
-- fix SampleBufferVector: should clear the vector before deleting messages on reload
-- SampleCache::Entry should probably be class Sample
 - may want to optimize sample cache buffer scan to avoid extra work for scanning meaningless entries
-- make preload duration time configurable
 - make foreground playback (offline rendering) available
-- preload amount should depend on offset
-- make preload / full load selectable via api
 - maybe eliminate rbtree iteration (performance)
-- unload should be a bit later
-
-- do we need parameter translation for offset...
-- make quality configurable
-- implement voice killing
 
 maybe:
 - aria xml index
 - maintain active voice list
 - implement sustain loop
+- implement voice killing
 
 ------------ NEW RELEASE ------------
 
