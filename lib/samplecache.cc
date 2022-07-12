@@ -21,6 +21,7 @@
 #include "samplecache.hh"
 
 using std::max;
+using std::min;
 using std::string;
 using std::vector;
 
@@ -235,11 +236,11 @@ Sample::load()
 {
   update_preload_and_read_ahead();
 
-  size_t max_b = max_buffer_index_.load() + n_read_ahead_buffers_;
+  size_t load_end = min (max_buffer_index_.load() + n_read_ahead_buffers_, buffers_.size());
 
-  for (size_t b = 0; b < buffers_.size(); b++)
+  while (load_index_ < load_end)
     {
-      if (!buffers_[b].data && b < max_b)
+      if (!buffers_[load_index_].data)
         {
           SF_INFO sfinfo;
           auto sf = SFPool::use_mmap ? mmap_sf_ : sample_cache_->sf_pool().open (filename_, &sfinfo);
@@ -247,10 +248,11 @@ Sample::load()
           if (sf->sndfile)
             {
               //printf ("loading %s / buffer %zd\n", filename_.c_str(), b);
-              load_buffer (sf->sndfile, b);
+              load_buffer (sf->sndfile, load_index_);
               unload_possible_ = true;
             }
         }
+      load_index_++;
     }
 }
 
@@ -274,7 +276,10 @@ Sample::unload()
     }
   auto free_function = buffers_.take_atomically (new_buffers);
   free_functions_.push_back (free_function);
+
   unload_possible_ = false;
+  max_buffer_index_ = 0;
+  load_index_ = 0;
 }
 
 void
@@ -282,7 +287,6 @@ Sample::free_unused_data()
 {
   if (!playback_count_.load()) // check to be sure no readers exist
     {
-      max_buffer_index_ = 0;
       /*
        * we can safely free the old data structures here because there cannot
        * be any threads that are reading an old version of the sample buffer vector
