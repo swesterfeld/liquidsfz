@@ -52,9 +52,9 @@ Sample::PlayHandle::lookup (sample_count_t pos)
         {
           assert (pos >= data->start_n_values);
 
-          samples_   = &data->samples[0];
+          samples_   = data->samples();
           start_pos_ = data->start_n_values;
-          end_pos_   = start_pos_ + data->samples.size();
+          end_pos_   = start_pos_ + data->n_samples();
 
           return true;
         }
@@ -215,14 +215,27 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
 
       // FIXME: may want to check return codes
       sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
-      sf_readf_float (sndfile, &data->samples[SampleBuffer::frames_overlap * channels_], SampleBuffer::frames_per_buffer);
+
+      float     *sample_ptr = data->samples() + SampleBuffer::frames_overlap * channels_;
+
+      sf_count_t frames_read = sf_readf_float (sndfile, sample_ptr, SampleBuffer::frames_per_buffer);
+      if (frames_read != SampleBuffer::frames_per_buffer)
+        {
+          if (frames_read < 0)
+            frames_read = 0;
+
+          float *zero_fill_begin = sample_ptr + frames_read * channels_;
+          float *zero_fill_end   = sample_ptr + SampleBuffer::frames_per_buffer * channels_;
+
+          zero_float_block (zero_fill_end - zero_fill_begin, zero_fill_begin);
+        }
 
       if (b > 0)
         {
           // copy last samples from last buffer to first samples from this buffer to make buffers overlap
           const auto last_data = buffers_[b - 1].data.load();
-          const float *from_samples = &last_data->samples[SampleBuffer::frames_per_buffer * channels_];
-          std::copy_n (from_samples, SampleBuffer::frames_overlap * channels_, &data->samples[0]);
+          const float *from_samples = last_data->samples() + SampleBuffer::frames_per_buffer * channels_;
+          std::copy_n (from_samples, SampleBuffer::frames_overlap * channels_, data->samples());
         }
 
       buffer.data = data;

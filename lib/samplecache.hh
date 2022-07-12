@@ -51,8 +51,10 @@ struct SampleBuffer
   class Data
   {
     SampleCache *sample_cache_ = nullptr;
-    int          n_samples_ = 0;
+    size_t       n_samples_ = 0;
     int          ref_count_ = 1;
+
+    std::unique_ptr<float[]> samples_;
   public:
     Data (SampleCache *sample_cache, size_t n_samples);
     ~Data();
@@ -68,7 +70,21 @@ struct SampleBuffer
       if (ref_count_ == 0)
         delete this;
     }
-    std::vector<float> samples;
+    float *
+    samples()
+    {
+      return samples_.get();
+    }
+    const float *
+    samples() const
+    {
+      return samples_.get();
+    }
+    size_t
+    n_samples() const
+    {
+      return n_samples_;
+    }
     sample_count_t     start_n_values = 0;
   };
 
@@ -430,15 +446,15 @@ inline
 SampleBuffer::Data::Data (SampleCache *sample_cache, size_t n_samples) :
   sample_cache_ (sample_cache),
   n_samples_ (n_samples),
-  samples (n_samples)
+  samples_ (new float[n_samples])
 {
-  sample_cache_->update_size_bytes (n_samples_ * sizeof (decltype (samples)::value_type));
+  sample_cache_->update_size_bytes (n_samples_ * sizeof (float));
 }
 
 inline
 SampleBuffer::Data::~Data()
 {
-  sample_cache_->update_size_bytes (-n_samples_ * sizeof (decltype (samples)::value_type));
+  sample_cache_->update_size_bytes (-n_samples_ * sizeof (float));
 }
 
 inline void
