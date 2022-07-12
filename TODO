@@ -4,9 +4,7 @@
 - implement better interpolation (windowed sinc, bandlimited interpolation)
 - possibly contstrain parameters (however, sforzando doesn't always constrain either)
 
-- may want to optimize sample cache buffer scan to avoid extra work for scanning meaningless entries
 - make foreground playback (offline rendering) available
-- maybe eliminate rbtree iteration (performance)
 
 maybe:
 - aria xml index
