@@ -312,9 +312,9 @@ SampleCache::~SampleCache()
   }
   loader_thread_.join();
 
-  for (auto it : cache_)
+  for (const auto& weak : cache_)
     {
-      auto sample = it.second.lock();
+      auto sample = weak.lock();
       if (sample)
         {
           sample->free_unused_data();
@@ -348,13 +348,16 @@ SampleCache::load (const string& filename, uint preload_time_ms, uint offset)
   std::lock_guard lg (mutex_);
 
   LoadResult result;
-  SampleP cached_sample = cache_[filename].lock();
-  if (cached_sample) /* already in cache? */
+  for (const auto& weak : cache_)
     {
-      result.sample = cached_sample;
-      result.preload_info = cached_sample->add_preload (preload_time_ms, offset);
+      SampleP cached_sample = weak.lock();
+      if (cached_sample && cached_sample->filename() == filename) /* already in cache? */
+        {
+          result.sample = cached_sample;
+          result.preload_info = cached_sample->add_preload (preload_time_ms, offset);
 
-      return result;
+          return result;
+        }
     }
 
   auto sample = std::make_shared<Sample> (this);
@@ -365,7 +368,7 @@ SampleCache::load (const string& filename, uint preload_time_ms, uint offset)
       result.sample = sample;
       result.preload_info = preload_info;
 
-      cache_[filename] = sample;
+      cache_.push_back (sample);
       atomic_cache_file_count_ = cache_.size();
     }
   return result;
@@ -383,20 +386,13 @@ void
 SampleCache::remove_expired_entries()
 {
   /* the deletion of the actual cache entry is done automatically (shared ptr)
-   * this just removes entries in the std::map for filenames with a null weak ptr
+   * this just removes entries in the std::vector for samples with a null weak ptr
    */
-  auto it = cache_.begin();
-  while (it != cache_.end())
-    {
-      if (it->second.expired())
-        {
-          it = cache_.erase (it);
-        }
-      else
-        {
-          it++;
-        }
-    }
+  auto is_old = [] (const auto& weak) { return !weak.lock(); };
+
+  cache_.erase (std::remove_if (cache_.begin(), cache_.end(), is_old),
+                cache_.end());
+
   atomic_cache_file_count_ = cache_.size();
 }
 
@@ -408,9 +404,9 @@ SampleCache::cleanup_unused_data()
     return;
 
   last_cleanup_time_ = now;
-  for (const auto& [key, value] : cache_)
+  for (const auto& weak : cache_)
     {
-      auto sample = value.lock();
+      auto sample = weak.lock();
       if (sample)
         sample->free_unused_data();
     }
@@ -420,9 +416,9 @@ SampleCache::cleanup_unused_data()
     {
       vector<SampleP> samples;
 
-      for (const auto& [key, value] : cache_)
+      for (const auto& weak : cache_)
         {
-          auto sample = value.lock();
+          auto sample = weak.lock();
           if (sample && !sample->playing() && sample->unload_possible())
             samples.push_back (sample);
         }
@@ -449,9 +445,9 @@ SampleCache::load_data_for_playback_samples()
       playback_samples_need_update_.store (false);
 
       playback_samples_.clear();
-      for (const auto& [key, value] : cache_)
+      for (const auto& weak : cache_)
         {
-          auto sample = value.lock();
+          auto sample = weak.lock();
 
           if (sample && sample->playing())
             playback_samples_.push_back (sample);

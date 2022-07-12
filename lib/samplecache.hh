@@ -238,6 +238,11 @@ public:
   {
     return unload_possible_;
   }
+  std::string
+  filename() const
+  {
+    return filename_;
+  }
   class PlayHandle
   {
   private:
@@ -340,9 +345,9 @@ typedef std::shared_ptr<Sample> SampleP;
 class SampleCache
 {
 private:
-  std::map<std::string, std::weak_ptr<Sample>> cache_;
-  std::mutex mutex_;
-  std::thread loader_thread_;
+  std::vector<std::weak_ptr<Sample>> cache_;
+  std::mutex          mutex_;
+  std::thread         loader_thread_;
   std::atomic<size_t> atomic_n_total_bytes_ = 0;
   std::atomic<uint>   atomic_cache_file_count_ = 0;
   std::atomic<size_t> atomic_max_cache_size_ = 1024 * 1024 * 512;
