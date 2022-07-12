@@ -56,8 +56,8 @@ Synth::process_audio (float **outputs, uint n_frames, uint offset)
 void
 Synth::process (float **outputs, uint n_frames)
 {
-  std::fill_n (outputs[0], n_frames, 0.0);
-  std::fill_n (outputs[1], n_frames, 0.0);
+  zero_float_block (n_frames, outputs[0]);
+  zero_float_block (n_frames, outputs[1]);
 
   uint offset = 0;
   for (const auto& event : events)

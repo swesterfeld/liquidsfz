@@ -21,6 +21,8 @@
 #ifndef LIQUIDSFZ_UTILS_HH
 #define LIQUIDSFZ_UTILS_HH
 
+#include <cstring>
+
 // detect compiler
 #if __clang__
   #define LIQUIDSFZ_COMP_CLANG 1
@@ -72,6 +74,12 @@ db_from_factor (double factor, double min_dB)
     return 20 * log10 (factor);
   else
     return min_dB;
+}
+
+inline void
+zero_float_block (size_t n_values, float *values)
+{
+  memset (values, 0, n_values * sizeof (float));
 }
 
 inline double
