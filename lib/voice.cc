@@ -546,8 +546,11 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
     }
 
   /* process filters */
-  process_filter (fimpl_, true, out_l, out_r, n_frames, lfo_gen_.get (LFOGen::CUTOFF));
-  process_filter (fimpl2_, false, out_l, out_r, n_frames, nullptr);
+  if (fimpl_.params->type != Filter::Type::NONE)
+    process_filter (fimpl_, true, out_l, out_r, n_frames, lfo_gen_.get (LFOGen::CUTOFF));
+
+  if (fimpl2_.params->type != Filter::Type::NONE)
+    process_filter (fimpl2_, false, out_l, out_r, n_frames, nullptr);
 
   /* add samples to output buffer */
   if (CHANNELS == 2)
@@ -571,9 +574,6 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 void
 Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames, const float *lfo_cutoff_factor)
 {
-  if (fi.params->type == Filter::Type::NONE)
-    return;
-
   float mod_cutoff[n_frames];
   float mod_resonance[n_frames];
   float mod_env[n_frames];
