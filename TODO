@@ -4,8 +4,6 @@
 - implement better interpolation (windowed sinc, bandlimited interpolation)
 - possibly contstrain parameters (however, sforzando doesn't always constrain either)
 
-- make foreground playback (offline rendering) available
-
 maybe:
 - aria xml index
 - maintain active voice list
