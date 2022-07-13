@@ -25,6 +25,8 @@ using std::min;
 using std::string;
 using std::vector;
 
+using namespace std::chrono_literals;
+
 namespace LiquidSFZInternal {
 
 // this is slow anyway, and we do not want this to be inlined
@@ -37,16 +39,14 @@ Sample::PlayHandle::lookup (sample_count_t pos)
       sample_->update_max_buffer_index (buffer_index);
 
       const SampleBuffer::Data *data = sample_->buffers_[buffer_index].data.load();
-      if (!live_mode_)
+      if (!live_mode_ && !data)
         {
-          /* when not in live mode, we need to block until the background
-           * thread has completed loading the block
+          /* when not in live mode, we need to wakeup the background thread and
+           * block until it has completed loading the block
            */
-          while (!data)
-            {
-              usleep (20 * 1000); // FIXME: may want to synchronize without sleeping
-              data = sample_->buffers_[buffer_index].data.load();
-            }
+          sample_->sample_cache_->trigger_load_and_wait();
+
+          data = sample_->buffers_[buffer_index].data.load();
         }
       if (data)
         {
@@ -322,6 +322,7 @@ SampleCache::~SampleCache()
   {
     std::lock_guard lg (mutex_);
     quit_background_loader_ = true;
+    background_loader_cond_.notify_one();
   }
   loader_thread_.join();
 
@@ -343,16 +344,35 @@ SampleCache::~SampleCache()
 void
 SampleCache::background_loader()
 {
-  while (!quit_background_loader_)
+  for (;;)
     {
-      {
-        std::lock_guard lg (mutex_);
+      std::unique_lock lk (mutex_);
 
-        load_data_for_playback_samples();
-        cleanup_unused_data();
-      }
-      usleep (20 * 1000);
+      load_data_for_playback_samples();
+      cleanup_unused_data();
+
+      if (need_load_done_notify_)
+        {
+          need_load_done_notify_ = false;
+          load_done_cond_.notify_all();
+        }
+      background_loader_cond_.wait_for (lk, 20ms);
+
+      if (quit_background_loader_)
+        return;
     }
+}
+void
+SampleCache::trigger_load_and_wait()
+{
+  std::unique_lock lk (mutex_);
+
+  need_load_done_notify_ = true;
+
+  background_loader_cond_.notify_one();
+
+  while (need_load_done_notify_)
+    load_done_cond_.wait (lk);
 }
 
 SampleCache::LoadResult

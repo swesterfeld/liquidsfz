@@ -29,6 +29,7 @@
 #include <atomic>
 #include <thread>
 #include <cassert>
+#include <condition_variable>
 
 #include <sndfile.h>
 #include <unistd.h>
@@ -372,6 +373,9 @@ private:
   std::vector<SampleP> playback_samples_;
   std::atomic<bool>   playback_samples_need_update_ = false;
   int64_t             update_counter_ = 0;
+  std::condition_variable background_loader_cond_;
+  std::condition_variable load_done_cond_;
+  bool                need_load_done_notify_ = false;
 
   bool quit_background_loader_ = false;
 
@@ -391,6 +395,7 @@ public:
   };
   LoadResult load (const std::string& filename, uint preload_time_ms, uint offset);
   void cleanup_post_load();
+  void trigger_load_and_wait();
 
   void
   playback_samples_need_update()
