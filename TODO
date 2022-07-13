@@ -6,7 +6,6 @@
 
 maybe:
 - aria xml index
-- maintain active voice list
 - implement sustain loop
 - implement voice killing
 
