@@ -385,8 +385,7 @@ Voice::update_pitch_bend (int bend)
 void
 Voice::process (float **outputs, uint n_frames)
 {
-  const auto csample = region_->cached_sample;
-  int channels = csample->channels();
+  int channels = region_->cached_sample->channels();
 
   if (quality_ == 1)
     {
@@ -580,8 +579,7 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
 
   auto run_filter = [&] (const auto& cr_func)
     {
-      const auto csample = region_->cached_sample;
-      const auto channels = csample->channels();
+      int channels = region_->cached_sample->channels();
 
       if (channels == 2)
         fi.filter.process_mod (left, right, cr_func, n_frames);
