@@ -237,6 +237,11 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
           const float *from_samples = last_data->samples() + SampleBuffer::frames_per_buffer * channels_;
           std::copy_n (from_samples, SampleBuffer::frames_overlap * channels_, data->samples());
         }
+      else
+        {
+          // first buffer: zero samples at start
+          zero_float_block (SampleBuffer::frames_overlap * channels_, data->samples());
+        }
 
       buffer.data = data;
 
