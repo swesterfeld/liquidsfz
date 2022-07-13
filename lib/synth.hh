@@ -88,8 +88,11 @@ class Synth
   std::function<void (double)> progress_function_;
   uint sample_rate_ = 44100; // default
   uint64_t global_frame_count = 0;
-  std::vector<Voice> voices_;
-  std::vector<Region> regions_;
+  std::vector<Voice>   voices_;
+  std::vector<Voice *> active_voices_;
+  std::vector<Voice *> idle_voices_;
+  bool                 idle_voices_changed_ = false;
+  std::vector<Region>  regions_;
   Control control_;
   std::vector<CCInfo> cc_list_;
   std::vector<KeyInfo> key_list_;
@@ -151,8 +154,17 @@ public:
   set_max_voices (uint n_voices)
   {
     voices_.clear();
+    active_voices_.clear();
+    idle_voices_.clear();
+    idle_voices_changed_ = false;
+
     for (uint i = 0; i < n_voices; i++)
       voices_.emplace_back (this, limits_);
+
+    for (auto& voice : voices_)
+      idle_voices_.push_back (&voice);
+
+    active_voices_.reserve (n_voices);
   }
   uint
   max_voices()
@@ -199,11 +211,9 @@ public:
   set_gain (float gain)
   {
     gain_ = gain;
-    for (auto& voice : voices_)
-      {
-        if (voice.state_ != Voice::IDLE)
-          voice.update_gain();
-      }
+
+    for (Voice *voice : active_voices_)
+      voice->update_gain();
   }
   float
   gain() const
@@ -240,8 +250,7 @@ public:
         // we must reinit all voices
         //  - ensure that there are no pointers to old regions (which are deleted)
         //  - adjust voice state to the new global limits for this sfz
-        for (auto& v : voices_)
-          v = Voice (this, limits_);
+        set_max_voices (voices_.size());
 
         init_channels();
         return true;
@@ -267,23 +276,51 @@ public:
   Voice *
   alloc_voice()
   {
-    for (auto& v : voices_)
+    if (!idle_voices_.empty())
       {
-        if (v.state_ == Voice::IDLE)
-          return &v;
+        Voice *voice = idle_voices_.back();
+        idle_voices_.pop_back();
+        active_voices_.push_back (voice);
+
+        return voice;
       }
     debug ("alloc_voice: no voices left\n");
     return nullptr;
   }
+  void
+  idle_voices_changed()
+  {
+    idle_voices_changed_ = true;
+  }
+  void
+  update_idle_voices()
+  {
+    if (idle_voices_changed_)
+      {
+        size_t new_voice_count = 0;
+
+        for (size_t i = 0; i < active_voices_.size(); i++)
+          {
+            Voice *voice = active_voices_[i];
+
+            if (voice->state_ == Voice::IDLE)    // voice used?
+              {
+                idle_voices_.push_back (voice);
+              }
+           else
+             {
+               active_voices_[new_voice_count++] = voice;
+             }
+          }
+        active_voices_.resize (new_voice_count);
+
+        idle_voices_changed_ = false;
+      }
+  }
   uint
   active_voice_count()
   {
-    uint c = 0;
-
-    for (auto& v : voices_)
-      if (v.state_ != Voice::IDLE)
-        c++;
-    return c;
+    return active_voices_.size();
   }
   size_t
   cache_size()
@@ -309,13 +346,13 @@ public:
   note_on (int chan, int key, int vel)
   {
     /* kill overlapping notes */
-    for (auto& voice : voices_)
+    for (Voice *voice : active_voices_)
       {
-        if ((voice.state_ == Voice::ACTIVE || voice.state_== Voice::SUSTAIN) &&
-            voice.trigger_ == Trigger::ATTACK &&
-            voice.channel_ == chan && voice.key_ == key && voice.region_->loop_mode != LoopMode::ONE_SHOT)
+        if ((voice->state_ == Voice::ACTIVE || voice->state_== Voice::SUSTAIN) &&
+            voice->trigger_ == Trigger::ATTACK &&
+            voice->channel_ == chan && voice->key_ == key && voice->region_->loop_mode != LoopMode::ONE_SHOT)
           {
-            release (voice); // FIXME: we may want to use a fast release here
+            release (*voice); // FIXME: we may want to use a fast release here
           }
       }
     trigger_regions (Trigger::ATTACK, chan, key, vel, /* time_since_note_on */ 0.0);
@@ -371,16 +408,16 @@ public:
                         /* handle off_by */
                         if (region.group)
                           {
-                            for (auto& voice : voices_)
+                            for (Voice *voice : active_voices_)
                               {
-                                if (voice.state_ == Voice::ACTIVE)
+                                if (voice->state_ == Voice::ACTIVE)
                                   {
                                     /* off_by should not affect voices started by this trigger_regions call */
-                                    const bool voice_is_new = (voice.start_frame_count_ == global_frame_count);
+                                    const bool voice_is_new = (voice->start_frame_count_ == global_frame_count);
 
-                                    if (voice.off_by() == region.group && !voice_is_new)
+                                    if (voice->off_by() == region.group && !voice_is_new)
                                       {
-                                        voice.stop (voice.region_->off_mode);
+                                        voice->stop (voice->region_->off_mode);
                                       }
                                   }
                               }
@@ -405,19 +442,19 @@ public:
   {
     const bool sustain_pedal = get_cc (chan, CC_SUSTAIN) >= 0x40;
 
-    for (auto& voice : voices_)
+    for (Voice *voice : active_voices_)
       {
-        if (voice.state_ == Voice::ACTIVE &&
-            voice.trigger_ == Trigger::ATTACK &&
-            voice.channel_ == chan && voice.key_ == key && voice.region_->loop_mode != LoopMode::ONE_SHOT)
+        if (voice->state_ == Voice::ACTIVE &&
+            voice->trigger_ == Trigger::ATTACK &&
+            voice->channel_ == chan && voice->key_ == key && voice->region_->loop_mode != LoopMode::ONE_SHOT)
           {
             if (sustain_pedal)
               {
-                voice.state_ = Voice::SUSTAIN;
+                voice->state_ = Voice::SUSTAIN;
               }
             else
               {
-                release (voice);
+                release (*voice);
               }
           }
       }
@@ -457,19 +494,19 @@ public:
       }
     ch.cc_values[controller] = value;
 
-    for (auto& voice : voices_)
+    for (Voice *voice : active_voices_)
       {
-        if (voice.state_ != Voice::IDLE && voice.channel_ == channel)
-          voice.update_cc (controller);
+        if (voice->channel_ == channel)
+          voice->update_cc (controller);
       }
     if (controller == CC_SUSTAIN)
       {
         if (value < 0x40)
           {
-            for (auto& voice : voices_)
+            for (Voice *voice : active_voices_)
               {
-                if (voice.state_ == Voice::SUSTAIN)
-                  release (voice);
+                if (voice->state_ == Voice::SUSTAIN)
+                  release (*voice);
               }
           }
       }
@@ -520,10 +557,10 @@ public:
     auto& ch = channels_[channel];
     ch.pitch_bend = value;
 
-    for (auto& voice : voices_)
+    for (Voice *voice : active_voices_)
       {
-        if (voice.state_ != Voice::IDLE && voice.channel_ == channel)
-          voice.update_pitch_bend (value);
+        if (voice->channel_ == channel)
+          voice->update_pitch_bend (value);
       }
   }
   int

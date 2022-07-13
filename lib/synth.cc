@@ -43,11 +43,10 @@ Synth::process_audio (float **outputs, uint n_frames, uint offset)
         outputs[1] + offset + i
       };
 
-      for (auto& voice : voices_)
-        {
-          if (voice.state_ != Voice::IDLE)
-            voice.process (outputs_offset, todo);
-        }
+      for (Voice *voice : active_voices_)
+        voice->process (outputs_offset, todo);
+
+      update_idle_voices();
       i += todo;
     }
   global_frame_count += n_frames;

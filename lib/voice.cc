@@ -314,8 +314,13 @@ Voice::stop (OffMode off_mode)
 void
 Voice::kill()
 {
-  state_ = Voice::IDLE;
-  play_handle_.end_playback();
+  if (state_ != Voice::IDLE)
+    {
+      state_ = Voice::IDLE;
+      play_handle_.end_playback();
+
+      synth_->idle_voices_changed();
+    }
 }
 
 void
@@ -532,8 +537,7 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
         }
       else
         {
-          state_ = IDLE;
-          play_handle_.end_playback();
+          kill();
 
           /* output memory is uninitialized, so we need to explicitely write every sampl when done */
           out_l[i] = 0;
