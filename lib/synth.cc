@@ -93,6 +93,8 @@ Synth::all_sound_off()
 {
   for (auto& voice : voices_)
     voice.kill();
+
+  update_idle_voices();
 }
 
 void
