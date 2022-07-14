@@ -130,6 +130,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   update_volume_gain();
   update_amplitude_gain();
   update_pan_gain();
+  update_cc7_cc10_gain();
   update_lr_gain (true);
 
   set_pitch_bend (synth_->get_pitch_bend (channel));
@@ -206,13 +207,35 @@ Voice::update_pan_gain()
 }
 
 void
+Voice::update_cc7_cc10_gain()
+{
+  double gain = 1;
+  if (region_->volume_cc7)
+    gain = synth_->get_curve_value (4, synth_->get_cc (channel_, 7));
+
+  float pan = 0;
+  if (region_->pan_cc10)
+    {
+      pan = 100 * synth_->get_curve_value (1, synth_->get_cc (channel_, 10));
+      pan = clamp (pan, -100.f, 100.f);
+    }
+
+  /* for center panning, pan_stereo_factor returns 1/sqrt(2) for left and
+   * right gain, but we want a factor of 1 for both channels in this case
+   */
+  gain *= M_SQRT2;
+  cc7_cc10_left_gain_ = gain * pan_stereo_factor (pan, 0);
+  cc7_cc10_right_gain_ = gain * pan_stereo_factor (pan, 1);
+}
+
+void
 Voice::update_lr_gain (bool now)
 {
   const float global_gain = synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_ * amplitude_gain_;
 
   synth_->debug (" - gain l=%.2f r=%.2f\n", 32768 * pan_left_gain_ * global_gain, 32768 * pan_right_gain_ * global_gain);
-  left_gain_.set (pan_left_gain_ * global_gain, now);
-  right_gain_.set (pan_right_gain_ * global_gain, now);
+  left_gain_.set (cc7_cc10_left_gain_ * pan_left_gain_ * global_gain, now);
+  right_gain_.set (cc7_cc10_right_gain_* pan_right_gain_ * global_gain, now);
 }
 
 float
@@ -344,6 +367,11 @@ Voice::update_cc (int controller)
   if (region_->amplitude_cc.contains (controller))
     {
       update_amplitude_gain();
+      update_lr_gain (false);
+    }
+  if (controller == 7 || controller == 10)
+    {
+      update_cc7_cc10_gain();
       update_lr_gain (false);
     }
 

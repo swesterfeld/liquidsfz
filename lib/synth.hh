@@ -528,6 +528,16 @@ public:
     return ch.cc_values[controller];
   }
   float
+  get_curve_value (int curve, int value) const
+  {
+    if (curve >= 0 && curve < int (curves_.size()))
+      {
+        if (!curves_[curve].empty())
+          return curves_[curve].get (value);
+      }
+    return 0;
+  }
+  float
   get_cc_curve (int channel, const CCParamVec::Entry& entry) const
   {
     int curvecc = entry.curvecc;

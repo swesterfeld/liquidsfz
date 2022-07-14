@@ -96,6 +96,8 @@ class Voice
   float rt_decay_gain_ = 0;
   float pan_left_gain_ = 0;
   float pan_right_gain_ = 0;
+  float cc7_cc10_left_gain_ = 0;
+  float cc7_cc10_right_gain_ = 0;
 
   float amp_random_gain_ = 0;
   float pitch_random_cent_ = 0;
@@ -104,6 +106,7 @@ class Voice
   void update_volume_gain();
   void update_amplitude_gain();
   void update_pan_gain();
+  void update_cc7_cc10_gain();
   void update_lr_gain (bool now);
 
   float amp_value (float vnorm, const EGParam& amp_param);

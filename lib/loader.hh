@@ -336,6 +336,9 @@ struct Region
   CCParamVec delay_cc;
   CCParamVec offset_cc;
 
+  bool volume_cc7 = false;
+  bool pan_cc10 = false;
+
   bool empty()
   {
     return sample == "";

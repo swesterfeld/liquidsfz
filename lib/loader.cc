@@ -1191,6 +1191,45 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
   for (auto& c : curves)
     curve_table.expand_curve (c);
 
+  // do we have default behaviour for cc7 / cc10 or user defined behaviour?
+  bool volume_cc7 = true;
+  bool pan_cc10 = true;
+  for (const auto& cc_info : cc_list)
+    {
+      if (cc_info.cc == 7)
+        volume_cc7 = false;
+      if (cc_info.cc == 10)
+        pan_cc10 = false;
+    }
+  if (volume_cc7)
+    {
+      CCInfo cc7_info;
+      cc7_info.cc = 7;
+      cc7_info.has_label = true;
+      cc7_info.label = "Volume";
+      cc7_info.default_value = 100;
+      cc_list.push_back (cc7_info);
+
+      SetCC set_cc;
+      set_cc.cc = 7;
+      set_cc.value = cc7_info.default_value;
+      control.set_cc.push_back (set_cc);
+    }
+  if (pan_cc10)
+    {
+      CCInfo cc10_info;
+      cc10_info.cc = 10;
+      cc10_info.has_label = true;
+      cc10_info.label = "Pan";
+      cc10_info.default_value = 64;
+      cc_list.push_back (cc10_info);
+
+      SetCC set_cc;
+      set_cc.cc = 10;
+      set_cc.value = cc10_info.default_value;
+      control.set_cc.push_back (set_cc);
+    }
+
   synth_->progress (0);
   for (size_t i = 0; i < regions.size(); i++)
     {
@@ -1255,14 +1294,17 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
             }
         }
 
+      region.volume_cc7 = volume_cc7;
+      region.pan_cc10   = pan_cc10;
+
       /* update progress info */
       synth_->progress ((i + 1) * 100.0 / regions.size());
     }
-  // generate final cc_list
+  // generate final key_list
   for (const auto& [key, key_info] : key_map)
     key_list.push_back (key_info);
 
-  // generate final key_list
+  // generate final cc_list
   std::sort (cc_list.begin(), cc_list.end(),
     [] (const CCInfo& a, const CCInfo& b) {
       return a.cc < b.cc;
