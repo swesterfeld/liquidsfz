@@ -94,7 +94,8 @@ class LV2Plugin
     LEFT_OUT   = 1,
     RIGHT_OUT  = 2,
     LEVEL      = 3,
-    NOTIFY     = 4,
+    FREEWHEEL  = 4,
+    NOTIFY     = 5
   };
 
   // URIs
@@ -119,6 +120,7 @@ class LV2Plugin
   float                   *left_out = nullptr;
   float                   *right_out = nullptr;
   const float             *level = nullptr;
+  const float             *freewheel = nullptr;
   LV2_Atom_Sequence       *notify_port = nullptr;
 
   string                   queue_filename;
@@ -128,6 +130,7 @@ class LV2Plugin
   bool                     inform_ui = false;
   static constexpr int     command_load = 0x10001234; // just some random number
   float                    old_level = 1000;          // outside range [-80:20]
+  float                    old_freewheel = -1;        // outside boolean range [0:1]
 
   LV2_Worker_Schedule     *schedule = nullptr;
   LV2_Midnam              *midnam = nullptr;
@@ -279,6 +282,12 @@ public:
         synth.set_gain (db_to_factor (*level));
         old_level = *level;
       }
+    if (old_freewheel != *freewheel)
+      {
+        /* set live mode to true if freewheel is disabled */
+        synth.set_live_mode (*freewheel < 0.5f);
+        old_freewheel = *freewheel;
+      }
 
     const uint32_t capacity = notify_port->atom.size;
     lv2_atom_forge_set_buffer (&forge, (uint8_t *) notify_port, capacity);
@@ -374,6 +383,8 @@ public:
         case RIGHT_OUT:  right_out = (float*)data;
                          break;
         case LEVEL:      level = (float *)data;
+                         break;
+        case FREEWHEEL:  freewheel = (float *)data;
                          break;
         case NOTIFY:     notify_port = (LV2_Atom_Sequence*)data;
                          break;
