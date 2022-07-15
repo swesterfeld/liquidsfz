@@ -77,6 +77,7 @@ Sample::~Sample()
     }
   else
     {
+      free_unused_data();
       buffers_.clear();
     }
 }
@@ -331,19 +332,12 @@ SampleCache::~SampleCache()
   }
   loader_thread_.join();
 
-  for (const auto& weak : cache_)
-    {
-      auto sample = weak.lock();
-      if (sample)
-        {
-          sample->free_unused_data();
-          // FIXME: sample->buffers.clear();
-        }
-    }
-
+  /* free remaining shared ptr references to samples */
+  playback_samples_.clear();
   remove_expired_entries();
 
-  printf ("cache stats in SampleCache destructor: %s\n", cache_stats().c_str());
+  if (cache_size() != 0 || cache_file_count() != 0)
+    fprintf (stderr, "liquidsfz: cache stats in SampleCache destructor: %s\n", cache_stats().c_str());
 }
 
 void
