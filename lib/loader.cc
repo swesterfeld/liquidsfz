@@ -151,6 +151,23 @@ Loader::update_cc_info (int cc)
   return cc_list.emplace_back (cc_info);
 }
 
+SetCC&
+Loader::update_set_cc (int cc, int value)
+{
+  for (auto& set_cc : control.set_cc)
+    {
+      if (set_cc.cc == cc)
+        {
+          set_cc.value = value;
+          return set_cc;
+        }
+    }
+  SetCC set_cc;
+  set_cc.cc = cc;
+  set_cc.value = value;
+  return control.set_cc.emplace_back (set_cc);
+}
+
 KeyInfo&
 Loader::update_key_info (int key)
 {
@@ -695,10 +712,7 @@ Loader::set_key_value_control (const string& key, const string& value)
     }
   else if (split_sub_key (key, "set_cc", sub_key))
     {
-      SetCC set_cc;
-      set_cc.cc = sub_key;
-      set_cc.value = convert_int (value);
-      control.set_cc.push_back (set_cc);
+      SetCC& set_cc = update_set_cc (sub_key, convert_int (value));
 
       CCInfo& cc_info = update_cc_info (set_cc.cc);
       cc_info.default_value = set_cc.value;
@@ -709,10 +723,8 @@ Loader::set_key_value_control (const string& key, const string& value)
       /* we don't really support floating point CCs
        * however we convert to ensure sane defaults for .sfz files using this opcode
        */
-      SetCC set_cc;
-      set_cc.cc = sub_key;
-      set_cc.value = std::clamp<int> (lrint (convert_float (value) * 127), 0, 127);
-      control.set_cc.push_back (set_cc);
+      int ivalue = std::clamp<int> (lrint (convert_float (value) * 127), 0, 127);
+      SetCC& set_cc = update_set_cc (sub_key, ivalue);
 
       CCInfo& cc_info = update_cc_info (set_cc.cc);
       cc_info.default_value = set_cc.value;
@@ -1203,31 +1215,25 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
     }
   if (volume_cc7)
     {
+      SetCC& set_cc = update_set_cc (7, 100);
+
       CCInfo cc7_info;
-      cc7_info.cc = 7;
+      cc7_info.cc = set_cc.cc;
       cc7_info.has_label = true;
       cc7_info.label = "Volume";
-      cc7_info.default_value = 100;
+      cc7_info.default_value = set_cc.value;
       cc_list.push_back (cc7_info);
-
-      SetCC set_cc;
-      set_cc.cc = 7;
-      set_cc.value = cc7_info.default_value;
-      control.set_cc.push_back (set_cc);
     }
   if (pan_cc10)
     {
+      SetCC& set_cc = update_set_cc (10, 64);
+
       CCInfo cc10_info;
-      cc10_info.cc = 10;
+      cc10_info.cc = set_cc.cc;
       cc10_info.has_label = true;
       cc10_info.label = "Pan";
-      cc10_info.default_value = 64;
+      cc10_info.default_value = set_cc.value;
       cc_list.push_back (cc10_info);
-
-      SetCC set_cc;
-      set_cc.cc = 10;
-      set_cc.value = cc10_info.default_value;
-      control.set_cc.push_back (set_cc);
     }
 
   synth_->progress (0);

@@ -512,6 +512,7 @@ public:
   bool split_sub_key (const std::string& key, const std::string& start, int& sub_key);
   XFCC& search_xfcc (std::vector<XFCC>& xfcc_vec, int cc, int def);
   CCInfo& update_cc_info (int cc);
+  SetCC& update_set_cc (int cc, int value);
   KeyInfo& update_key_info (int key);
   void set_key_value (const std::string& key, const std::string& value);
   void set_key_value_control (const std::string& key, const std::string& value);
