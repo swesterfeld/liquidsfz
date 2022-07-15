@@ -68,6 +68,12 @@ Synth::set_live_mode (bool live_mode)
   impl->synth.set_live_mode (live_mode);
 }
 
+bool
+Synth::live_mode() const
+{
+  return impl->synth.live_mode();
+}
+
 void
 Synth::set_preload_time (uint time_ms)
 {

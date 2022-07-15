@@ -178,8 +178,21 @@ public:
    * correct thing to do when used live in a real time audio thread. This
    * function can be used to make liquidsfz process() function wait for the
    * samples to be loaded.
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   void set_live_mode (bool live_mode);
+
+  /**
+   * \brief Get live mode
+   *
+   * See @ref set_live_mode().
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
+   *
+   * @returns whether synth is in live mode
+   */
+  bool live_mode() const;
 
   /**
    * \brief Set preload time
