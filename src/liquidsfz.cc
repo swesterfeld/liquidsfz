@@ -426,7 +426,7 @@ public:
   bool
   load (const string& filename)
   {
-    synth.set_progress_function ([this] (double percent)
+    synth.set_progress_function ([] (double percent)
       {
         printf ("Loading: %.1f %%\r", percent);
         fflush (stdout);
