@@ -35,7 +35,9 @@ main (int argc, char **argv)
   ArgParser ap (argc, argv);
 
   int sample_rate = 48000;
+  int quality = -1;
   ap.parse_opt ("--rate", sample_rate);
+  ap.parse_opt ("--quality", quality);
 
   vector<string> args;
   if (!ap.parse_args (1, args))
@@ -44,6 +46,8 @@ main (int argc, char **argv)
       return 1;
     }
   Synth synth;
+  if (quality > 0)
+    synth.set_sample_quality (quality);
   synth.set_sample_rate (sample_rate);
   synth.set_live_mode (false);
   if (!synth.load (args[0]))
