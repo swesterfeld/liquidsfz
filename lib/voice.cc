@@ -487,7 +487,7 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
     };
 
   /* render lfos */
-  float lfo_buffer[lfo_gen_.buffer_size (n_frames)];
+  float lfo_buffer[LFOGen::MAX_OUTPUTS * Synth::MAX_BLOCK_SIZE];
   lfo_gen_.process (lfo_buffer, n_frames);
 
   const float *lfo_pitch = lfo_gen_.get (LFOGen::PITCH);
@@ -499,8 +499,8 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
     lfo_volume = synth_->const_block_1();
 
   /* render voice */
-  float out_l[n_frames];
-  float out_r[n_frames];
+  float out_l[Synth::MAX_BLOCK_SIZE];
+  float out_r[Synth::MAX_BLOCK_SIZE];
 
   for (uint i = 0; i < n_frames; i++)
     {
@@ -601,9 +601,9 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 void
 Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames, const float *lfo_cutoff_factor)
 {
-  float mod_cutoff[n_frames];
-  float mod_resonance[n_frames];
-  float mod_env[n_frames];
+  float mod_cutoff[Synth::MAX_BLOCK_SIZE];
+  float mod_resonance[Synth::MAX_BLOCK_SIZE];
+  float mod_env[Synth::MAX_BLOCK_SIZE];
 
   auto run_filter = [&] (const auto& cr_func)
     {

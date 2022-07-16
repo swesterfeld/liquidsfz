@@ -34,6 +34,7 @@ public:
     VOLUME = 1,
     CUTOFF = 2
   };
+  static constexpr uint MAX_OUTPUTS = 3;
 
 private:
   Synth *synth_ = nullptr;
@@ -83,7 +84,7 @@ private:
   };
   static Wave *get_wave (int wave);
 
-  std::array<Output, 3> outputs;
+  std::array<Output, MAX_OUTPUTS> outputs;
   bool first = false;
   std::vector<LFO> lfos;
   std::vector<ModLink> mod_links;
@@ -108,11 +109,6 @@ public:
   get (OutputType type)
   {
     return outputs[type].buffer;
-  }
-  uint
-  buffer_size (uint n_values)
-  {
-    return outputs.size() * n_values;
   }
   static bool supports_wave (int wave);
 };

@@ -82,6 +82,10 @@ public:
 
 class Synth
 {
+public:
+  static constexpr uint MAX_BLOCK_SIZE = 1024;
+
+private:
   std::shared_ptr<Global> global_;
   std::minstd_rand random_gen;
   std::function<void (Log, const char *)> log_function_;
@@ -111,8 +115,6 @@ class Synth
   static constexpr int CC_SUSTAIN       = 64;
   static constexpr int CC_ALL_SOUND_OFF = 120;
   static constexpr int CC_ALL_NOTES_OFF = 123;
-
-  static constexpr uint MAX_BLOCK_SIZE = 1024;
 
   std::array<float, MAX_BLOCK_SIZE> const_block_0_, const_block_1_;
 
