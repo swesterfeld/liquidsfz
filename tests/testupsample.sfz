@@ -1,2 +1,5 @@
 <region>
 sample=testupsample.wav
+/* avoid default CC7 | CC10 */
+volume_cc7=0
+pan_cc10=0
