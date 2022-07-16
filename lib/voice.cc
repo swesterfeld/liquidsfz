@@ -488,7 +488,8 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 
   /* render lfos */
   float lfo_buffer[LFOGen::MAX_OUTPUTS * Synth::MAX_BLOCK_SIZE];
-  lfo_gen_.process (lfo_buffer, n_frames);
+  if (lfo_gen_.need_process())
+    lfo_gen_.process (lfo_buffer, n_frames);
 
   const float *lfo_pitch = lfo_gen_.get (LFOGen::PITCH);
   if (!lfo_pitch)

@@ -106,9 +106,14 @@ public:
   void update_ccs();
 
   const float *
-  get (OutputType type)
+  get (OutputType type) const
   {
     return outputs[type].buffer;
+  }
+  bool
+  need_process() const
+  {
+    return lfos.size() != 0;
   }
   static bool supports_wave (int wave);
 };

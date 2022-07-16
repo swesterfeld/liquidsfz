@@ -256,9 +256,6 @@ LFOGen::update_ccs()
 void
 LFOGen::process (float *lfo_buffer, uint n_values)
 {
-  if (!lfos.size())
-    return;
-
   for (auto& output : outputs)
     {
       if (output.active)
