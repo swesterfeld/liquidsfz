@@ -30,11 +30,14 @@ int
 main (int argc, char **argv)
 {
   size_t block_size = 1024;
+  int note = 60;
+  if (argc >= 5)
+    note = atoi (argv[4]);
   if (argc >= 4)
     block_size = atoi (argv[3]);
-  if (argc < 2 || argc > 4)
+  if (argc < 2 || argc > 5)
     {
-      fprintf (stderr, "usage: testperf <sfz_filename> [ <quality> ] [ <block_size> ]\n");
+      fprintf (stderr, "usage: testperf <sfz_filename> [ <quality> ] [ <block_size> ] [ <note> ]\n");
       return 1;
     }
   Synth synth;
@@ -53,7 +56,7 @@ main (int argc, char **argv)
   std::vector<float> out_left (block_size), out_right (block_size);
 
   float *outputs[2] = { out_left.data(), out_right.data() };
-  synth.add_event_note_on (0, 0, 60, 127);
+  synth.add_event_note_on (0, 0, note, 127);
 
   /* since we are in non-live mode, we wait for samples to be
    * loaded by processing lots of blocks before we start measuring
