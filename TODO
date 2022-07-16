@@ -1,13 +1,13 @@
 - *silence
 - key switches (details: sw_down, sw_up)
 - envelope minimum times (prevent clicks)
-- implement better interpolation (windowed sinc, bandlimited interpolation)
 - possibly contstrain parameters (however, sforzando doesn't always constrain either)
 
 maybe:
 - aria xml index
-- implement sustain loop
 - implement voice killing
+- use bandlimited/filtered interpolation
+- sseify upsampling filter
 
 ------------ NEW RELEASE ------------
 
