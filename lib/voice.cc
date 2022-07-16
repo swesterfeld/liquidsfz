@@ -126,6 +126,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   ppos_ = offset * upsample;
   if (ppos_ > region.loop_end * upsample)
     loop_enabled_ = false;
+  last_ippos_ = 0;
 
   update_volume_gain();
   update_amplitude_gain();
@@ -510,8 +511,10 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
     {
       if (!sample_reader_.done() && !envelope_.done())
         {
-          const uint ippos = ppos_;
+          const int64_t ippos = ppos_;
+          const int delta_pos = ippos - last_ippos_;
           const float frac = ppos_ - ippos;
+          last_ippos_ = ippos;
 
           ppos_ += replay_speed_.get_next() * lfo_pitch[i] * UPSAMPLE;
 
@@ -520,19 +523,19 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
             {
               if constexpr (QUALITY == 1)
                 {
-                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 2> (ippos);
+                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 2> (delta_pos);
 
                   out_l[i] = (samples[0] + frac * (samples[1] - samples[0])) * amp_gain;
                 }
               if constexpr (QUALITY == 2)
                 {
-                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 6> (ippos);
+                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 6> (delta_pos);
 
                   out_l[i] = interp_hermite_6p3o (samples[0], samples[1], samples[2], samples[3], samples[4], samples[5], frac) * amp_gain;
                 }
               if constexpr (QUALITY == 3)
                 {
-                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 4> (ippos);
+                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 4> (delta_pos);
 
                   out_l[i] = interp_optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac) * amp_gain;
                 }
@@ -541,21 +544,21 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
             {
               if constexpr (QUALITY == 1)
                 {
-                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 2> (ippos);
+                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 2> (delta_pos);
 
                   out_l[i] = (samples[0] + frac * (samples[2] - samples[0])) * amp_gain;
                   out_r[i] = (samples[1] + frac * (samples[3] - samples[1])) * amp_gain;
                 }
               if constexpr (QUALITY == 2)
                 {
-                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 6> (ippos);
+                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 6> (delta_pos);
 
                   out_l[i] = interp_hermite_6p3o (samples[0], samples[2], samples[4], samples[6], samples[8], samples[10], frac) * amp_gain;
                   out_r[i] = interp_hermite_6p3o (samples[1], samples[3], samples[5], samples[7], samples[9], samples[11], frac) * amp_gain;
                 }
               if constexpr (QUALITY == 3)
                 {
-                  const float *samples = sample_reader_.skip_to<UPSAMPLE, CHANNELS, 4> (ippos);
+                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 4> (delta_pos);
 
                   out_l[i] = interp_optimal_2x_4p (samples[0], samples[2], samples[4], samples[6], frac) * amp_gain;
                   out_r[i] = interp_optimal_2x_4p (samples[1], samples[3], samples[5], samples[7], frac) * amp_gain;
@@ -685,11 +688,9 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
 
 template<int UPSAMPLE, int CHANNELS, int INTERP_POINTS>
 inline const float *
-SampleReader::skip_to (int pos)
+SampleReader::skip (int delta)
 {
-  assert (pos >= last_pos_);
-  relative_pos_ += pos - last_pos_;
-  last_pos_ = pos;
+  relative_pos_ += delta;
 
   bool in_loop = false;
   if (loop_start_ >= 0)

@@ -34,7 +34,6 @@ class SampleReader
   const Sample *cached_sample_ = nullptr;
   int relative_pos_ = 0;
   int end_pos_ = 0;
-  int last_pos_ = 0;
   int channels_ = 0;
   int loop_start_ = -1;
   int loop_end_ = -1;
@@ -46,7 +45,6 @@ public:
   {
     channels_ = cached_sample->channels();
     relative_pos_ = 0;
-    last_pos_ = 0;
     end_pos_ = (cached_sample->n_samples() / channels_ + 32) * upsample;
     play_handle_ = play_handle;
     cached_sample_ = cached_sample;
@@ -68,7 +66,7 @@ public:
   }
 
   template<int UPSAMPLE, int CHANNELS, int INTERP_POINTS>
-  const float *skip_to (int pos);
+  const float *skip (int pos);
 
   bool
   done()
@@ -146,6 +144,7 @@ public:
   State state_ = IDLE;
 
   double ppos_ = 0;
+  int64_t last_ippos_ = 0;
   uint64_t start_frame_count_ = 0;
   Trigger trigger_ = Trigger::ATTACK;
   Envelope envelope_;
