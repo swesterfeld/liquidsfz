@@ -817,6 +817,6 @@ SampleReader::skip (int delta)
         }
       last_index_ = relative_pos_ / 2;
 
-      return &samples_[(relative_pos_ & 1) * CHANNELS];
+      return &samples_[((relative_pos_ & 1) + 1) * CHANNELS];
     }
 }
