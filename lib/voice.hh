@@ -60,6 +60,12 @@ public:
     loop_start_ = loop_start;
     loop_end_ = loop_end;
   }
+  void
+  stop_loop()
+  {
+    loop_start_ = -1;
+    loop_end_ = -1;
+  }
 
   template<int UPSAMPLE, int CHANNELS, int INTERP_POINTS>
   const float *skip_to (int pos);

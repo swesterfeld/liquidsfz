@@ -332,6 +332,9 @@ Voice::stop (OffMode off_mode)
   state_ = Voice::RELEASED;
   envelope_.stop (off_mode);
   filter_envelope_.stop (OffMode::NORMAL);
+
+  if (region_->loop_mode == LoopMode::SUSTAIN)
+    sample_reader_.stop_loop();
 }
 
 void
