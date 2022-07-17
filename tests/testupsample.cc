@@ -57,10 +57,17 @@ main (int argc, char **argv)
     {
       //float freq = atof (argv[2]);
       int sample_quality = atoi (argv[2]);
+      struct Result {
+        float freq;
+        double pass;
+        double stop;
+      };
+      vector<Result> results;
       for (float freq = 50; freq < 22050; freq += 25)
         {
           static constexpr int RATE_FROM = 44100;
-          static constexpr int RATE_TO = 96000;
+          static constexpr int UPSAMPLE = 2;
+          static constexpr int RATE_TO = 48000 * UPSAMPLE;
 
           auto f = [freq] (int x) -> float { return sin (x * 2 * M_PI * freq / RATE_FROM); };
 
@@ -97,9 +104,8 @@ main (int argc, char **argv)
               return 1;
             }
           synth.set_gain (sqrt (2));
-          size_t out_size = n * 4;
+          size_t out_size = n * 2 * UPSAMPLE;
           std::vector<float> out (out_size), out_right (out_size);
-
           float *outputs[2] = { out.data(), out_right.data() };
           synth.add_event_note_on (0, 0, 60, 127);
           synth.process (outputs, out_size);
@@ -126,7 +132,15 @@ main (int argc, char **argv)
               else
                 stop = std::max (stop, amp);
             }
-          printf ("%f %f %f\n", freq, db (pass), db (stop));
+          results.push_back ({ freq, db (pass), db (stop) });
+        }
+      for (auto it = results.begin(); it != results.end(); it++)
+        {
+          printf ("%f %.17g\n", it->freq, it->pass);
+        }
+      for (auto it = results.rbegin(); it != results.rend(); it++)
+        {
+          printf ("%f %.17g\n", it->freq, it->stop);
         }
     }
   if (argc == 2 && string (argv[1]) == "upsample")
