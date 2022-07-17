@@ -499,10 +499,6 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
   if (!lfo_pitch)
     lfo_pitch = synth_->const_block_1();
 
-  const float *lfo_volume = lfo_gen_.get (LFOGen::VOLUME);
-  if (!lfo_volume)
-    lfo_volume = synth_->const_block_1();
-
   /* render voice */
   float out_l[Synth::MAX_BLOCK_SIZE];
   float out_r[Synth::MAX_BLOCK_SIZE];
@@ -587,20 +583,50 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
     process_filter (fimpl2_, false, out_l, out_r, n_frames, nullptr);
 
   /* add samples to output buffer */
+  const float *lfo_volume = lfo_gen_.get (LFOGen::VOLUME);
+  const bool   const_gain = (!lfo_volume && left_gain_.is_constant() && right_gain_.is_constant());
   if (CHANNELS == 2)
     {
-      for (uint i = 0; i < n_frames; i++)
+      if (const_gain)
         {
-          outputs[0][i] += out_l[i] * lfo_volume[i] * left_gain_.get_next();
-          outputs[1][i] += out_r[i] * lfo_volume[i] * right_gain_.get_next();
+          const float gain_left = left_gain_.get_next();
+          const float gain_right = right_gain_.get_next();
+
+           for (uint i = 0; i < n_frames; i++)
+             {
+               outputs[0][i] += out_l[i] * gain_left;
+               outputs[1][i] += out_r[i] * gain_right;
+             }
+        }
+      else
+        {
+          for (uint i = 0; i < n_frames; i++)
+            {
+              outputs[0][i] += out_l[i] * lfo_volume[i] * left_gain_.get_next();
+              outputs[1][i] += out_r[i] * lfo_volume[i] * right_gain_.get_next();
+            }
         }
     }
   else
     {
-      for (uint i = 0; i < n_frames; i++)
+      if (const_gain)
         {
-          outputs[0][i] += out_l[i] * lfo_volume[i] * left_gain_.get_next();
-          outputs[1][i] += out_l[i] * lfo_volume[i] * right_gain_.get_next();
+          const float gain_left = left_gain_.get_next();
+          const float gain_right = right_gain_.get_next();
+
+          for (uint i = 0; i < n_frames; i++)
+            {
+              outputs[0][i] += out_l[i] * gain_left;
+              outputs[1][i] += out_l[i] * gain_right;
+            }
+        }
+      else
+        {
+          for (uint i = 0; i < n_frames; i++)
+            {
+              outputs[0][i] += out_l[i] * lfo_volume[i] * left_gain_.get_next();
+              outputs[1][i] += out_l[i] * lfo_volume[i] * right_gain_.get_next();
+            }
         }
     }
 }
