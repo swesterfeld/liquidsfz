@@ -270,6 +270,8 @@ public:
     sample_count_t   start_pos_ = 0;
     sample_count_t   end_pos_   = 0;
 
+    sample_count_t   lookup_fail_counter_ = 0;
+
   public:
     PlayHandle (const PlayHandle& p)
     {
@@ -302,6 +304,7 @@ public:
 
           samples_ = nullptr;
           start_pos_ = end_pos_ = 0;
+          lookup_fail_counter_ = 0;
         }
       live_mode_ = live_mode;
     }
@@ -318,14 +321,24 @@ public:
       if (offset >= 0 && pos + n < end_pos_)
         return samples_ + offset;
 
-      /* if not, we try to find a matching block */
-      if (lookup (pos))
+      if (lookup_fail_counter_)
         {
-          if (pos + n < end_pos_)
-            return samples_ + pos - start_pos_;
+          /* if a previous lookup() failed, keep returning zeros for a while
+           * to avoid the overhead of lookup() failing again and again
+           */
+          lookup_fail_counter_--;
         }
-      /* finally we fail */
-      return nullptr;
+      else
+        {
+          /* try to find a matching block */
+          if (lookup (pos))
+            {
+              if (pos + n < end_pos_)
+                return samples_ + pos - start_pos_;
+            }
+          lookup_fail_counter_ = 128;
+        }
+      return handle_lookup_fail (n);
     }
     float
     get (sample_count_t pos)
@@ -337,6 +350,16 @@ public:
   private:
     bool
     lookup (sample_count_t pos);
+
+    float *
+    handle_lookup_fail (sample_count_t n)
+    {
+      static float zeros[256] = { 0, };
+      if (n < 256)
+        return zeros;
+
+      return nullptr;
+    }
   };
 
   void start_playback();
