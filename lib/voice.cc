@@ -782,41 +782,45 @@ SampleReader::skip (int delta)
         }
       input += N * CHANNELS;
 
-      const int diff = relative_pos_ / 2 - last_index_;
-      if (diff == 0)
+      int diff = relative_pos_ / 2 - last_index_;
+      if (diff >= 0 && diff < upsample_buffer_size_ - 2)
         {
-          // all buffered samples are up to date
+          // samples are already in upsample buffer
         }
       else
         {
-          int i;
-          if (diff == 1)
-            {
-              // keep 2 buffered samples, upsample 1
-              std::copy_n (&samples_[2 * CHANNELS], 4 * CHANNELS, &samples_[0]);
+          last_index_ = relative_pos_ / 2;
 
-              i = 2;
-            }
-          else if (diff == 2)
+          int i = upsample_buffer_size_ - diff;
+          if (i > 0 && i < 3)
             {
-              // keep 1 buffered sample, upsample 2
-              std::copy_n (&samples_[4 * CHANNELS], 2 * CHANNELS, &samples_[0]);
-
-              i = 1;
+              /* we are at the end of the upsample buffer and there is some overlap
+               *
+               * typically this happens if we read the sample slowly, so it makes
+               * sense to copy the overlapping part and prefill the whole buffer
+               */
+              std::copy_n (&samples_[2 * diff * CHANNELS], 2 * i * CHANNELS, &samples_[0]);
+              upsample_buffer_size_ = MAX_UPSAMPLE_BUFFER_SIZE;
             }
           else
             {
-              // upsample 3 samples
+              /* a jump occured
+               *
+               * only upsample 3 samples here, because after a jump it is
+               * likely that another jump occurs (for fast forward reading), in
+               * which case preparing additional samples won't help
+               */
               i = 0;
+              upsample_buffer_size_ = 3;
             }
-          while (i < 3)
+          while (i < upsample_buffer_size_)
             {
               upsample<CHANNELS> (&input[(i - 1) * CHANNELS], &samples_[2 * CHANNELS * i]);
               i++;
             }
+          diff = 0;
         }
-      last_index_ = relative_pos_ / 2;
 
-      return &samples_[((relative_pos_ & 1) + 1) * CHANNELS];
+      return &samples_[((relative_pos_ & 1) + 1 + diff * 2) * CHANNELS];
     }
 }
