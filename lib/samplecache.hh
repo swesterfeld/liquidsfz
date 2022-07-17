@@ -373,7 +373,7 @@ public:
 
   PreloadInfoP add_preload (uint time_ms, uint offset);
   bool preload (const std::string& filename);
-  void load_buffer (SNDFILE *sndfile, size_t b);
+  void load_buffer (SFPool::Entry *sf, size_t b);
   void load();
   void unload();
   void free_unused_data();

@@ -156,7 +156,7 @@ Sample::preload (const string& filename)
   for (size_t b = 0; b < n_buffers; b++)
     {
       if (b < n_preload_buffers_)
-        load_buffer (sf->sndfile, b);
+        load_buffer (sf.get(), b);
     }
   return true;
 }
@@ -206,7 +206,7 @@ Sample::update_preload_and_read_ahead()
 }
 
 void
-Sample::load_buffer (SNDFILE *sndfile, size_t b)
+Sample::load_buffer (SFPool::Entry *sf, size_t b)
 {
   auto& buffer = buffers_[b];
   if (!buffer.data)
@@ -214,12 +214,9 @@ Sample::load_buffer (SNDFILE *sndfile, size_t b)
       auto data = new SampleBuffer::Data (sample_cache_, (SampleBuffer::frames_per_buffer + SampleBuffer::frames_overlap) * channels_);
       data->start_n_values = (b * SampleBuffer::frames_per_buffer - SampleBuffer::frames_overlap) * channels_;
 
-      // FIXME: may want to check return codes
-      sf_seek (sndfile, b * SampleBuffer::frames_per_buffer, SEEK_SET);
-
       float     *sample_ptr = data->samples() + SampleBuffer::frames_overlap * channels_;
 
-      sf_count_t frames_read = sf_readf_float (sndfile, sample_ptr, SampleBuffer::frames_per_buffer);
+      sf_count_t frames_read = sf->seek_read_frames (b * SampleBuffer::frames_per_buffer, sample_ptr, SampleBuffer::frames_per_buffer);
       if (frames_read != SampleBuffer::frames_per_buffer)
         {
           if (frames_read < 0)
@@ -267,7 +264,7 @@ Sample::load()
           if (sf->sndfile)
             {
               //printf ("loading %s / buffer %zd\n", filename_.c_str(), b);
-              load_buffer (sf->sndfile, load_index_);
+              load_buffer (sf.get(), load_index_);
               unload_possible_ = true;
             }
         }

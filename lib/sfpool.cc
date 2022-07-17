@@ -37,6 +37,21 @@ using std::vector;
 namespace LiquidSFZInternal
 {
 
+sf_count_t
+SFPool::Entry::seek_read_frames (sf_count_t pos, float *buffer, sf_count_t frame_count)
+{
+  // FIXME: may want to check return codes
+  if (position_ != pos)
+    {
+      sf_seek (sndfile, pos, SEEK_SET);
+      position_ = pos;
+    }
+  sf_count_t n_frames = sf_readf_float (sndfile, buffer, frame_count);
+  if (n_frames > 0)
+    position_ += n_frames;
+  return n_frames;
+}
+
 SFPool::Entry::~Entry()
 {
   if (sndfile)

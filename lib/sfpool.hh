@@ -44,14 +44,18 @@ public:
     SF_VIRTUAL_IO  io;
   };
 
-  struct Entry
+  class Entry
   {
+    sf_count_t  position_ = 0;
+  public:
     SNDFILE    *sndfile = nullptr;
     SF_INFO     sfinfo = { 0, };
     std::string filename;
     double      time = 0;
 
     MappedVirtualData mapped_data; // for mmap
+
+    sf_count_t seek_read_frames (sf_count_t pos, float *buffer, sf_count_t frame_count);
 
     ~Entry();
   };
