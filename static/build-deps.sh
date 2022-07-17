@@ -41,9 +41,9 @@ autoconfbuild --disable-shared
 cd $SRCDIR/libvorbis-1.3.5
 autoconfbuild --disable-shared
 
-cd $SRCDIR/flac-1.3.1
+cd $SRCDIR/flac-1.3.2
 ./autogen.sh
 autoconfbuild --disable-shared
 
-cd $SRCDIR/libsndfile-1.0.25
+cd $SRCDIR/libsndfile-1.0.28
 autoconfbuild --disable-shared

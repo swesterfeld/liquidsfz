@@ -1,6 +1,6 @@
 # EXPERIMENTAL file to build statically linked LV2
 
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 
@@ -14,12 +14,12 @@ RUN apt-get install -y curl
 RUN apt-get install -y software-properties-common
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update
-RUN apt-get install -y g++-9
+RUN apt-get install -y g++-11
 RUN apt-get install -y libtool-bin
 RUN apt-get install -y gettext
 
-ENV CC gcc-9
-ENV CXX g++-9
+ENV CC gcc-11
+ENV CXX g++-11
 
 ADD . /liquidsfz
 WORKDIR /liquidsfz
