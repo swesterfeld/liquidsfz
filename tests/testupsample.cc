@@ -143,6 +143,69 @@ main (int argc, char **argv)
           printf ("%f %.17g\n", it->freq, it->stop);
         }
     }
+  if (argc == 3 && string (argv[1]) == "synth-saw")
+    {
+      int sample_quality = atoi (argv[2]);
+      static constexpr int RATE_FROM = 44100;
+      static constexpr int RATE_TO = 48000;
+
+      SF_INFO sfinfo = {0,};
+      sfinfo.samplerate = RATE_FROM;
+      sfinfo.channels = 1;
+      sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+
+      SNDFILE *sndfile = sf_open ("testupsample.wav", SFM_WRITE, &sfinfo);
+      assert (sndfile);
+
+      vector<float> samples;
+      int n = 4096 * 4;
+      double window_weight = 0;
+      for (int i = 0; i < n; i++)
+        {
+          const double wsize_2 = n / 2;
+          const double w = window_blackman_harris_92 ((i - wsize_2) / wsize_2);
+          window_weight += w;
+          samples.push_back (((i % 100) - 49.5) / 49.5 * w);
+        }
+
+      sf_count_t count = sf_writef_float (sndfile, &samples[0], samples.size());
+      assert (count == sf_count_t (samples.size()));
+      sf_close (sndfile);
+
+      LiquidSFZ::Synth synth;
+      synth.set_sample_rate (RATE_TO);
+      synth.set_live_mode (false);
+      synth.set_sample_quality (sample_quality);
+      if (!synth.load ("testupsample.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          return 1;
+        }
+      synth.set_gain (sqrt (2));
+      size_t out_size = n * 2;
+      std::vector<float> out (out_size), out_right (out_size);
+      float *outputs[2] = { out.data(), out_right.data() };
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.process (outputs, out_size);
+
+      for (auto& x : out)
+        {
+          x *= 2 / window_weight * RATE_FROM / RATE_TO;
+        }
+      // zero pad
+      vector<float> padded (out);
+      padded.resize (padded.size() * 4);
+      vector<float> out_fft (padded.size());
+      fft (padded.size(), &padded[0], &out_fft[0]);
+      for (size_t i = 0; i < padded.size(); i += 2)
+        {
+          auto re = out_fft[i];
+          auto im = out_fft[i + 1];
+          auto amp = sqrt (re * re + im * im);
+          auto norm_freq = RATE_TO / 2.0 * i / padded.size();
+          printf ("%f %f\n", norm_freq, db (amp));
+        }
+    }
   if (argc == 2 && string (argv[1]) == "upsample")
     {
       for (float freq = 50; freq < 22050; freq += 25)
