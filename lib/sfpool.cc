@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <vector>
 
 using std::string;
 using std::vector;
