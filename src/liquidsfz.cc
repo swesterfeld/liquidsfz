@@ -224,7 +224,6 @@ public:
   void
   run()
   {
-    show_ccs();
     if (jack_activate (client))
       {
         fprintf (stderr, "cannot activate client");
@@ -433,14 +432,15 @@ public:
       });
 
     bool load_ok = synth.load (filename);
+    printf ("%30s\r", ""); // overwrite progress message
     if (!load_ok)
       return false;
 
     keys = synth.list_keys();
     ccs = synth.list_ccs();
 
-    printf ("%30s\r", ""); // overwrite progress message
     printf ("Preloaded %d samples, %.1f MB.\n\n", synth.cache_file_count(), synth.cache_size() / 1024. / 1024.);
+    show_ccs();
     return true;
   }
   void
