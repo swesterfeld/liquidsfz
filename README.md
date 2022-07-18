@@ -67,7 +67,8 @@ below.
 
 ## LICENSE
 
-The code is licensed under the LGPL 2.1 or later.
+The code is licensed under
+[MPL-2.0](https://github.com/swesterfeld/liquidsfz/blob/master/LICENSE).
 
 ## RELEASES
 

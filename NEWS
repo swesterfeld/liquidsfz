@@ -1,5 +1,6 @@
 Overview of Changes in liquidsfz-0.3.0:
 
+* Change license to MPL-2.0
 * Load sample data on demand (preload start, background load as needed)
 * Improve sound quality by using better interpolation / resampling
 * Support CC7=Volume and CC10=Pan if not defined in .sfz file (#30)
