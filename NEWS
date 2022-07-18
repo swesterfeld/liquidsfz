@@ -1,3 +1,18 @@
+Overview of Changes in liquidsfz-0.3.0:
+
+* Load sample data on demand (preload start, background load as needed)
+* Improve sound quality by using better interpolation / resampling
+* Support CC7=Volume and CC10=Pan if not defined in .sfz file (#30)
+* Various performance optimizations
+* Fix LFO ranges for square like LFOs
+* Implement sustain loops (loop_mode=loop_sustain)
+* Added new public API functions for new features
+* Make it possible to use absolute paths in .sfz file
+* Use mmap() for soundfiles on 64bit platforms
+* Add a few new commands / command line options to liquidsfz jack client
+* Statically linked plugin is compiled using Ubuntu 18.04 (instead of 16.04)
+* Minor fixes and cleanups
+
 Overview of Changes in liquidsfz-0.2.3:
 
 * Implement LFO support
