@@ -567,6 +567,9 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
   /* add samples to output buffer */
   const float *lfo_volume = lfo_gen_.get (LFOGen::VOLUME);
   const bool   const_gain = (!lfo_volume && left_gain_.is_constant() && right_gain_.is_constant());
+  if (!lfo_volume)
+    lfo_volume = synth_->const_block_1();
+
   if (CHANNELS == 2)
     {
       if (const_gain)
