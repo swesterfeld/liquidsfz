@@ -1,3 +1,5 @@
+[![.github/workflows/testing.yml](https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml/badge.svg?branch=master)](https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml)
+
 # liquidsfz
 
 ## DESCRIPTION
