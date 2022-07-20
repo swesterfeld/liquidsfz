@@ -1,0 +1,12 @@
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+# https://rhysd.github.io/actionlint/
+
+on: [push]
+
+jobs:
+  Testing:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: misc/dbuild.sh
