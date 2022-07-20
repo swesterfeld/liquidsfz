@@ -2,7 +2,9 @@ LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
 AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
-noinst_PROGRAMS = testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter
+TESTS = testsynth
+
+noinst_PROGRAMS = $(TESTS) testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter
 
 EXTRA_DIST = gen-upsample.py testupsample.sfz
 
@@ -29,6 +31,9 @@ testmidnam_LDADD = $(LIQUIDSFZ_LIBS)
 
 testfilter_SOURCES = testfilter.cc
 testfilter_LDADD = $(LIQUIDSFZ_LIBS)
+
+testsynth_SOURCES = testsynth.cc
+testsynth_LDADD = $(LIQUIDSFZ_LIBS)
 
 if COND_WITH_FFTW
 noinst_PROGRAMS += testupsample
