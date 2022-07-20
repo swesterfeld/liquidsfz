@@ -50,6 +50,40 @@ db (double x)
   return 20 * log10 (std::max (x, 0.00000001));
 }
 
+vector<float>
+process_synth (vector<float>& samples, int sample_quality, int rate_from, int rate_to, int upsample)
+{
+  SF_INFO sfinfo = {0,};
+  sfinfo.samplerate = rate_from;
+  sfinfo.channels = 1;
+  sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+
+  SNDFILE *sndfile = sf_open ("testupsample.wav", SFM_WRITE, &sfinfo);
+  assert (sndfile);
+
+  sf_count_t count = sf_writef_float (sndfile, &samples[0], samples.size());
+  assert (count == sf_count_t (samples.size()));
+  sf_close (sndfile);
+
+  LiquidSFZ::Synth synth;
+  synth.set_sample_rate (rate_to * upsample);
+  synth.set_live_mode (false);
+  synth.set_sample_quality (sample_quality);
+  if (!synth.load ("testupsample.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  synth.set_gain (sqrt (2));
+
+  size_t out_size = samples.size() * upsample * 2;
+  std::vector<float> out (out_size), out_right (out_size);
+  float *outputs[2] = { out.data(), out_right.data() };
+  synth.add_event_note_on (0, 0, 60, 127);
+  synth.process (outputs, out_size);
+  return out;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -149,14 +183,6 @@ main (int argc, char **argv)
       static constexpr int RATE_FROM = 44100;
       static constexpr int RATE_TO = 48000;
 
-      SF_INFO sfinfo = {0,};
-      sfinfo.samplerate = RATE_FROM;
-      sfinfo.channels = 1;
-      sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
-
-      SNDFILE *sndfile = sf_open ("testupsample.wav", SFM_WRITE, &sfinfo);
-      assert (sndfile);
-
       vector<float> samples;
       int n = 4096 * 4;
       double window_weight = 0;
@@ -168,25 +194,8 @@ main (int argc, char **argv)
           samples.push_back (((i % 100) - 49.5) / 49.5 * w);
         }
 
-      sf_count_t count = sf_writef_float (sndfile, &samples[0], samples.size());
-      assert (count == sf_count_t (samples.size()));
-      sf_close (sndfile);
 
-      LiquidSFZ::Synth synth;
-      synth.set_sample_rate (RATE_TO);
-      synth.set_live_mode (false);
-      synth.set_sample_quality (sample_quality);
-      if (!synth.load ("testupsample.sfz"))
-        {
-          fprintf (stderr, "parse error: exiting\n");
-          return 1;
-        }
-      synth.set_gain (sqrt (2));
-      size_t out_size = n * 2;
-      std::vector<float> out (out_size), out_right (out_size);
-      float *outputs[2] = { out.data(), out_right.data() };
-      synth.add_event_note_on (0, 0, 60, 127);
-      synth.process (outputs, out_size);
+      vector<float> out = process_synth (samples, sample_quality, RATE_FROM, RATE_TO, 1);
 
       for (auto& x : out)
         {
@@ -204,6 +213,61 @@ main (int argc, char **argv)
           auto amp = sqrt (re * re + im * im);
           auto norm_freq = RATE_TO / 2.0 * i / padded.size();
           printf ("%f %f\n", norm_freq, db (amp));
+        }
+    }
+  if (argc == 3 && string (argv[1]) == "impulse")
+    {
+      struct Result {
+        float freq;
+        double pass;
+        double stop;
+      };
+      vector<Result> results;
+
+      int sample_quality = atoi (argv[2]);
+      vector<float> samples (256);
+      samples[128] = 1; // impulse
+      int upsample = 32;
+      vector<float> out = process_synth (samples, sample_quality, 44100, 44100, upsample);
+      for (auto &x : out)
+        x /= upsample;
+
+      vector<float> out_fft (out.size());
+      fft (out.size(), &out[0], &out_fft[0]);
+
+      for (size_t i = 0; i < out.size(); i += 2)
+        {
+          auto re = out_fft[i];
+          auto im = out_fft[i + 1];
+          auto amp = sqrt (re * re + im * im);
+          int j = i / 2;
+          bool pass = j <= int (out.size() / upsample / 2);
+          bool stop = j >= int (out.size() / upsample / 2);
+          while (j > int (out.size() / upsample / 2))
+            j -= out.size() / upsample;
+          j = abs (j);
+          float norm_freq = 44100. * upsample * j / out.size();
+          Result *rp = nullptr;
+          for (auto& r : results)
+            {
+              if (r.freq == norm_freq)
+                rp = &r;
+            }
+          if (!rp)
+            rp = &results.emplace_back (Result { norm_freq, -1000, -1000 });
+
+          if (pass)
+            rp->pass = std::max (db (amp), rp->pass);
+          if (stop)
+            rp->stop = std::max (db (amp), rp->stop);
+        }
+      for (auto it = results.begin(); it != results.end(); it++)
+        {
+          printf ("%f %.17g\n", it->freq, it->pass);
+        }
+      for (auto it = results.rbegin(); it != results.rend(); it++)
+        {
+          printf ("%f %.17g\n", it->freq, it->stop);
         }
     }
   if (argc == 2 && string (argv[1]) == "upsample")
