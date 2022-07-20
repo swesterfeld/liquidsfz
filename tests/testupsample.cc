@@ -89,7 +89,6 @@ main (int argc, char **argv)
 {
   if (argc == 3 && string (argv[1]) == "synth")
     {
-      //float freq = atof (argv[2]);
       int sample_quality = atoi (argv[2]);
       struct Result {
         float freq;
@@ -100,18 +99,10 @@ main (int argc, char **argv)
       for (float freq = 50; freq < 22050; freq += 25)
         {
           static constexpr int RATE_FROM = 44100;
-          static constexpr int UPSAMPLE = 2;
-          static constexpr int RATE_TO = 48000 * UPSAMPLE;
+          static constexpr int UPSAMPLE = 8;
+          static constexpr int RATE_TO = 48000;
 
           auto f = [freq] (int x) -> float { return sin (x * 2 * M_PI * freq / RATE_FROM); };
-
-          SF_INFO sfinfo = {0,};
-          sfinfo.samplerate = RATE_FROM;
-          sfinfo.channels = 1;
-          sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
-
-          SNDFILE *sndfile = sf_open ("testupsample.wav", SFM_WRITE, &sfinfo);
-          assert (sndfile);
 
           vector<float> samples;
           int n = 4096 * 4;
@@ -124,28 +115,10 @@ main (int argc, char **argv)
               samples.push_back (f (i) * w);
             }
 
-          sf_count_t count = sf_writef_float (sndfile, &samples[0], samples.size());
-          assert (count == sf_count_t (samples.size()));
-          sf_close (sndfile);
-
-          LiquidSFZ::Synth synth;
-          synth.set_sample_rate (RATE_TO);
-          synth.set_live_mode (false);
-          synth.set_sample_quality (sample_quality);
-          if (!synth.load ("testupsample.sfz"))
-            {
-              fprintf (stderr, "parse error: exiting\n");
-              return 1;
-            }
-          synth.set_gain (sqrt (2));
-          size_t out_size = n * 2 * UPSAMPLE;
-          std::vector<float> out (out_size), out_right (out_size);
-          float *outputs[2] = { out.data(), out_right.data() };
-          synth.add_event_note_on (0, 0, 60, 127);
-          synth.process (outputs, out_size);
+          std::vector<float> out = process_synth (samples, sample_quality, RATE_FROM, RATE_TO, UPSAMPLE);
 
           for (auto& x : out)
-            x *= 2 / window_weight * RATE_FROM / RATE_TO;
+            x *= 2 / window_weight * RATE_FROM / (RATE_TO * UPSAMPLE);
 
           // zero pad
           vector<float> padded (out);
@@ -159,7 +132,7 @@ main (int argc, char **argv)
               auto re = out_fft[i];
               auto im = out_fft[i + 1];
               auto amp = sqrt (re * re + im * im);
-              auto norm_freq = RATE_TO / 2.0 * i / padded.size();
+              auto norm_freq = (RATE_TO * UPSAMPLE) / 2.0 * i / padded.size();
               //printf ("%f %f\n", norm_freq, db (amp));
               if (fabs (norm_freq - freq) < 20)
                 pass = std::max (pass, amp);
