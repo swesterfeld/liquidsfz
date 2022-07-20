@@ -4,6 +4,7 @@
 #define LIQUIDSFZ_SAMPLECACHE_HH
 
 #include <vector>
+#include <functional>
 #include <map>
 #include <memory>
 #include <algorithm>
