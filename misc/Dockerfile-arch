@@ -19,7 +19,7 @@ WORKDIR /liquidsfz
 ########## Build / Test with gcc
 ENV CC=gcc CXX=g++
 RUN $CXX --version
-RUN ./autogen.sh
+RUN ./autogen.sh --enable-asan --enable-debug-cxx
 RUN make -j `nproc` V=1
 RUN make -j `nproc` check
 RUN make install

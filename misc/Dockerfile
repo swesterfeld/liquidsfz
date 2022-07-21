@@ -28,7 +28,7 @@ WORKDIR /liquidsfz
 ########## Build / Test with gcc
 ENV CC=gcc CXX=g++
 RUN $CXX --version
-RUN ./autogen.sh
+RUN ./autogen.sh --enable-asan --enable-debug-cxx
 RUN make -j `nproc` V=1
 # only run make distcheck once (make check otherwise)
 RUN make -j `nproc` distcheck
