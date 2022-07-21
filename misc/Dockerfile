@@ -1,8 +1,4 @@
-# EXPERIMENTAL file to build statically linked LV2
-
 FROM gcc:latest
-
-RUN sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 
 # kxstudio repos for lv2lint
 RUN wget https://launchpad.net/~kxstudio-debian/+archive/kxstudio/+files/kxstudio-repos_11.1.0_all.deb
