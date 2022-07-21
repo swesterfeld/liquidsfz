@@ -68,8 +68,60 @@ peak (const vector<float>& samples)
 }
 
 int
-main()
+max_location (const vector<float>& samples)
 {
+  int loc = -1;
+  float mx = -1;
+  for (size_t l = 0; l < samples.size(); l++)
+    {
+      if (samples[l] > mx)
+        {
+          loc = l;
+          mx = samples[l];
+        }
+    }
+  return loc;
+}
+
+void
+test_interp_time_align()
+{
+  int sample_rate = 44100;
+  vector<float> samples (100);
+  samples[50] = 1;
+  write_sample (samples, sample_rate);
+  write_sfz ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0");
+
+  Synth synth;
+  synth.set_sample_rate (sample_rate * 8);
+  synth.set_live_mode (false);
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  printf ("test interpolation time align\n");
+  for (int sample_quality = 1; sample_quality <= 3; sample_quality++)
+    {
+      synth.all_sound_off();
+      synth.set_sample_quality (sample_quality);
+      synth.set_gain (sqrt(2));
+      synth.add_event_note_on (0, 0, 60, 127);
+
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+      synth.process (outputs, sample_rate);
+      assert (max_location (out_left) == 50 * 8);
+      assert (max_location (out_right) == 50 * 8);
+      assert (peak (out_left) > 0.8 && peak (out_left) < 1.1);
+      printf (" - sample_quality = %d peak = %f %d\n", sample_quality, peak (out_left), max_location (out_left));
+    }
+}
+
+void
+test_simple()
+{
+  printf ("basic note tests\n");
   int sample_rate = 44100;
   vector<float> samples;
   for (int i = 0; i < 441; i++)
@@ -84,7 +136,7 @@ main()
   if (!synth.load ("testsynth.sfz"))
     {
       fprintf (stderr, "parse error: exiting\n");
-      return 1;
+      exit (1);
     }
   synth.add_event_note_on (0, 0, 60, 127);
 
@@ -100,6 +152,8 @@ main()
   freq = freq_from_zero_crossings (out_right, sample_rate);
   assert (freq > 99 && freq < 101);
 
+  printf (" - 100Hz freq zcross: %f\n", freq);
+
   expect_volume = pow (100. / 127, 2) / sqrt (2);
 
   volume = peak (out_left);
@@ -109,6 +163,8 @@ main()
   volume = peak (out_right);
   vdiff_percent = 100 * fabs (volume - expect_volume) / expect_volume;
   assert (vdiff_percent < 0.001);
+
+  printf (" - 100Hz freq volume: %f (expect %f)\n", volume, expect_volume);
 
   synth.all_sound_off();
 
@@ -121,17 +177,23 @@ main()
   freq = freq_from_zero_crossings (out_right, sample_rate);
   assert (freq > 49 && freq < 51);
 
+  printf (" - 50Hz freq zcross: %f\n", freq);
+
+  printf ("panning\n");
   write_sfz ("<region>sample=testsynth.wav lokey=20 hikey=100 loop_mode=loop_continuous loop_start=0 loop_end=440 volume_cc7=0 /* disable CC7 */");
   if (!synth.load ("testsynth.sfz"))
     {
       fprintf (stderr, "parse error: exiting\n");
-      return 1;
+      exit (1);
     }
   synth.add_event_note_on (0, 0, 60, 127);
   synth.process (outputs, sample_rate);
 
   /* center panning - this is not exact as we have CC7=64 of 127 */
   expect_volume = 1 / sqrt (2);
+
+  printf (" - center panning: %f %f (expect approx. %f)\n", peak (out_left), peak (out_right), expect_volume);
+
   volume = peak (out_left);
   vdiff_percent = 100 * fabs (volume - expect_volume) / expect_volume;
   assert (vdiff_percent < 1);
@@ -145,6 +207,8 @@ main()
   synth.process (outputs, sample_rate); // this takes a bit until it affects our note
   synth.process (outputs, sample_rate);
 
+  printf (" - left panning: %f %f\n", peak (out_left), peak (out_right));
+
   vdiff_percent = 100 * fabs (peak (out_left) - 1);
   assert (vdiff_percent < 0.001);
 
@@ -156,11 +220,19 @@ main()
   synth.process (outputs, sample_rate); // this takes a bit until it affects our note
   synth.process (outputs, sample_rate);
 
+  printf (" - right panning: %f %f\n", peak (out_left), peak (out_right));
   vdiff_percent = 100 * fabs (peak (out_left));
   assert (vdiff_percent < 0.001);
 
   vdiff_percent = 100 * fabs (peak (out_right) - 1);
   assert (vdiff_percent < 0.001);
+}
+
+int
+main()
+{
+  test_simple();
+  test_interp_time_align();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");
