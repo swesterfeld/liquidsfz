@@ -1,5 +1,6 @@
 [![License][mpl2-badge]][mpl2-url]
-[![.github/workflows/testing.yml](https://img.shields.io/github/workflow/status/swesterfeld/liquidsfz/Testing?style=for-the-badge)](https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml)
+[![Test Build][testing-badge]][testing-url]
+[![Version][version-badge]][version-url]
 
 # liquidsfz
 
@@ -103,3 +104,7 @@ To install it, extract the archive and
 
 [mpl2-badge]: https://img.shields.io/github/license/swesterfeld/liquidsfz?style=for-the-badge
 [mpl2-url]: https://github.com/swesterfeld/liquidsfz/blob/master/LICENSE
+[testing-badge]: https://img.shields.io/github/workflow/status/swesterfeld/liquidsfz/Testing?style=for-the-badge
+[testing-url]: https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml
+[version-badge]: https://img.shields.io/github/v/release/swesterfeld/liquidsfz?label=version&style=for-the-badge
+[version-url]: https://github.com/swesterfeld/liquidsfz/tags
