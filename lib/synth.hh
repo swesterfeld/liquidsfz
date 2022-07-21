@@ -124,6 +124,10 @@ public:
     set_max_voices (256);
     set_channels (16);
   }
+  ~Synth()
+  {
+    all_sound_off();
+  }
   void
   set_sample_rate (uint sample_rate)
   {
