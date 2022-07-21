@@ -259,6 +259,29 @@ test_simple()
       printf (" - peak %f %f %f\n", peak (lvol), peak (hvol), peak (hvol) / peak (lvol));
       assert (f >= 1.999 && f <= 2.001);
     }
+  printf ("pitch via lfo\n");
+  write_sfz ("<region>sample=testsynth.wav lokey=20 hikey=100 loop_mode=loop_continuous loop_start=0 loop_end=440 "
+             "lfo1_pitch=1200 lfo1_wave=3 lfo1_freq=1");
+
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  synth.add_event_note_on (0, 0, 60, 127);
+  for (int i = 0; i < 3; i++)
+    {
+      synth.process (outputs, sample_rate);
+      vector<float> hfreq = cut_ms (out_left, 100, 400, sample_rate);
+      vector<float> lfreq = cut_ms (out_left, 600, 900, sample_rate);
+      double hf = freq_from_zero_crossings (hfreq, sample_rate);
+      double lf = freq_from_zero_crossings (lfreq, sample_rate);
+      double f = hf / lf;
+      printf (" - freq %f %f %f\n", lf, hf, hf / lf);
+      assert (lf >= 98 && lf <= 102);
+      assert (hf >= 198 && hf <= 202);
+      assert (f >= 1.98 && f <= 2.02);
+    }
 }
 
 int
