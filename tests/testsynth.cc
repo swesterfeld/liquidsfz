@@ -83,6 +83,19 @@ max_location (const vector<float>& samples)
   return loc;
 }
 
+vector<float>
+cut_ms (const vector<float>& samples, int start_ms, int end_ms, int sample_rate)
+{
+  vector<float> result;
+  for (size_t i = 0; i < samples.size(); i++)
+    {
+      double ms = i * 1000. / sample_rate;
+      if (ms >= start_ms && ms <= end_ms)
+        result.push_back (samples[i]);
+    }
+  return result;
+}
+
 void
 test_interp_time_align()
 {
@@ -226,6 +239,26 @@ test_simple()
 
   vdiff_percent = 100 * fabs (peak (out_right) - 1);
   assert (vdiff_percent < 0.001);
+
+  printf ("volume via lfo\n");
+  write_sfz ("<region>sample=testsynth.wav lokey=20 hikey=100 loop_mode=loop_continuous loop_start=0 loop_end=440 "
+             "lfo1_volume=-6.02 lfo1_wave=3 lfo1_freq=1");
+
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  synth.add_event_note_on (0, 0, 60, 127);
+  for (int i = 0; i < 3; i++)
+    {
+      synth.process (outputs, sample_rate);
+      vector<float> lvol = cut_ms (out_left, 100, 400, sample_rate);
+      vector<float> hvol = cut_ms (out_left, 600, 900, sample_rate);
+      double f = peak (hvol) / peak (lvol);
+      printf (" - peak %f %f %f\n", peak (lvol), peak (hvol), peak (hvol) / peak (lvol));
+      assert (f >= 1.999 && f <= 2.001);
+    }
 }
 
 int
