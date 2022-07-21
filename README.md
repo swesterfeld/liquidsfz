@@ -107,4 +107,4 @@ To install it, extract the archive and
 [testing-badge]: https://img.shields.io/github/workflow/status/swesterfeld/liquidsfz/Testing?style=for-the-badge
 [testing-url]: https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml
 [version-badge]: https://img.shields.io/github/v/release/swesterfeld/liquidsfz?label=version&style=for-the-badge
-[version-url]: https://github.com/swesterfeld/liquidsfz/tags
+[version-url]: https://github.com/swesterfeld/liquidsfz/releases
