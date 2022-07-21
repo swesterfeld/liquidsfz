@@ -1,3 +1,12 @@
+Overview of Changes in liquidsfz-0.3.1:
+
+* Fix crash in voice processing when gain smoothing is active
+* Fix crash caused by libstdc++ debug assertions (#34)
+* Add missing #include statements (#33, #35)
+* Setup CI using github actions, build and lv2lint the plugin
+* Add testsynth program for regression tests (make check and CI)
+* Support address sanitizer and C++ STL debug checks from autogen.sh
+
 Overview of Changes in liquidsfz-0.3.0:
 
 * Change license to MPL-2.0
