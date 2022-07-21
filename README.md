@@ -1,3 +1,4 @@
+[![License][mpl2-badge]][mpl2-url]
 [![.github/workflows/testing.yml](https://img.shields.io/github/workflow/status/swesterfeld/liquidsfz/Testing?style=for-the-badge)](https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml)
 
 # liquidsfz
@@ -99,3 +100,6 @@ To install it, extract the archive and
 * https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.1.tar.bz2 (old version)
 * https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.0.tar.bz2 (old version)
 * https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2 (old version)
+
+[mpl2-badge]: https://img.shields.io/github/license/swesterfeld/liquidsfz?style=for-the-badge
+[mpl2-url]: https://github.com/swesterfeld/liquidsfz/blob/master/LICENSE
