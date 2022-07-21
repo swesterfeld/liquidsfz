@@ -2,8 +2,8 @@
 
 # https://rhysd.github.io/actionlint/
 
+name: Testing
 on: [push]
-
 jobs:
   Testing:
     runs-on: ubuntu-latest
