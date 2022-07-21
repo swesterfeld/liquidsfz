@@ -92,6 +92,26 @@ if test "x$with_fftw" != "xno"; then
   AC_FFTW_REQUIREMENTS
 fi
 AM_CONDITIONAL([COND_WITH_FFTW], [test "x$with_fftw" != "xno"])
+
+dnl -------------------- address sanitizer ----------------------------------
+AC_ARG_ENABLE([asan], [AS_HELP_STRING([--enable-asan], [build using address sanitizer])],
+[
+  CXXFLAGS="$CXXFLAGS -fsanitize=address -fno-omit-frame-pointer -fstack-protector-all -fno-inline"
+  LDFLAGS="$LDFLAGS -lasan"
+],
+[
+  enable_asan=no
+])
+dnl -------------------------------------------------------------------------
+
+dnl -------------------- glibcxx assertions ----------------------------------
+AC_ARG_ENABLE(debug-cxx,AS_HELP_STRING([--enable-debug-cxx], [setup compiler flags to do C++ STL debug checks]),
+[
+  CXXFLAGS="$CXXFLAGS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+],
+[
+  enable_debug_cxx=no
+])
 dnl -------------------------------------------------------------------------
 
 dnl determine static/shared library to use for lv2 plugin
@@ -121,7 +141,6 @@ AX_CHECK_COMPILE_FLAG([-Wall], [CXXFLAGS="$CXXFLAGS -Wall"])
 AX_CHECK_COMPILE_FLAG([-pthread], [CXXFLAGS="$CXXFLAGS -pthread"])
 AC_LANG_POP([C++])
 
-
 # Less cluttered build output
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
@@ -137,6 +156,8 @@ echo "  Build shared library . .: $enable_shared"
 echo "  LV2 plug-in support  . .: $with_lv2"
 echo "  JACK support . . . . . .: $with_jack"
 echo "  Use FFTW library . . . .: $with_fftw"
+echo "  Use address sanitizer. .: $enable_asan"
+echo "  Use stdc++ debug mode  .: $enable_debug_cxx"
 echo "  Install prefix . . . . .: $prefix"
 echo
 if test "x$enable_shared" = "xyes"; then
