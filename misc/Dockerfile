@@ -20,12 +20,32 @@ RUN apt-get install -y software-properties-common
 RUN apt-get install -y libtool-bin
 RUN apt-get install -y gettext
 RUN apt-get install -y lv2lint
+RUN apt-get install -y clang
 
 ADD . /liquidsfz
 WORKDIR /liquidsfz
 
+########## Build / Test with gcc
+ENV CC=gcc CXX=g++
+RUN $CXX --version
 RUN ./autogen.sh
-RUN make -j `nproc`
+RUN make -j `nproc` V=1
+# only run make distcheck once (make check otherwise)
 RUN make -j `nproc` distcheck
+RUN make install
+RUN lv2lint http://spectmorph.org/plugins/liquidsfz
+
+########## Cleanup
+
+RUN make uninstall
+RUN make distclean
+
+########## Build / Test with clang
+
+ENV CC=clang CXX=clang++
+RUN $CXX --version
+RUN ./autogen.sh
+RUN make -j `nproc` V=1
+RUN make -j `nproc` check
 RUN make install
 RUN lv2lint http://spectmorph.org/plugins/liquidsfz

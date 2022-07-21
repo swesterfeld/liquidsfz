@@ -3,3 +3,4 @@
 set -Eeuo pipefail
 
 docker build -f "misc/Dockerfile" -t liquidsfz-dbuild .
+docker build -f "misc/Dockerfile-arch" -t liquidsfz-dbuild-arch .
