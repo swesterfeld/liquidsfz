@@ -1,4 +1,4 @@
-[![.github/workflows/testing.yml](https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml/badge.svg?branch=master)](https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml)
+[![.github/workflows/testing.yml](https://img.shields.io/github/workflow/status/swesterfeld/liquidsfz/Testing?style=for-the-badge)](https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml)
 
 # liquidsfz
 
