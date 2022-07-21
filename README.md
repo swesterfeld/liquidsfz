@@ -12,7 +12,7 @@ It can also load and play Hydrogen drumkits. We support JACK and LV2.
 The main goal is to provide a library that is easy to integrate into other
 projects.
 
- * API documentation is available here: https://space.twc.de/~stefan/liquidsfz/api-0.3.0
+ * API documentation is available here: https://space.twc.de/~stefan/liquidsfz/api-0.3.1
  * There is also a list of [currently supported SFZ opcodes](OPCODES.md)
 
 The API should be fairly stable at this point, so we try to maintain source
@@ -76,10 +76,10 @@ The code is licensed under
 
 ## RELEASES
 
-The current version of liquidsfz is liquidsfz-0.3.0, and can be downloaded
+The current version of liquidsfz is liquidsfz-0.3.1, and can be downloaded
 here:
 
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.3.0.tar.bz2
+* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.3.1.tar.bz2
 
 ## BINARY LV2 PLUGIN
 
@@ -87,7 +87,7 @@ The LV2 plugin (and only the LV2 plugin) is available as self-contained 64-bit
 binary which should run on most recent linux distributions (newer than Ubuntu
 18.04).
 
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.3.0-x86_64.tar.gz
+* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.3.1-x86_64.tar.gz
 
 To install it, extract the archive and
 
@@ -96,6 +96,7 @@ To install it, extract the archive and
 
 ## OLDER VERSIONS
 
+* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.3.0.tar.bz2 (old version)
 * https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.3.tar.bz2 (old version)
 * https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.2.tar.bz2 (old version)
 * https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.1.tar.bz2 (old version)
