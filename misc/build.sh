@@ -2,37 +2,36 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 set -Eeuo pipefail
 
-########## Build / Test with gcc / ASAN / Debug C++
-CC=gcc CXX=g++
-$CXX --version
-./autogen.sh --enable-asan --enable-debug-cxx --with-fftw
-make -j `nproc` V=1
-make -j `nproc` check
-########## Cleanup
+build()
+{
+  if [ -f "./configure" ]; then
+    make uninstall
+    make distclean
+  fi
+  echo "###############################################################################"
+  echo "# BUILD TESTS :"
+  echo "#   CC=$CC CXX=$CXX "
+  echo "#   ./autogen.sh $@"
+  echo "###############################################################################"
+  $CXX --version | sed '/^[[:space:]]*$/d;s/^/#   /'
+  echo "###############################################################################"
+  ./autogen.sh "$@"
+  make -j `nproc` V=1
+  make -j `nproc` check
+  make install
+}
 
-make uninstall
-make distclean
+# Tests using gcc
+export CC=gcc CXX=g++
 
-########## Build / Test with gcc / Debug C++
-./autogen.sh --enable-debug-cxx --with-fftw
-make -j `nproc` V=1
-make -j `nproc` check
-make install
+build --enable-asan --enable-debug-cxx --with-fftw
+
+build --enable-debug-cxx --with-fftw
 lv2lint http://spectmorph.org/plugins/liquidsfz
-
-########## Distcheck
 make -j `nproc` distcheck
 
-########## Cleanup
-make uninstall
-make distclean
+# Tests clang
+export CC=clang CXX=clang++
 
-########## Build / Test with clang
-
-CC=clang CXX=clang++
-$CXX --version
-./autogen.sh --with-fftw
-make -j `nproc` V=1
-make -j `nproc` check
-make install
+build --with-fftw
 lv2lint http://spectmorph.org/plugins/liquidsfz
