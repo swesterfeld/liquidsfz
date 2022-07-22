@@ -94,15 +94,6 @@ To install it, extract the archive and
     mkdir -p $HOME/.lv2
     cp -a liquidsfz.lv2  $HOME/.lv2/
 
-## OLDER VERSIONS
-
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.3.0.tar.bz2 (old version)
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.3.tar.bz2 (old version)
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.2.tar.bz2 (old version)
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.1.tar.bz2 (old version)
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.2.0.tar.bz2 (old version)
-* https://space.twc.de/~stefan/liquidsfz/liquidsfz-0.1.0.tar.bz2 (old version)
-
 [mpl2-badge]: https://img.shields.io/github/license/swesterfeld/liquidsfz?style=for-the-badge
 [mpl2-url]: https://github.com/swesterfeld/liquidsfz/blob/master/LICENSE
 [testing-badge]: https://img.shields.io/github/workflow/status/swesterfeld/liquidsfz/Testing?style=for-the-badge
