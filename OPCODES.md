@@ -2,7 +2,7 @@
 
 ## SUPPORTED OPCODES
 
-The following SFZ opcodes are supported in liquidsfz-0.2.3:
+The following SFZ opcodes are supported in liquidsfz-0.3.1:
 
 * amp_random
 * amp_velcurve_N
@@ -149,6 +149,7 @@ The following SFZ opcodes are supported in liquidsfz-0.2.3:
 * pan_ccN
 * pan_curveccN
 * pan_onccN
+* pitch
 * pitch_curveccN
 * pitch_keycenter
 * pitch_keytrack
