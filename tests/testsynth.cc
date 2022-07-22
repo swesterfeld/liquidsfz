@@ -242,6 +242,7 @@ test_tiny_loop()
 #if HAVE_FFTW
   int sample_rate = 44100;
   vector<float> samples (100);
+  std::fill (samples.begin(), samples.end(), 1);
   for (int i = 0; i < 10; i++)
     samples[50 + i] = sin (i * 2 * M_PI / 10);
 
