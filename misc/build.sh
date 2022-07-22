@@ -5,7 +5,7 @@ set -Eeuo pipefail
 ########## Build / Test with gcc / ASAN / Debug C++
 CC=gcc CXX=g++
 $CXX --version
-./autogen.sh --enable-asan --enable-debug-cxx
+./autogen.sh --enable-asan --enable-debug-cxx --with-fftw
 make -j `nproc` V=1
 make -j `nproc` check
 ########## Cleanup
@@ -14,7 +14,7 @@ make uninstall
 make distclean
 
 ########## Build / Test with gcc / Debug C++
-./autogen.sh --enable-debug-cxx
+./autogen.sh --enable-debug-cxx --with-fftw
 make -j `nproc` V=1
 make -j `nproc` check
 make install
@@ -31,7 +31,7 @@ make distclean
 
 CC=clang CXX=clang++
 $CXX --version
-./autogen.sh
+./autogen.sh --with-fftw
 make -j `nproc` V=1
 make -j `nproc` check
 make install

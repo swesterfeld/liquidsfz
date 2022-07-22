@@ -12,6 +12,7 @@ RUN pacman -S jack --noconfirm
 RUN pacman -S libsndfile --noconfirm
 RUN pacman -S lv2 --noconfirm
 RUN pacman -S lv2lint --noconfirm
+RUN pacman -S fftw --noconfirm
 
 ADD . /liquidsfz
 WORKDIR /liquidsfz

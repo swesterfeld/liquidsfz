@@ -11,8 +11,7 @@ RUN apt-get install -y pkg-config
 RUN apt-get install -y lv2-dev
 RUN apt-get install -y libsndfile1-dev
 RUN apt-get install -y libjack-jackd2-dev
-RUN apt-get install -y curl
-RUN apt-get install -y software-properties-common
+RUN apt-get install -y libfftw3-dev
 RUN apt-get install -y libtool-bin
 RUN apt-get install -y gettext
 RUN apt-get install -y lv2lint
