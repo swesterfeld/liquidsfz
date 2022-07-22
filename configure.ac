@@ -90,8 +90,12 @@ dnl -------------------- fftw is optional ----------------------------
 AC_ARG_WITH([fftw], [AS_HELP_STRING([--with-fftw], [build against fftw library - testing])], [], [with_fftw=no])
 if test "x$with_fftw" != "xno"; then
   AC_FFTW_REQUIREMENTS
+  HAVE_FFTW=1
+else
+  HAVE_FFTW=0
 fi
 AM_CONDITIONAL([COND_WITH_FFTW], [test "x$with_fftw" != "xno"])
+AC_DEFINE_UNQUOTED(HAVE_FFTW, $HAVE_FFTW, [Whether libfftw3 is available])
 
 dnl -------------------- address sanitizer ----------------------------------
 AC_ARG_ENABLE([asan], [AS_HELP_STRING([--enable-asan], [build using address sanitizer])],
