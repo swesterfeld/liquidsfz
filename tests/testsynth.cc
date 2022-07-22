@@ -6,14 +6,154 @@
 #include <unistd.h>
 
 #include <sndfile.h>
-
 #include <vector>
 
 #include "liquidsfz.hh"
+#include "config.h"
+
+#if HAVE_FFTW
+#include <fftw3.h>
+#endif
 
 using std::vector;
 using std::max;
 using LiquidSFZ::Synth;
+
+struct SineDetectPartial
+{
+  double freq;
+  double mag;
+};
+
+class QInterpolator
+{
+  double a, b, c;
+
+public:
+  QInterpolator (double y1, double y2, double y3)
+  {
+    a = (y1 + y3 - 2*y2) / 2;
+    b = (y3 - y1) / 2;
+    c = y2;
+  }
+  double
+  eval (double x)
+  {
+    return a * x * x + b * x + c;
+  }
+  double
+  x_max()
+  {
+    return -b / (2 * a);
+  }
+};
+
+inline double
+window_cos (double x) /* von Hann window */
+{
+  if (fabs (x) > 1)
+    return 0;
+  return 0.5 * cos (x * M_PI) + 0.5;
+}
+
+void
+fft (const uint n_values, float *r_values_in, float *ri_values_out)
+{
+#if HAVE_FFTW
+  auto plan_fft = fftwf_plan_dft_r2c_1d (n_values, r_values_in, (fftwf_complex *) ri_values_out, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
+
+  fftwf_execute_dft_r2c (plan_fft, r_values_in, (fftwf_complex *) ri_values_out);
+
+  // usually we should keep the plan, but for this simple test program, the fft
+  // is only computed once, so we can destroy the plan here
+  fftwf_destroy_plan (plan_fft);
+#endif
+}
+
+double
+db (double x)
+{
+  return 20 * log10 (std::max (x, 0.00000001));
+}
+
+double
+db_to_factor (double db)
+{
+  double factor = db / 20; /* Bell */
+  return pow (10, factor);
+}
+
+vector<SineDetectPartial>
+sine_detect (double mix_freq, const vector<float>& signal)
+{
+  /* possible improvements for this code
+   *
+   *  - could produce phases (odd-centric window)
+   *  - could eliminate the sines to produce residual signal (spectral subtract)
+   */
+  vector<SineDetectPartial> partials;
+
+  constexpr double MIN_PADDING = 4;
+
+  size_t padded_length = 2;
+  while (signal.size() * MIN_PADDING >= padded_length)
+    padded_length *= 2;
+
+  vector<float> padded_signal;
+  float window_weight = 0;
+  for (size_t i = 0; i < signal.size(); i++)
+    {
+      const float w = window_cos ((i - signal.size() * 0.5) / (signal.size() * 0.5));
+      window_weight += w;
+      padded_signal.push_back (signal[i] * w);
+    }
+  padded_signal.resize (padded_length);
+
+  vector<float> fft_values (padded_signal.size() + 2);
+  fft (padded_signal.size(), padded_signal.data(), fft_values.data());
+
+  vector<float> mag_values;
+  for (size_t i = 0; i < fft_values.size(); i += 2)
+    mag_values.push_back (sqrt (fft_values[i] * fft_values[i] + fft_values[i + 1] * fft_values[i + 1]));
+
+  for (size_t x = 1; x + 2 < mag_values.size(); x++)
+    {
+      /* check for peaks
+       *  - single peak : magnitude of the middle value is larger than
+       *                  the magnitude of the left and right neighbour
+       *  - double peak : two values in the spectrum have equal magnitude,
+         *                this must be larger than left and right neighbour
+       */
+      const auto [m1, m2, m3, m4] = std::tie (mag_values[x - 1], mag_values[x], mag_values[x + 1],  mag_values[x + 2]);
+      if ((m1 < m2 && m2 > m3) || (m1 < m2 && m2 == m3 && m3 > m4))
+        {
+          size_t xs, xe;
+          for (xs = x - 1; xs > 0 && mag_values[xs] < mag_values[xs + 1]; xs--);
+          for (xe = x + 1; xe < (mag_values.size() - 1) && mag_values[xe] > mag_values[xe + 1]; xe++);
+
+          const double normalized_peak_width = double (xe - xs) * signal.size() / padded_length;
+
+          const double mag1 = db (mag_values[x - 1]);
+          const double mag2 = db (mag_values[x]);
+          const double mag3 = db (mag_values[x + 1]);
+          QInterpolator mag_interp (mag1, mag2, mag3);
+          double x_max = mag_interp.x_max();
+          double peak_mag_db = mag_interp.eval (x_max);
+          double peak_mag = db_to_factor (peak_mag_db) * (2 / window_weight);
+
+          if (peak_mag > 0.0001 && normalized_peak_width > 2.9)
+            {
+              SineDetectPartial partial;
+              partial.freq = (x + x_max) * mix_freq / padded_length;
+              partial.mag  = peak_mag;
+              partials.push_back (partial);
+              // printf ("%f %f %f\n", (x + x_max) * mix_freq / padded_length, peak_mag * (2 / window_weight), normalized_peak_width);
+            }
+        }
+    }
+
+  return partials;
+}
 
 void
 write_sample (const vector<float>& samples, int rate)
@@ -94,6 +234,61 @@ cut_ms (const vector<float>& samples, int start_ms, int end_ms, int sample_rate)
         result.push_back (samples[i]);
     }
   return result;
+}
+
+void
+test_tiny_loop()
+{
+#if HAVE_FFTW
+  int sample_rate = 44100;
+  vector<float> samples (100);
+  for (int i = 0; i < 10; i++)
+    samples[50 + i] = sin (i * 2 * M_PI / 10);
+
+  write_sample (samples, sample_rate);
+  write_sfz ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0 loop_mode=loop_continuous loop_start=50 loop_end=59");
+
+  Synth synth;
+  synth.set_sample_rate (sample_rate);
+  synth.set_live_mode (false);
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  printf ("test tiny loop\n");
+  for (int sample_quality = 1; sample_quality <= 3; sample_quality++)
+    {
+      synth.all_sound_off();
+      synth.set_sample_quality (sample_quality);
+      synth.set_gain (sqrt(2));
+      synth.add_event_note_on (0, 0, 24, 127); // 3 octaves down
+
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+      synth.process (outputs, sample_rate);
+
+      auto partials = sine_detect (sample_rate, out_left);
+      std::sort (partials.begin(), partials.end(), [] (auto a, auto b) { return a.mag > b.mag; });
+      assert (partials.size() >= 2);
+
+      double amag_max;
+      double f_expect = 4410. / 8;
+      if (sample_quality == 1)
+        amag_max = -38;
+      if (sample_quality == 2)
+        amag_max = -69;
+      if (sample_quality == 3)
+        amag_max = -77;
+
+      printf ("  - quality=%d freq=%f (expect %f) mag=%f | alias_freq=%f amag=%f (max %f)\n", sample_quality,
+          partials[0].freq, f_expect, db (partials[0].mag),
+          partials[1].freq, db (partials[1].mag),
+          amag_max);
+      assert (db (partials[0].mag) >= -0.3 && db (partials[0].mag) < 0);
+      assert (fabs (partials[0].freq - f_expect) < 0.01);
+    }
+#endif
 }
 
 void
@@ -289,6 +484,7 @@ main()
 {
   test_simple();
   test_interp_time_align();
+  test_tiny_loop();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");

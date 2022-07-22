@@ -33,7 +33,7 @@ testfilter_SOURCES = testfilter.cc
 testfilter_LDADD = $(LIQUIDSFZ_LIBS)
 
 testsynth_SOURCES = testsynth.cc
-testsynth_LDADD = $(LIQUIDSFZ_LIBS)
+testsynth_LDADD = $(LIQUIDSFZ_LIBS) $(FFTW_LIBS)
 
 if COND_WITH_FFTW
 noinst_PROGRAMS += testupsample
