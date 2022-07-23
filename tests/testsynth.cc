@@ -198,6 +198,17 @@ freq_from_zero_crossings (const vector<float>& samples, int sample_rate)
   return zero_crossings * 0.5 * sample_rate / samples.size();
 }
 
+SineDetectPartial
+max_partial (const vector<float>& samples, int sample_rate)
+{
+  auto partials = sine_detect (sample_rate, samples);
+  std::sort (partials.begin(), partials.end(), [](auto a, auto b) { return a.mag > b.mag; });
+  if (partials.size())
+    return partials[0];
+  else
+    return { -1, -1 };
+}
+
 float
 peak (const vector<float>& samples)
 {
@@ -305,6 +316,102 @@ test_tiny_loop()
               assert (fabs (partials[0].freq - f_expect) < 0.01);
             }
         }
+    }
+#endif
+}
+
+void
+test_pitch()
+{
+#if HAVE_FFTW
+  int samples_sample_rate = 48000;
+  vector<float> samples (100);
+  for (int i = 0; i < 100; i++)
+    samples[i] = sin (i * 2 * M_PI / 100);
+
+  write_sample (samples, samples_sample_rate);
+  write_sfz ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0 loop_mode=loop_continuous loop_start=0 loop_end=99 pitch_oncc100=1200");
+
+  int sample_rate = 44100;
+  Synth synth;
+  synth.set_sample_rate (sample_rate);
+  synth.set_live_mode (false);
+  synth.set_gain (sqrt (2));
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  printf ("test pitch using cc\n");
+  for (int sample_quality = 1; sample_quality <= 3; sample_quality++)
+    {
+      synth.all_sound_off();
+      synth.set_sample_quality (sample_quality);
+      synth.add_event_cc (0, 0, 100, 0);
+      synth.add_event_note_on (0, 0, 60, 127);
+
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+      synth.process (outputs, sample_rate);
+
+      auto compare_max_partial = [&] (int cc) {
+        double freq_expect = 480 * pow (2, cc / 127.);
+        auto partial = max_partial (out_left, sample_rate);
+        printf ("  - quality %d, freq cc=%03d: %.4f (expect %.4f), mag %.4f\n", sample_quality, cc, partial.freq, freq_expect, partial.mag);
+
+        assert (fabs (partial.freq - freq_expect) < 0.01);
+        assert (fabs (partial.mag - 1) < 0.01);
+      };
+      compare_max_partial (0);
+
+      synth.add_event_cc (0, 0, 100, 64);
+      synth.process (outputs, sample_rate * 0.1); // skip smoothing
+      synth.process (outputs, sample_rate);
+
+      compare_max_partial (64);
+
+      synth.add_event_cc (0, 0, 100, 127);
+      synth.process (outputs, sample_rate * 0.1); // skip smoothing
+      synth.process (outputs, sample_rate);
+
+      compare_max_partial (127);
+    }
+  write_sfz ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0 loop_mode=loop_continuous loop_start=0 loop_end=99 pitch=200 bend_up=500 bend_down=-700");
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  printf ("simple pitch, pitch bend\n");
+  for (int sample_quality = 1; sample_quality <= 3; sample_quality++)
+    {
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+
+      auto cmp = [&] (int cent) {
+        auto partial = max_partial (out_left, sample_rate);
+        float xfreq = 480 * pow (2, cent / 1200.);
+        printf (" - quality %d, freq %.4f (expect %.4f), mag %.4f\n", sample_quality, partial.freq, xfreq, partial.mag);
+        assert (fabs (partial.freq - xfreq) < 0.1);
+        assert (fabs (partial.mag - 1) < 0.1);
+      };
+
+      synth.all_sound_off();
+      synth.set_sample_quality (sample_quality);
+      synth.add_event_pitch_bend (0, 0, 8192);
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.process (outputs, sample_rate);
+      cmp (200);
+
+      synth.add_event_pitch_bend (0, 0, 16383);
+      synth.process (outputs, sample_rate * 0.1); // skip smoothing
+      synth.process (outputs, sample_rate);
+      cmp (200 + 500);
+
+      synth.add_event_pitch_bend (0, 0, 0);
+      synth.process (outputs, sample_rate * 0.1); // skip smoothing
+      synth.process (outputs, sample_rate);
+      cmp (200 - 700);
     }
 #endif
 }
@@ -490,10 +597,19 @@ test_simple()
       double hf = freq_from_zero_crossings (hfreq, sample_rate);
       double lf = freq_from_zero_crossings (lfreq, sample_rate);
       double f = hf / lf;
-      printf (" - freq %f %f %f\n", lf, hf, hf / lf);
+      printf (" - freq/zcr %f %f %f\n", lf, hf, hf / lf);
       assert (lf >= 98 && lf <= 102);
       assert (hf >= 198 && hf <= 202);
       assert (f >= 1.98 && f <= 2.02);
+#if HAVE_FFTW
+      hf = max_partial (hfreq, sample_rate).freq;
+      lf = max_partial (lfreq, sample_rate).freq;
+      f = hf / lf;
+      printf (" - freq/fft %f %f %f\n", hf, lf, f);
+      assert (fabs (lf - 100) < 0.01);
+      assert (fabs (hf - 200) < 0.01);
+      assert (fabs (f - 2) < 0.0001);
+#endif
     }
 }
 
@@ -503,6 +619,7 @@ main()
   test_simple();
   test_interp_time_align();
   test_tiny_loop();
+  test_pitch();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");
