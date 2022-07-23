@@ -156,18 +156,18 @@ sine_detect (double mix_freq, const vector<float>& signal)
 }
 
 void
-write_sample (const vector<float>& samples, int rate)
+write_sample (const vector<float>& samples, int rate, int channels = 1)
 {
   SF_INFO sfinfo = {0,};
   sfinfo.samplerate = rate;
-  sfinfo.channels = 1;
+  sfinfo.channels = channels;
   sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
 
   SNDFILE *sndfile = sf_open ("testsynth.wav", SFM_WRITE, &sfinfo);
   assert (sndfile);
 
-  sf_count_t count = sf_writef_float (sndfile, &samples[0], samples.size());
-  assert (count == sf_count_t (samples.size()));
+  sf_count_t count = sf_writef_float (sndfile, &samples[0], samples.size() / channels);
+  assert (count == sf_count_t (samples.size() / channels));
   sf_close (sndfile);
 }
 
@@ -240,54 +240,71 @@ void
 test_tiny_loop()
 {
 #if HAVE_FFTW
-  int sample_rate = 44100;
-  vector<float> samples (100);
-  std::fill (samples.begin(), samples.end(), 1);
-  for (int i = 0; i < 10; i++)
-    samples[50 + i] = sin (i * 2 * M_PI / 10);
-
-  write_sample (samples, sample_rate);
-  write_sfz ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0 loop_mode=loop_continuous loop_start=50 loop_end=59");
-
-  Synth synth;
-  synth.set_sample_rate (sample_rate);
-  synth.set_live_mode (false);
-  if (!synth.load ("testsynth.sfz"))
+  for (int channels = 1; channels <= 2; channels++)
     {
-      fprintf (stderr, "parse error: exiting\n");
-      exit (1);
-    }
-  printf ("test tiny loop\n");
-  for (int sample_quality = 1; sample_quality <= 3; sample_quality++)
-    {
-      synth.all_sound_off();
-      synth.set_sample_quality (sample_quality);
-      synth.set_gain (sqrt(2));
-      synth.add_event_note_on (0, 0, 24, 127); // 3 octaves down
+      int sample_rate = 44100;
+      vector<float> samples (100 * channels);
+      std::fill (samples.begin(), samples.end(), 1);
+      for (int i = 0; i < 10; i++)
+        {
+          for (int c = 0; c < channels; c++)
+            {
+              double v;
+              if (c == 0)
+                v = sin (i * 2 * M_PI / 10);
+              else
+                v = sin (0.3 + i * 2 * M_PI / 10) * 0.5;
 
-      vector<float> out_left (sample_rate), out_right (sample_rate);
-      float *outputs[2] = { out_left.data(), out_right.data() };
-      synth.process (outputs, sample_rate);
+              samples[(50 + i) * channels + c] = v;
+            }
+        }
 
-      auto partials = sine_detect (sample_rate, out_left);
-      std::sort (partials.begin(), partials.end(), [] (auto a, auto b) { return a.mag > b.mag; });
-      assert (partials.size() >= 2);
+      write_sample (samples, sample_rate, channels);
+      write_sfz ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0 loop_mode=loop_continuous loop_start=50 loop_end=59");
 
-      double amag_max;
-      double f_expect = 4410. / 8;
-      if (sample_quality == 1)
-        amag_max = -38;
-      if (sample_quality == 2)
-        amag_max = -69;
-      if (sample_quality == 3)
-        amag_max = -77;
+      Synth synth;
+      synth.set_sample_rate (sample_rate);
+      synth.set_live_mode (false);
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      for (int c = 0; c < channels; c++)
+        {
+          printf ("test tiny loop %s (channel %d/%d)\n", channels == 1 ? "mono" : "stereo", c + 1, channels);
+          for (int sample_quality = 1; sample_quality <= 3; sample_quality++)
+            {
+              synth.all_sound_off();
+              synth.set_sample_quality (sample_quality);
+              synth.set_gain (c == 0 ? sqrt(2) : 2 * sqrt (2));
+              synth.add_event_note_on (0, 0, 24, 127); // 3 octaves down
 
-      printf ("  - quality=%d freq=%f (expect %f) mag=%f | alias_freq=%f amag=%f (max %f)\n", sample_quality,
-          partials[0].freq, f_expect, db (partials[0].mag),
-          partials[1].freq, db (partials[1].mag),
-          amag_max);
-      assert (db (partials[0].mag) >= -0.3 && db (partials[0].mag) < 0);
-      assert (fabs (partials[0].freq - f_expect) < 0.01);
+              vector<float> out_left (sample_rate), out_right (sample_rate);
+              float *outputs[2] = { out_left.data(), out_right.data() };
+              synth.process (outputs, sample_rate);
+
+              auto partials = sine_detect (sample_rate, c == 0 ? out_left : out_right);
+              std::sort (partials.begin(), partials.end(), [] (auto a, auto b) { return a.mag > b.mag; });
+              assert (partials.size() >= 2);
+
+              double amag_max;
+              double f_expect = 4410. / 8;
+              if (sample_quality == 1)
+                amag_max = -38;
+              if (sample_quality == 2)
+                amag_max = -69;
+              if (sample_quality == 3)
+                amag_max = -77;
+
+              printf ("  - quality=%d freq=%f (expect %f) mag=%f | alias_freq=%f amag=%f (max %f)\n", sample_quality,
+                  partials[0].freq, f_expect, db (partials[0].mag),
+                  partials[1].freq, db (partials[1].mag),
+                  amag_max);
+              assert (db (partials[0].mag) >= -0.3 && db (partials[0].mag) < 0);
+              assert (fabs (partials[0].freq - f_expect) < 0.01);
+            }
+        }
     }
 #endif
 }
