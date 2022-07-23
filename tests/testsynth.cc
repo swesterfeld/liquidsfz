@@ -360,7 +360,7 @@ test_pitch()
         printf ("  - quality %d, freq cc=%03d: %.4f (expect %.4f), mag %.4f\n", sample_quality, cc, partial.freq, freq_expect, partial.mag);
 
         assert (fabs (partial.freq - freq_expect) < 0.01);
-        assert (fabs (partial.mag - 1) < 0.01);
+        assert (fabs (partial.mag - 1) < 0.001);
       };
       compare_max_partial (0);
 
@@ -393,7 +393,7 @@ test_pitch()
         float xfreq = 480 * pow (2, cent / 1200.);
         printf (" - quality %d, freq %.4f (expect %.4f), mag %.4f\n", sample_quality, partial.freq, xfreq, partial.mag);
         assert (fabs (partial.freq - xfreq) < 0.1);
-        assert (fabs (partial.mag - 1) < 0.1);
+        assert (fabs (partial.mag - 1) < 0.001);
       };
 
       synth.all_sound_off();
