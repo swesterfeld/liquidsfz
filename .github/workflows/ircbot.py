@@ -20,7 +20,7 @@ def colors (how):
   elif how == 1:        # ANSI
     d = { 'YELLOW': E+'93m', 'ORANGE': E+'33m', 'RED': E+'31m', 'GREEN': E+'32m', 'CYAN': E+'36m', 'BLUE': E+'34m', 'MAGENTA': E+'35m', 'RESET': E+'m' }
   elif how == 2:        # mIRC
-    d = { 'YELLOW': C+'08,99', 'ORANGE': C+'07,99', 'RED': C+'04,99', 'GREEN': C+'03,99', 'CYAN': C+'10,99', 'BLUE': C+'12,99', 'MAGENTA': C+'06,99', 'RESET': C+'99,99' }
+    d = { 'YELLOW': C+'08,99', 'ORANGE': C+'07,99', 'RED': C+'04,99', 'GREEN': C+'03,99', 'CYAN': C+'10,99', 'BLUE': C+'12,99', 'MAGENTA': C+'06,99', 'RESET': C+'' }
   from collections import namedtuple
   colors = namedtuple ("Colors", d.keys()) (*d.values())
   return colors
@@ -43,7 +43,6 @@ def format_msg (args, how = 2):
     msg = c.CYAN + args.D + c.RESET + ' ' + msg
   if args.U:
     msg = c.ORANGE + args.U + c.RESET + ' ' + msg
-
   return msg
 
 def sendline (text):
