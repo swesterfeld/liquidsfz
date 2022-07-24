@@ -259,6 +259,12 @@ Sample::unload()
 {
   update_preload_and_read_ahead();
 
+  /* read-copy-update (RCU) pattern to allow accesses from multiple threads without locks
+   *
+   *  - make a copy of the sample buffer vector here, modify as needed to create a new version
+   *  - atomically update the sample buffer pointer to point to the new version
+   *  - free old entries later, if we are sure that no readers are accessing the old version
+   */
   SampleBufferVector new_buffers;
   new_buffers.resize (buffers_.size());
   for (size_t b = 0; b < buffers_.size(); b++)
