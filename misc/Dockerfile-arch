@@ -1,18 +1,9 @@
 FROM archlinux
 
 RUN pacman -Syu --noconfirm
-RUN pacman -S gcc --noconfirm
-RUN pacman -S clang --noconfirm
-RUN pacman -S make --noconfirm
-RUN pacman -S automake --noconfirm
-RUN pacman -S autoconf --noconfirm
-RUN pacman -S libtool --noconfirm
-RUN pacman -S pkg-config --noconfirm
-RUN pacman -S jack --noconfirm
-RUN pacman -S libsndfile --noconfirm
-RUN pacman -S lv2 --noconfirm
-RUN pacman -S lv2lint --noconfirm
-RUN pacman -S fftw --noconfirm
+RUN pacman -S --noconfirm \
+    gcc clang make automake autoconf libtool pkg-config \
+    jack libsndfile lv2 lv2lint fftw
 
 ADD . /liquidsfz
 WORKDIR /liquidsfz
