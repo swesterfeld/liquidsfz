@@ -1,6 +1,6 @@
 LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
-AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
+AM_CXXFLAGS = $(FFTW_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
 TESTS = testsynth
 
