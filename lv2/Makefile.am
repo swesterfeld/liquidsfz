@@ -1,4 +1,4 @@
-AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
+AM_CXXFLAGS = $(LV2_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
 liquidsfz_lv2dir = $(libdir)/lv2/liquidsfz.lv2
 
