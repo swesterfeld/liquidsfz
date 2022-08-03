@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cassert>
 #include <vector>
+#include <complex>
 #include <sndfile.h>
 
 #include "upsample.hh"
@@ -76,7 +77,7 @@ process_synth (vector<float>& samples, int sample_quality, int rate_from, int ra
       fprintf (stderr, "parse error: exiting\n");
       exit (1);
     }
-  synth.set_gain (sqrt (2));
+  synth.set_gain (std::sqrt (2.0));
 
   size_t out_size = samples.size() * upsample * 2;
   std::vector<float> out (out_size), out_right (out_size);
@@ -127,13 +128,13 @@ main (int argc, char **argv)
           padded.resize (padded.size() * 4);
           vector<float> out_fft (padded.size());
           fft (padded.size(), &padded[0], &out_fft[0]);
-          double pass = 0;
-          double stop = 0;
+          float pass = 0;
+          float stop = 0;
           for (size_t i = 0; i < padded.size(); i += 2)
             {
               auto re = out_fft[i];
               auto im = out_fft[i + 1];
-              auto amp = sqrt (re * re + im * im);
+              auto amp = std::abs (std::complex (re, im));
               auto norm_freq = (RATE_TO * UPSAMPLE) / 2.0 * i / padded.size();
               //printf ("%f %f\n", norm_freq, db (amp));
               if (fabs (norm_freq - freq) < 20)
@@ -185,7 +186,7 @@ main (int argc, char **argv)
         {
           auto re = out_fft[i];
           auto im = out_fft[i + 1];
-          auto amp = sqrt (re * re + im * im);
+          auto amp = std::abs (std::complex (re, im));
           auto norm_freq = RATE_TO / 2.0 * i / padded.size();
           printf ("%f %f\n", norm_freq, db (amp));
         }
@@ -214,7 +215,7 @@ main (int argc, char **argv)
         {
           auto re = out_fft[i];
           auto im = out_fft[i + 1];
-          auto amp = sqrt (re * re + im * im);
+          auto amp = std::abs (std::complex (re, im));
           int j = i / 2;
           bool pass = j <= int (out.size() / upsample / 2);
           bool stop = j >= int (out.size() / upsample / 2);
@@ -277,13 +278,13 @@ main (int argc, char **argv)
           padded.resize (padded.size() * 4);
           vector<float> out_fft (padded.size());
           fft (padded.size(), &padded[0], &out_fft[0]);
-          double pass = 0;
-          double stop = 0;
+          float pass = 0;
+          float stop = 0;
           for (size_t i = 0; i < padded.size(); i += 2)
             {
               auto re = out_fft[i];
               auto im = out_fft[i + 1];
-              auto amp = sqrt (re * re + im * im);
+              auto amp = std::abs (std::complex (re, im));
               //printf ("%d %f\n", i, amp);
               if (i < padded.size() / 2)
                 pass = std::max (pass, amp);
