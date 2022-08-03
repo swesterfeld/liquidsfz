@@ -3,7 +3,7 @@
 set -Eeuo pipefail -x
 
 brew install autoconf-archive automake libsndfile jack lv2 fftw
-export PKG_CONFIG_PATH="/usr/local/opt/readline/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+export PKG_CONFIG_PATH="$(brew --prefix readline)/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 ./autogen.sh --without-lv2 --with-fftw
 make
 make check
