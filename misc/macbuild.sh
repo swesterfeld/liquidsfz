@@ -1,6 +1,6 @@
 #!/bin/bash
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-set -Eeuo pipefail
+set -Eeuo pipefail -x
 
 brew install autoconf-archive automake libsndfile jack lv2 fftw
 export PKG_CONFIG_PATH="/usr/local/opt/readline/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
