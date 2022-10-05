@@ -336,7 +336,7 @@ public:
     /* kill overlapping notes */
     for (Voice *voice : active_voices_)
       {
-        if ((voice->state_ == Voice::ACTIVE || voice->state_== Voice::SUSTAIN) &&
+        if (voice->state_ == Voice::ACTIVE &&
             voice->trigger_ == Trigger::ATTACK &&
             voice->channel_ == chan && voice->key_ == key && voice->region_->loop_mode != LoopMode::ONE_SHOT)
           {
