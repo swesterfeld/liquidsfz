@@ -96,7 +96,7 @@ To install it, extract the archive and
 
 [mpl2-badge]: https://img.shields.io/github/license/swesterfeld/liquidsfz?style=for-the-badge
 [mpl2-url]: https://github.com/swesterfeld/liquidsfz/blob/master/LICENSE
-[testing-badge]: https://img.shields.io/github/workflow/status/swesterfeld/liquidsfz/Testing?style=for-the-badge
+[testing-badge]: https://img.shields.io/github/actions/workflow/status/swesterfeld/liquidsfz/testing.yml?style=for-the-badge
 [testing-url]: https://github.com/swesterfeld/liquidsfz/actions/workflows/testing.yml
 [version-badge]: https://img.shields.io/github/v/release/swesterfeld/liquidsfz?label=version&style=for-the-badge
 [version-url]: https://github.com/swesterfeld/liquidsfz/releases
