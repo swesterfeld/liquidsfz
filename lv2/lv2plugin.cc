@@ -385,12 +385,21 @@ public:
       }
 
     LV2_State_Map_Path *map_path = nullptr;
+#ifdef LV2_STATE__freePath
+    LV2_State_Free_Path *free_path = nullptr;
+#endif
     for (int i = 0; features[i]; i++)
       {
         if (!strcmp (features[i]->URI, LV2_STATE__mapPath))
           {
             map_path = (LV2_State_Map_Path *)features[i]->data;
           }
+#ifdef LV2_STATE__freePath
+        else if (!strcmp (features[i]->URI, LV2_STATE__freePath))
+          {
+            free_path = (LV2_State_Free_Path *)features[i]->data;
+          }
+#endif
       }
 
     string path = current_filename;
@@ -403,7 +412,17 @@ public:
             return LV2_STATE_ERR_UNKNOWN;
           }
         path = abstract_path;
-        free (abstract_path);
+
+#ifdef LV2_STATE__freePath
+        if (free_path)
+          {
+            free_path->free_path (free_path->handle, abstract_path);
+          }
+        else
+#endif
+          {
+            free (abstract_path);
+          }
       }
 
     store (handle, uris.liquidsfz_sfzfile,
@@ -420,12 +439,21 @@ public:
            const LV2_Feature* const*   features)
   {
     LV2_State_Map_Path *map_path = nullptr;
+#ifdef LV2_STATE__freePath
+    LV2_State_Free_Path *free_path = nullptr;
+#endif
     for (int i = 0; features[i]; i++)
       {
         if (!strcmp (features[i]->URI, LV2_STATE__mapPath))
           {
             map_path = (LV2_State_Map_Path *)features[i]->data;
           }
+#ifdef LV2_STATE__freePath
+        else if (!strcmp (features[i]->URI, LV2_STATE__freePath))
+          {
+            free_path = (LV2_State_Free_Path *)features[i]->data;
+          }
+#endif
       }
     if (!map_path)
       return LV2_STATE_ERR_NO_FEATURE;
@@ -450,7 +478,16 @@ public:
             queue_filename = real_path;
             free (real_path);
           }
-        free (absolute_path);
+#ifdef LV2_STATE__freePath
+        if (free_path)
+          {
+            free_path->free_path (free_path->handle, absolute_path);
+          }
+        else
+#endif
+          {
+            free (absolute_path);
+          }
       }
 
     return LV2_STATE_SUCCESS;
