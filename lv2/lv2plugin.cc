@@ -391,6 +391,11 @@ public:
     if (map_path)
       {
         char *abstract_path = map_path->abstract_path (map_path->handle, path.c_str());
+        if (!abstract_path)
+          {
+            debug ("save: map_path returned NULL for path '%s'", path.c_str());
+            return LV2_STATE_ERR_UNKNOWN;
+          }
         path = abstract_path;
         free (abstract_path);
       }
@@ -427,12 +432,22 @@ public:
       {
         char *absolute_path = map_path->absolute_path (map_path->handle, (const char *)value);
 
-        /* resolve symlinks so that sample paths relative to the .sfz file can be loaded */
-        char *real_path = realpath (absolute_path, nullptr);
-        if (real_path)
-          queue_filename = real_path;
+        if (absolute_path)
+          {
+            /* resolve symlinks so that sample paths relative to the .sfz file can be loaded */
+            char *real_path = realpath (absolute_path, nullptr);
+            if (real_path)
+              {
+                queue_filename = real_path;
+                free (real_path);
+              }
+          }
+        else
+          {
+            debug ("load: map_path returned NULL for path '%s'", (const char *)value);
+            return LV2_STATE_ERR_UNKNOWN;
+          }
 
-        free (real_path);
         free (absolute_path);
       }
 
