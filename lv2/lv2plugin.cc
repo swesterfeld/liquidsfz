@@ -378,6 +378,12 @@ public:
         LV2_State_Handle         handle,
         const LV2_Feature* const* features)
   {
+    if (current_filename.empty())
+      {
+        debug ("save: error: current filename is empty\n");
+        return LV2_STATE_ERR_NO_PROPERTY;
+      }
+
     LV2_State_Map_Path *map_path = nullptr;
     for (int i = 0; features[i]; i++)
       {
@@ -431,23 +437,19 @@ public:
     if (value)
       {
         char *absolute_path = map_path->absolute_path (map_path->handle, (const char *)value);
-
-        if (absolute_path)
-          {
-            /* resolve symlinks so that sample paths relative to the .sfz file can be loaded */
-            char *real_path = realpath (absolute_path, nullptr);
-            if (real_path)
-              {
-                queue_filename = real_path;
-                free (real_path);
-              }
-          }
-        else
+        if (!absolute_path)
           {
             debug ("load: map_path returned NULL for path '%s'", (const char *)value);
             return LV2_STATE_ERR_UNKNOWN;
           }
 
+        /* resolve symlinks so that sample paths relative to the .sfz file can be loaded */
+        char *real_path = realpath (absolute_path, nullptr);
+        if (real_path)
+          {
+            queue_filename = real_path;
+            free (real_path);
+          }
         free (absolute_path);
       }
 
