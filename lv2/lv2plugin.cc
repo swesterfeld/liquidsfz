@@ -58,6 +58,7 @@ debug (const char *format, ...)
 
       va_start (ap, format);
       vfprintf (out, format, ap);
+      fflush (out);
       va_end (ap);
     }
 }
@@ -471,8 +472,12 @@ public:
             return LV2_STATE_ERR_UNKNOWN;
           }
 
+#if LIQUIDSFZ_OS_WINDOWS
+        char *real_path = strdup (absolute_path);
+#else
         /* resolve symlinks so that sample paths relative to the .sfz file can be loaded */
         char *real_path = realpath (absolute_path, nullptr);
+#endif
         if (real_path)
           {
             queue_filename = real_path;
