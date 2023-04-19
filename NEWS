@@ -1,3 +1,12 @@
+Overview of Changes in liquidsfz-0.3.2:
+
+* Fix crashes triggered by Carla while saving without path
+* Allow multiple overlapping notes during sustain (#38)
+* Provide cross compiled LV2 plugin for Windows
+* Use LV2_STATE__freePath if available (fixes LV2 on windows)
+* Fixes for building on macOS and Windows
+* Improve tests and CI checks
+
 Overview of Changes in liquidsfz-0.3.1:
 
 * Fix crash in voice processing when gain smoothing is active
