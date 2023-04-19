@@ -1,8 +1,8 @@
-AC_INIT([liquidsfz], [0.3.1])
+AC_INIT([liquidsfz],[0.3.2])
 AC_CONFIG_SRCDIR([src/liquidsfz.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 AC_DISABLE_SHARED
@@ -148,7 +148,34 @@ AC_LANG_POP([C++])
 # Less cluttered build output
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile lv2/Makefile lv2/liquidsfz.ttl tests/Makefile static/config.sh liquidsfz.pc])
+# Detect the target system
+case "${host_os}" in
+    linux*)
+        build_linux=yes
+        ;;
+    cygwin*|mingw*)
+        build_windows=yes
+        ;;
+    darwin*)
+        build_macos=yes
+        ;;
+    *)
+        AC_MSG_ERROR(["OS $host_os is not supported"])
+        ;;
+esac
+
+if test "x$build_windows" = "xyes"; then
+  # math constants like M_PI on windows need this define to work
+  CXXFLAGS="$CXXFLAGS -D_USE_MATH_DEFINES"
+
+  PLUGIN_EXT="dll"
+else
+  PLUGIN_EXT="so"
+fi
+AC_SUBST(PLUGIN_EXT)
+
+AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile lv2/Makefile lv2/liquidsfz.ttl lv2/manifest.ttl
+                 tests/Makefile static/config.sh liquidsfz.pc])
 AC_OUTPUT
 
 echo

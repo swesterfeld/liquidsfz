@@ -8,5 +8,5 @@
 
 <http://spectmorph.org/plugins/liquidsfz>
   a lv2:Plugin ;
-  lv2:binary <liquidsfz_lv2.so>;
+  lv2:binary <liquidsfz_lv2.@PLUGIN_EXT@>;
   rdfs:seeAlso <liquidsfz.ttl> .

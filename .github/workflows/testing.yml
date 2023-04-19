@@ -25,3 +25,9 @@ jobs:
     - name: Test Build
       shell: bash
       run: misc/macbuild.sh
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Build
+      run: windows/build.sh
