@@ -13,7 +13,7 @@ maybe:
 
 - make distcheck
 - update NEWS
-- update opcode list
+- update opcode list (opcode-list.sh)
 - make rebuild-api-docs
 - update README.md
 - upload static build
