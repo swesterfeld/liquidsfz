@@ -93,7 +93,7 @@ To install it, extract the archive and
 
 ### WINDOWS BINARY
 
-The Windows pplugin is available here:
+The Windows plugin is available here:
 
 * https://github.com/swesterfeld/liquidsfz/releases/download/0.3.2/liquidsfz-0.3.2-win64.zip
 
