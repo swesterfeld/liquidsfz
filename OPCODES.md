@@ -2,7 +2,7 @@
 
 ## SUPPORTED OPCODES
 
-The following SFZ opcodes are supported in liquidsfz-0.3.1:
+The following SFZ opcodes are supported in liquidsfz-0.3.2:
 
 * amp_random
 * amp_velcurve_N
