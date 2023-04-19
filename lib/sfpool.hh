@@ -46,7 +46,7 @@ public:
   static constexpr size_t max_fds  = 64;
   static constexpr double max_time = 30; /* seconds */
 
-#if LIQUIDSFZ_64BIT
+#if LIQUIDSFZ_64BIT && !LIQUIDSFZ_OS_WINDOWS
   static constexpr bool   use_mmap = true;
 #else
   static constexpr bool   use_mmap = false;

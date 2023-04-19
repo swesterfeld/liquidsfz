@@ -3,7 +3,10 @@
 #include "sfpool.hh"
 #include "utils.hh"
 
+#if !LIQUIDSFZ_OS_WINDOWS
 #include <sys/mman.h>
+#endif
+
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -42,17 +45,22 @@ SFPool::Entry::~Entry()
       sf_close (sndfile);
       sndfile = nullptr;
 
+#if !LIQUIDSFZ_OS_WINDOWS
       if (mapped_data.mem)
         {
           munmap (mapped_data.mem, mapped_data.size);
           mapped_data.mem = nullptr;
         }
+#endif
     }
 }
 
 SNDFILE *
 SFPool::mmap_open (const string& filename, SF_INFO *sfinfo, SFPool::EntryP entry)
 {
+#if LIQUIDSFZ_OS_WINDOWS
+  return nullptr;
+#else
   int fd = ::open (filename.c_str(), O_RDONLY);
   if (fd == -1)
     return nullptr; // FIXME: handle error
@@ -130,6 +138,7 @@ SFPool::mmap_open (const string& filename, SF_INFO *sfinfo, SFPool::EntryP entry
   entry->mapped_data.io.write = nullptr;
 
   return sf_open_virtual (&entry->mapped_data.io, SFM_READ, sfinfo, &entry->mapped_data);
+#endif
 }
 
 SFPool::EntryP
