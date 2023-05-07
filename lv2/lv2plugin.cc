@@ -4,6 +4,16 @@
 #include "midnam.hh"
 #include "log.hh"
 
+#if __has_include (<lv2/core/lv2.h>)
+// new versions of LV2 use different location for headers
+#include "lv2/atom/atom.h"
+#include "lv2/atom/forge.h"
+#include "lv2/midi/midi.h"
+#include "lv2/urid/urid.h"
+#include "lv2/patch/patch.h"
+#include "lv2/state/state.h"
+#include "lv2/worker/worker.h"
+#else
 #include "lv2/lv2plug.in/ns/lv2core/lv2.h"
 #include "lv2/lv2plug.in/ns/ext/atom/atom.h"
 #include "lv2/lv2plug.in/ns/ext/atom/forge.h"
@@ -14,6 +24,7 @@
 #include "lv2/lv2plug.in/ns/ext/state/state.h"
 #include "lv2/lv2plug.in/ns/extensions/ui/ui.h"
 #include "lv2/lv2plug.in/ns/ext/worker/worker.h"
+#endif
 
 #include "lv2_midnam.h"
 

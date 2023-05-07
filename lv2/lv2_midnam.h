@@ -23,7 +23,12 @@
 #ifndef LV2_MIDNAM_H
 #define LV2_MIDNAM_H
 
+#if __has_include (<lv2/core/lv2.h>)
+// new versions of LV2 use different location for headers
+#include "lv2/core/lv2.h"
+#else
 #include "lv2/lv2plug.in/ns/lv2core/lv2.h"
+#endif
 
 #define LV2_MIDNAM_URI "http://ardour.org/lv2/midnam"
 #define LV2_MIDNAM_PREFIX LV2_MIDNAM_URI "#"
