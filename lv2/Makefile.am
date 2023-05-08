@@ -7,7 +7,7 @@ liquidsfz_lv2_DATA = manifest.ttl liquidsfz.ttl
 CLEANFILES = liquidsfz.ttl liquidsfz_lv2.$(PLUGIN_EXT)
 liquidsfz.ttl: $(top_builddir)/config.status
 
-EXTRA_DIST = manifest.ttl lv2plugin.cc lv2_midnam.h ldscript.map
+EXTRA_DIST = manifest.ttl lv2plugin.cc lv2_midnam.h ldscript.map macos_export_symbols
 
 all-local: liquidsfz_lv2.$(PLUGIN_EXT)
 
@@ -22,7 +22,7 @@ if COND_MACOS
 liquidsfz_lv2.$(PLUGIN_EXT): $(srcdir)/lv2plugin.cc $(top_builddir)/lib/libliquidsfz.la
 	$(CXX) -fPIC -DPIC -shared -o liquidsfz_lv2.$(PLUGIN_EXT) $(srcdir)/lv2plugin.cc $(CXXFLAGS) $(AM_CXXFLAGS) \
 	$(top_builddir)/lib/.libs/$(LIQUIDSFZ_PLUGIN_LIB) $(STATIC_CXX_LDFLAGS) $(LDFLAGS) $(SNDFILE_LIBS) \
-	-exported_symbols_list macos_export_symbols
+	-exported_symbols_list $(srcdir)/macos_export_symbols
 else
 liquidsfz_lv2.$(PLUGIN_EXT): $(srcdir)/lv2plugin.cc $(top_builddir)/lib/libliquidsfz.la
 	$(CXX) -fPIC -DPIC -shared -o liquidsfz_lv2.$(PLUGIN_EXT) $(srcdir)/lv2plugin.cc $(CXXFLAGS) $(AM_CXXFLAGS) \
