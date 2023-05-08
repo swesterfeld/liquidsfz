@@ -18,7 +18,14 @@ install-exec-hook: liquidsfz_lv2.$(PLUGIN_EXT)
 uninstall-hook:
 	rm -f $(DESTDIR)$(liquidsfz_lv2dir)/liquidsfz_lv2.$(PLUGIN_EXT)
 
+if COND_MACOS
+liquidsfz_lv2.$(PLUGIN_EXT): $(srcdir)/lv2plugin.cc $(top_builddir)/lib/libliquidsfz.la
+	$(CXX) -fPIC -DPIC -shared -o liquidsfz_lv2.$(PLUGIN_EXT) $(srcdir)/lv2plugin.cc $(CXXFLAGS) $(AM_CXXFLAGS) \
+	$(top_builddir)/lib/.libs/$(LIQUIDSFZ_PLUGIN_LIB) $(STATIC_CXX_LDFLAGS) $(LDFLAGS) $(SNDFILE_LIBS) \
+	-exported_symbols_list macos_export_symbols
+else
 liquidsfz_lv2.$(PLUGIN_EXT): $(srcdir)/lv2plugin.cc $(top_builddir)/lib/libliquidsfz.la
 	$(CXX) -fPIC -DPIC -shared -o liquidsfz_lv2.$(PLUGIN_EXT) $(srcdir)/lv2plugin.cc $(CXXFLAGS) $(AM_CXXFLAGS) \
 	$(top_builddir)/lib/.libs/$(LIQUIDSFZ_PLUGIN_LIB) $(STATIC_CXX_LDFLAGS) $(LDFLAGS) $(SNDFILE_LIBS) \
 	-Wl,-rpath=$(libdir) -Wl,--version-script=$(srcdir)/ldscript.map
+endif
