@@ -164,13 +164,22 @@ case "${host_os}" in
         ;;
 esac
 
-if test "x$build_windows" = "xyes"; then
+# Pass the conditionals to automake
+AM_CONDITIONAL([COND_LINUX], [test "$build_linux" = "yes"])
+AM_CONDITIONAL([COND_WINDOWS], [test "$build_windows" = "yes"])
+AM_CONDITIONAL([COND_MACOS], [test "$build_macos" = "yes"])
+
+if test "$build_windows" = "yes"; then
   # math constants like M_PI on windows need this define to work
   CXXFLAGS="$CXXFLAGS -D_USE_MATH_DEFINES"
 
   PLUGIN_EXT="dll"
-else
+fi
+if test "$build_linux" = "yes"; then
   PLUGIN_EXT="so"
+fi
+if test "$build_macos" = "yes"; then
+  PLUGIN_EXT="dylib"
 fi
 AC_SUBST(PLUGIN_EXT)
 
