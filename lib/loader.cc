@@ -1116,7 +1116,7 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
 
   static const regex space_re ("\\s+(.*)");
   static const regex tag_re ("<([^>]*)>(.*)");
-  static const regex key_val_re ("([a-z0-9_]+)=(\\S+)(.*)");
+  static const regex key_val_re ("([a-z0-9_]+)\\s*=\\s*(\\S+)(.*)");
   for (auto line_info : lines)
     {
       current_line_info = line_info; // for error location reporting
@@ -1143,9 +1143,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache)
                * - value is followed by <tag>
                * - value is followed by another opcode (foo=bar)
                */
-              static const regex key_val_space_re_eol ("([a-z0-9_]+)=([^=<]+)");
-              static const regex key_val_space_re_tag ("([a-z0-9_]+)=([^=<]+)(<.*)");
-              static const regex key_val_space_re_eq ("([a-z0-9_]+)=([^=<]+)(\\s[a-z0-9_]+=.*)");
+              static const regex key_val_space_re_eol ("([a-z0-9_]+)\\s*=([^=<]+)");
+              static const regex key_val_space_re_tag ("([a-z0-9_]+)\\s*=([^=<]+)(<.*)");
+              static const regex key_val_space_re_eq ("([a-z0-9_]+)\\s*=([^=<]+)(\\s[a-z0-9_]+\\s*=.*)");
 
               if (regex_match (l, sm, key_val_space_re_eol))
                 {
