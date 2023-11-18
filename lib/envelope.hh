@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_ENVELOPE_HH
-#define LIQUIDSFZ_ENVELOPE_HH
+#pragma once
 
 #include "loader.hh"
 
@@ -249,5 +248,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_ENVELOPE_HH */

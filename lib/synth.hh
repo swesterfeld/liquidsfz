@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_SYNTH_HH
-#define LIQUIDSFZ_SYNTH_HH
+#pragma once
 
 #include <random>
 #include <algorithm>
@@ -708,5 +707,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_SYNTH_HH */

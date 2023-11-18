@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_SAMPLECACHE_HH
-#define LIQUIDSFZ_SAMPLECACHE_HH
+#pragma once
 
 #include <vector>
 #include <functional>
@@ -483,5 +482,3 @@ Sample::end_playback()
 }
 
 }
-
-#endif /* LIQUIDSFZ_SAMPLECACHE_HH */

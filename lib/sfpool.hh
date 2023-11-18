@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_SFPOOL_HH
-#define LIQUIDSFZ_SFPOOL_HH
+#pragma once
 
 #include <sndfile.h>
 
@@ -63,5 +62,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_SFPOOL_HH */

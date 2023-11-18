@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_UPSAMPLE_HH
-#define LIQUIDSFZ_UPSAMPLE_HH
+#pragma once
 
 namespace LiquidSFZInternal
 {
@@ -89,5 +88,3 @@ upsample (const float *in, float *out)
 }
 
 }
-
-#endif /* LIQUIDSFZ_UPSAMPLE_HH */

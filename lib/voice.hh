@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_VOICE_HH
-#define LIQUIDSFZ_VOICE_HH
+#pragma once
 
 #include "envelope.hh"
 #include "filter.hh"
@@ -164,5 +163,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_VOICE_HH */

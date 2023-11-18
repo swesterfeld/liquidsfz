@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_LOADER_HH
-#define LIQUIDSFZ_LOADER_HH
+#pragma once
 
 #include <string>
 #include <set>
@@ -512,5 +511,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_LOADER_HH */

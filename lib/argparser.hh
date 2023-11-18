@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_ARGPARSER_HH
-#define LIQUIDSFZ_ARGPARSER_HH
+#pragma once
 
 #include <vector>
 #include <string>
@@ -25,5 +24,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_ARGPARSER_HH */

@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_CURVE_HH
-#define LIQUIDSFZ_CURVE_HH
+#pragma once
 
 #include <vector>
 #include <map>
@@ -92,5 +91,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_CURVE_HH */

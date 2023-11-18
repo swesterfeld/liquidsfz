@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_LIQUIDSFZ_HH
-#define LIQUIDSFZ_LIQUIDSFZ_HH
+#pragma once
 
 #include <memory>
 #include <functional>
@@ -628,4 +627,3 @@ messages will break realtime capabilty.
 */
 
 }
-#endif

@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_HYDROGEN_HH
-#define LIQUIDSFZ_HYDROGEN_HH
+#pragma once
 
 #include <string>
 
@@ -40,5 +39,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_HYDROGEN_HH */

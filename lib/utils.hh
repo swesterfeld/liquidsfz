@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_UTILS_HH
-#define LIQUIDSFZ_UTILS_HH
+#pragma once
 
 #include <cstring>
 
@@ -134,5 +133,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_UTILS_HH */

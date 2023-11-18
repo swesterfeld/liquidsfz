@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef LIQUIDSFZ_FILTER_HH
-#define LIQUIDSFZ_FILTER_HH
+#pragma once
 
 #include <cmath>
 #include <string>
@@ -405,5 +404,3 @@ public:
 };
 
 }
-
-#endif /* LIQUIDSFZ_FILTER_HH */
