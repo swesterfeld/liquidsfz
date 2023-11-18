@@ -2,6 +2,7 @@
 
 #include "pugixml.hh"
 #include "liquidsfz.hh"
+#include "midnam.hh"
 
 using pugi::xml_node;
 using pugi::xml_document;
