@@ -7,6 +7,7 @@
 
 #include <sndfile.h>
 #include <vector>
+#include <algorithm>
 
 #include "liquidsfz.hh"
 #include "config.h"
