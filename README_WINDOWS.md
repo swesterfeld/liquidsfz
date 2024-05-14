@@ -1,12 +1,12 @@
-# building liquidsfz under windows
+# Building liquidsfz under Windows
 
-## install a suitable compiler
+## Install a suitable compiler
 
 Compiling was tested with gcc using the online installer from
 
  * https://sourceforge.net/projects/mingw-w64/files
 
-within the installer, select
+Within the installer, select
 
  * version `8.1.0`
  * architecture `x86_64`
@@ -14,16 +14,16 @@ within the installer, select
  * exception `seh`
  * build revision `0`
 
-it is likely that other compilers could also work. If you need changes to build
-with another compiler, please report it as a github issue.
+It is likely that other compilers could also work. If you need changes to build
+with another compiler, please report it as a GitHub issue.
 
 ## cmake
 
 We assume that cmake is also installed and working, and in the PATH.
 
-## preparing the liquidsfz source code
+## Preparing the liquidsfz source code
 
-The source code can be downloaded from github. For this document we assume that
+The source code can be downloaded from GitHub. For this document we assume that
 the folder containing the master branch of liquidsfz was extracted to
 `C:\src\liquidsfz-master`
 
@@ -32,15 +32,15 @@ Since cmake support is still experimental, the file in the repository is called
 
     C:\src\liquidsfz-master> ren testCMakeLists.txt CMakeLists.txt
 
-## installing libsndfile
+## Installing libsndfile
 
-Also from github, you can get it from here:
+Also from GitHub, you can get it from here:
 
 * https://github.com/libsndfile/libsndfile/releases/download/v1.0.30/libsndfile-1.0.30-win64.zip
 
-extract the folder so that there is a new subfolder: `C:\src\liquidsfz-master\libsndfile-1.0.30-win64`
+Extract the folder so that there is a new subfolder: `C:\src\liquidsfz-master\libsndfile-1.0.30-win64`
 
-## building
+## Building
 
 Run `mingw-w64.bat`, in a typical installation
 
