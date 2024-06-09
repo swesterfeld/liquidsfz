@@ -50,16 +50,16 @@ Or if you want to load a Hydrogen drumkit, like this:
 
     liquidsfz /usr/share/hydrogen/data/drumkits/GMRockKit/drumkit.xml
 
-liquidsfz works as jack client with midi input and audio ouput. If you connect
-the jack midi input / audio output using a patchbay, you can send midi events
+liquidsfz works as a JACK client with midi input and audio ouput. If you connect
+the JACK midi input / audio output using a patchbay, you can send midi events
 to liquidsfz to test the sfz loader.
 
-If you are interested in using a graphical front-end in conjunction with jack,
+If you are interested in using a graphical front-end in conjunction with JACK,
 you can try [QLiquidSFZ](https://github.com/be1/qliquidsfz).
 
 ## LV2 PLUGIN
 
-We provide a LV2 plugin for hosts like Ardour/Carla/Qtractor and others, which
+We provide an LV2 plugin, for hosts like Ardour/Carla/Qtractor and others, which
 is built and installed by default. It can also be downloaded as binary release
 below.
 
@@ -103,9 +103,9 @@ To install it, extract the zip file to the location where your LV2 plugins are, 
 
 ## WINDOWS DLL
 
-If you are a windows developer and need only the .dll (not the plugin or jack
-client), there is [experimental support for building on windows](README_WINDOWS.md)
-but this experimental and may or may not work.
+If you are a Windows developer and need only the .dll (not the plugin or JACK
+client), there is [experimental support for building on Windows](README_WINDOWS.md)
+but this is experimental and may or may not work.
 
 [mpl2-badge]: https://img.shields.io/github/license/swesterfeld/liquidsfz?style=for-the-badge
 [mpl2-url]: https://github.com/swesterfeld/liquidsfz/blob/master/LICENSE
