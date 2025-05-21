@@ -35,10 +35,47 @@ Synth::process_audio (float **outputs, uint n_frames, uint offset)
 }
 
 void
+Synth::sort_events_stable()
+{
+  // fast path: return if events are already sorted properly
+  if (std::is_sorted (events.begin(), events.end(),
+      [] (const Event& a, const Event& b)
+        { return a.time_frames < b.time_frames; }
+      ))
+    return;
+
+  /*
+   * we don't want to use std::stable_sort, because it allocates memory
+   *
+   * std::sort doesn't allocate extra memory, but is not stable, so we use an
+   * extra field to preserve the relative order of events with the same
+   * timestamp
+   */
+  for (size_t i = 0; i < events.size(); i++)
+    events[i].tmp_sort_index = i;
+
+  auto event_cmp = [] (const Event& a, const Event& b)
+    {
+      if (a.time_frames == b.time_frames)
+        return a.tmp_sort_index < b.tmp_sort_index;
+      else
+        return a.time_frames < b.time_frames;
+    };
+  std::sort (events.begin(), events.end(), event_cmp);
+}
+
+void
 Synth::process (float **outputs, uint n_frames)
 {
   zero_float_block (n_frames, outputs[0]);
   zero_float_block (n_frames, outputs[1]);
+
+  /*
+   * Our public API specifies that events must be added sorted by time stamp.
+   * However if they are not sorted, we do it here, in order to avoid problems
+   * in the event handling code below.
+   */
+  sort_events_stable();
 
   uint offset = 0;
   for (const auto& event : events)

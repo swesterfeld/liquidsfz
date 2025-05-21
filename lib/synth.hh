@@ -105,6 +105,7 @@ private:
     for (auto& channel : channels_)
       channel.init (control_);
   }
+  void sort_events_stable();
 public:
   Synth() :
     global_ (Global::get()) // init data shared between all Synth instances
@@ -585,6 +586,7 @@ public:
     enum class Type : uint16_t { NONE, NOTE_ON, NOTE_OFF, CC, PITCH_BEND };
 
     uint     time_frames = 0;
+    uint     tmp_sort_index = 0;
     Type     type = Type::NONE;
     uint16_t channel = 0;
     uint16_t arg1 = 0;
