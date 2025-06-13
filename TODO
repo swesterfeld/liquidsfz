@@ -2,6 +2,7 @@
 - key switches (details: sw_down, sw_up)
 - envelope minimum times (prevent clicks)
 - possibly contstrain parameters (however, sforzando doesn't always constrain either)
+- hyrogen drumkit importer ignores ubuntu 24.04 GMRockKit instrument pan attributes
 
 maybe:
 - aria xml index
