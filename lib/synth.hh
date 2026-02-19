@@ -12,6 +12,7 @@
 #include "envelope.hh"
 #include "voice.hh"
 #include "liquidsfz.hh"
+#include "pugixml.hh"
 
 namespace LiquidSFZInternal
 {
@@ -209,10 +210,10 @@ public:
     return gain_;
   }
   bool
-  load (const std::string& filename)
+  load (const std::string& filename, std::vector<Control::Define> defines = {})
   {
     Loader loader (this);
-    if (loader.parse (filename, global_->sample_cache))
+    if (loader.parse (filename, global_->sample_cache, defines))
       {
         regions_      = loader.regions;
         control_      = loader.control;
@@ -243,6 +244,67 @@ public:
         init_channels();
         return true;
       }
+    return false;
+  }
+  bool
+  is_bank (const std::string& filename)
+  {
+    pugi::xml_document doc;
+    auto result = doc.load_file (filename.c_str());
+    if (!result)
+      return false;
+
+    auto bank = doc.child ("AriaBank");
+    if (!bank)
+      return false;
+
+    auto program = bank.child ("AriaProgram");
+    if (!program)
+      return false;
+
+    return true;
+  }
+  bool
+  load_bank (const std::string& filename)
+  {
+    pugi::xml_document doc;
+    auto result = doc.load_file (filename.c_str());
+    if (!result)
+      return false;
+
+    auto bank = doc.child ("AriaBank");
+    if (!bank)
+      return false;
+
+    struct Program {
+      int index;
+      std::string sfz_filename;
+    };
+    std::vector<Program> programs;
+    int i = 0;
+    for (pugi::xml_node program : bank.children ("AriaProgram"))
+      {
+        std::string s = program.attribute("name").as_string();
+
+        auto elem = program.child ("AriaElement");
+        std::string p = elem.attribute ("path").as_string();
+
+        programs.push_back (Program { i++, path_absolute (path_join (path_dirname (filename), p)) });
+      }
+    std::vector<Control::Define> defines;
+    for (pugi::xml_node define : bank.children ("Define"))
+      {
+        std::string name = define.attribute ("name").as_string();
+        std::string value = define.attribute ("value").as_string();
+
+        Control::Define def;
+        def.variable = name;
+        def.value = value;
+        defines.push_back (def);
+      }
+    if (programs.size())
+      return load (programs[0].sfz_filename, defines);
+
     return false;
   }
   std::vector<CCInfo>

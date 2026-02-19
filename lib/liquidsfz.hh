@@ -266,6 +266,10 @@ public:
    */
   bool load (const std::string& filename);
 
+  bool is_bank (const std::string& filename);
+
+  bool load_bank (const std::string& filename);
+
   /**
    * \brief List CCs supported by this .sfz file
    *

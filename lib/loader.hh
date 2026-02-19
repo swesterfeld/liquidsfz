@@ -507,7 +507,7 @@ public:
     return string_printf ("%s: line %d:", current_line_info.filename.c_str(), current_line_info.number);
   }
   bool preprocess_file (const std::string& filename, std::vector<LineInfo>& lines, int level, const std::string& content_str = "");
-  bool parse (const std::string& filename, SampleCache& sample_cache);
+  bool parse (const std::string& filename, SampleCache& sample_cache, const std::vector<Control::Define>& defines);
 };
 
 }

@@ -98,6 +98,18 @@ Synth::load (const std::string& filename)
   return impl->synth.load (filename);
 }
 
+bool
+Synth::is_bank (const std::string& filename)
+{
+  return impl->synth.is_bank (filename);
+}
+
+bool
+Synth::load_bank (const std::string& filename)
+{
+  return impl->synth.load_bank (filename);
+}
+
 void
 Synth::add_event_note_on (uint time_frames, int channel, int key, int velocity)
 {

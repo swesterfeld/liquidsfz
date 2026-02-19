@@ -1098,11 +1098,14 @@ Loader::convert_lfo (Region& region, SimpleLFO& simple_lfo, SimpleLFO::Type type
 }
 
 bool
-Loader::parse (const string& filename, SampleCache& sample_cache)
+Loader::parse (const string& filename, SampleCache& sample_cache, const vector<Control::Define>& defines)
 {
   init_default_curves();
 
   sample_path = path_dirname (filename);
+
+  // used by AriaBank files
+  control.defines = defines;
 
   // read file
   vector<LineInfo> lines;
