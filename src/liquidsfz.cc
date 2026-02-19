@@ -414,7 +414,12 @@ public:
         fflush (stdout);
       });
 
-    bool load_ok = synth.load (filename);
+    bool load_ok = false;
+    if (synth.is_bank (filename))
+      load_ok = synth.load_bank (filename);
+    else
+      load_ok = synth.load (filename);
+
     printf ("%30s\r", ""); // overwrite progress message
     if (!load_ok)
       return false;
