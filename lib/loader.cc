@@ -932,7 +932,6 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
     {
       char ch = contents[i];
       char next = i + 1 < contents.size() ? contents[i + 1] : 0;
-      string line = line_lookahead (contents, i);
 
       static const regex define_re ("#define\\s+(\\$\\S+)\\s+(\\S+)(.*)");
       static const regex include_re ("#include\\s+\"([^\"]*)\"(.*)");
@@ -966,63 +965,84 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
         }
       else if (ch == '/' && next == '/') /* line comment */
         {
+          string line = line_lookahead (contents, i);
           i += line.size();
         }
-      else if (ch == '#' && regex_match (line, sm, define_re))
+      else if (ch == '#')
         {
-          bool overwrite = false;
-          for (auto& old_def : control.defines)
+          string line = line_lookahead (contents, i);
+          if (regex_match (line, sm, define_re))
             {
-              if (old_def.variable == sm[1])
+              bool overwrite = false;
+              for (auto& old_def : control.defines)
                 {
-                  old_def.value = strip_spaces (sm[2]);
-                  overwrite = true;
+                  if (old_def.variable == sm[1])
+                    {
+                      old_def.value = strip_spaces (sm[2]);
+                      overwrite = true;
+                    }
                 }
-            }
-          if (!overwrite)
-            {
-              Control::Define define;
-              define.variable = sm[1];
-              define.value    = strip_spaces (sm[2]);
-              control.defines.push_back (define);
-            }
-
-          i += sm.length() - sm[3].length();
-        }
-      else if (ch == '#' && regex_match (line, sm, include_re))
-        {
-          /* if there is text before the #include statement, this needs to
-           * written to lines to preserve the order of the opcodes
-           *
-           * we don't bump the line number to allow text after the include
-           * to be on the same line
-           */
-          lines.push_back (line_info);
-          line_info.line = "";
-
-          string include_filename = path_absolute (path_join (sample_path, sm[1].str()));
-
-          if (level < MAX_INCLUDE_DEPTH) // prevent infinite recursion for buggy .sfz
-            {
-              bool inc_ok = preprocess_file (include_filename, lines, level + 1);
-              if (!inc_ok)
+              if (!overwrite)
                 {
-                  synth_->error ("%s unable to read #include '%s'\n", line_info.location().c_str(), include_filename.c_str());
+                  Control::Define define;
+                  define.variable = sm[1];
+                  define.value    = strip_spaces (sm[2]);
+                  control.defines.push_back (define);
+                }
+
+              i += sm.length() - sm[3].length();
+            }
+          else if (regex_match (line, sm, include_re))
+            {
+              /* if there is text before the #include statement, this needs to
+               * written to lines to preserve the order of the opcodes
+               *
+               * we don't bump the line number to allow text after the include
+               * to be on the same line
+               */
+              lines.push_back (line_info);
+              line_info.line = "";
+
+              string include_filename = path_absolute (path_join (sample_path, sm[1].str()));
+
+              if (level < MAX_INCLUDE_DEPTH) // prevent infinite recursion for buggy .sfz
+                {
+                  bool inc_ok = preprocess_file (include_filename, lines, level + 1);
+                  if (!inc_ok)
+                    {
+                      synth_->error ("%s unable to read #include '%s'\n", line_info.location().c_str(), include_filename.c_str());
+                      return false;
+                    }
+                }
+              else
+                {
+                  synth_->error ("%s exceeded maximum include depth (%d) while processing #include '%s'\n",
+                                 line_info.location().c_str(), MAX_INCLUDE_DEPTH, include_filename.c_str());
                   return false;
                 }
+              i += sm.length() - sm[2].length();
             }
           else
             {
-              synth_->error ("%s exceeded maximum include depth (%d) while processing #include '%s'\n",
-                             line_info.location().c_str(), MAX_INCLUDE_DEPTH, include_filename.c_str());
-              return false;
+              /* just a normal '#' without #include or #define */
+              line_info.line += ch;
+              i++;
             }
-          i += sm.length() - sm[2].length();
         }
-      else if (ch == '$' && find_variable (line, define))
+      else if (ch == '$')
         {
-          line_info.line += define.value;
-          i += define.variable.size();
+          string line = line_lookahead (contents, i);
+          if (find_variable (line, define))
+            {
+              line_info.line += define.value;
+              i += define.variable.size();
+            }
+          else
+            {
+              /* just a normal '$' without variable */
+              line_info.line += ch;
+              i++;
+            }
         }
       else if (ch == '\r')
         {
