@@ -934,7 +934,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
       char next = i + 1 < contents.size() ? contents[i + 1] : 0;
 
       static const regex define_re ("#define\\s+(\\$\\S+)\\s+(\\S+)(.*)");
-      static const regex include_re ("#include\\s+\"([^\"]*)\"(.*)");
+      static const regex include_re ("#include\\s*(?:=\\s*|\\s+)\"([^\"]*)\"(.*)");
       std::smatch sm;
       Control::Define define;
 
