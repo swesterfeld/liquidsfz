@@ -132,6 +132,7 @@ class JackStandalone
   CommandQueue cmd_q;
   Synth synth;
   std::mutex synth_mutex;
+  std::vector<ProgramInfo> programs;
   std::vector<KeyInfo> keys;
   std::vector<CCInfo> ccs;
 
@@ -317,6 +318,19 @@ public:
       {
         cmd_q.append ([=]() { synth.add_event_note_off (0, ch, key); });
       }
+    else if (cli_parser.command ("program", value))
+      {
+        std::lock_guard lg (synth_mutex); // can't process() while loading
+        value -= 1;
+        if (value < 0 || value >= programs.size())
+          printf ("unsupported program\n");
+        else
+          {
+            printf ("loading program %s...\n\n", programs[value].label().c_str());
+            synth.select_program (value);
+            printf ("%30s\r", ""); // overwrite progress message
+          }
+      }
     else if (cli_parser.command ("cc", ch, cc, value))
       {
         cmd_q.append ([=]() { synth.add_event_cc (0, ch, cc, value); });
@@ -361,6 +375,10 @@ public:
     else if (cli_parser.command ("ccs"))
       {
         show_ccs();
+      }
+    else if (cli_parser.command ("programs"))
+      {
+        show_programs();
       }
     else if (cli_parser.command ("voice_count"))
       {
@@ -416,7 +434,11 @@ public:
 
     bool load_ok = false;
     if (synth.is_bank (filename))
-      load_ok = synth.load_bank (filename);
+      {
+        load_ok = synth.load_bank (filename);
+        if (load_ok)
+          load_ok = synth.select_program (0);
+      }
     else
       load_ok = synth.load (filename);
 
@@ -424,12 +446,27 @@ public:
     if (!load_ok)
       return false;
 
+    programs = synth.list_programs();
     keys = synth.list_keys();
     ccs = synth.list_ccs();
 
     printf ("Preloaded %d samples, %.1f MB.\n\n", synth.cache_file_count(), synth.cache_size() / 1024. / 1024.);
+    show_programs();
     show_ccs();
     return true;
+  }
+  void
+  show_programs()
+  {
+    if (programs.size())
+      {
+        printf ("Supported Programs:\n");
+        for (const auto& program_info : programs)
+          {
+            printf (" - Program %d - %s\n", program_info.index() + 1, program_info.label().c_str());
+          }
+        printf ("\n");
+      }
   }
   void
   show_keys (bool is_switch)
