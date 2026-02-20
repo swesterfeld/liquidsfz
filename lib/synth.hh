@@ -62,6 +62,13 @@ public:
   }
 };
 
+struct ProgramInfo
+{
+  int         index = 0;
+  std::string name;
+  std::string sfz_filename;
+};
+
 class Synth
 {
 public:
@@ -80,6 +87,8 @@ private:
   bool                 idle_voices_changed_ = false;
   std::vector<Region>  regions_;
   Control control_;
+  std::vector<ProgramInfo> bank_program_list_;
+  std::vector<Control::Define> bank_defines_;
   std::vector<CCInfo> cc_list_;
   std::vector<KeyInfo> key_list_;
   CurveTable curve_table_;
@@ -92,7 +101,6 @@ private:
   uint  preload_time_ = 500;
   std::array<bool, 128> is_key_switch_;
   std::array<bool, 128> is_supported_cc_;
-
 
   static constexpr int CC_SUSTAIN       = 64;
   static constexpr int CC_ALL_SOUND_OFF = 120;
@@ -276,20 +284,16 @@ public:
     if (!bank)
       return false;
 
-    struct Program {
-      int index;
-      std::string sfz_filename;
-    };
-    std::vector<Program> programs;
+    std::vector<ProgramInfo> programs;
     int i = 0;
     for (pugi::xml_node program : bank.children ("AriaProgram"))
       {
-        std::string s = program.attribute("name").as_string();
+        std::string name = program.attribute("name").as_string();
 
         auto elem = program.child ("AriaElement");
         std::string p = elem.attribute ("path").as_string();
 
-        programs.push_back (Program { i++, path_absolute (path_join (path_dirname (filename), p)) });
+        programs.push_back (ProgramInfo { i++, name, path_absolute (path_join (path_dirname (filename), p)) });
       }
     std::vector<Control::Define> defines;
     for (pugi::xml_node define : bank.children ("Define"))
@@ -303,9 +307,23 @@ public:
         defines.push_back (def);
       }
     if (programs.size())
-      return load (programs[0].sfz_filename, defines);
+      {
+        bank_program_list_ = programs;
+        bank_defines_ = defines;
+        return true;
+      }
 
     return false;
+  }
+  bool
+  select_program (uint program)
+  {
+    return load (bank_program_list_[program].sfz_filename, bank_defines_);
+  }
+  std::vector<ProgramInfo>
+  list_programs()
+  {
+    return bank_program_list_;
   }
   std::vector<CCInfo>
   list_ccs()

@@ -108,6 +108,21 @@ public:
   bool is_switch() const;
 };
 
+class ProgramInfo
+{
+  friend class Synth;
+
+  struct Impl;
+  std::unique_ptr<Impl> impl;
+public:
+  ProgramInfo();
+  ProgramInfo (ProgramInfo&&) = default;
+  ~ProgramInfo();
+
+  int index() const;
+  std::string label() const;
+};
+
 /**
  * \brief SFZ Synthesizer (main API)
  */
@@ -269,6 +284,10 @@ public:
   bool is_bank (const std::string& filename);
 
   bool load_bank (const std::string& filename);
+
+  std::vector<ProgramInfo> list_programs() const;
+
+  bool select_program (uint program);
 
   /**
    * \brief List CCs supported by this .sfz file
