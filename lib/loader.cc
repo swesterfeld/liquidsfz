@@ -1003,7 +1003,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
               lines.push_back (line_info);
               line_info.line = "";
 
-              string include_filename = path_absolute (path_join (sample_path, sm[1].str()));
+              string include_filename = path_resolve_case_insensitive (path_absolute (path_join (sample_path, sm[1].str())));
 
               if (level < MAX_INCLUDE_DEPTH) // prevent infinite recursion for buggy .sfz
                 {

@@ -6,6 +6,10 @@
 
 #include <vector>
 #include <sstream>
+#include <filesystem>
+#include <string>
+#include <algorithm>
+#include <optional>
 
 using std::string;
 using std::vector;
@@ -58,6 +62,71 @@ string
 path_join (const string& path1, const string& path2)
 {
   return path1 + PATH_SEPARATOR + path2;
+}
+
+namespace fs = std::filesystem;
+
+static string
+to_lower (const string& s)
+{
+  string r = s;
+  transform (r.begin(), r.end(), r.begin(), [](unsigned char c) { return tolower(c); });
+  return r;
+}
+
+// Case-insensitive filename lookup inside one directory
+static std::optional<fs::path>
+find_case_insensitive (const fs::path& directory, const string& target_name)
+{
+  string target_lower = to_lower (target_name);
+
+  for (const auto& entry : fs::directory_iterator (directory))
+    {
+      const string name = entry.path().filename().string();
+
+      if (to_lower (name) == target_lower)
+        return entry.path().filename();
+    }
+  return std::nullopt;
+}
+
+string
+path_resolve_case_insensitive (const string& path)
+{
+  fs::path input_path (path);
+
+  // resolve quickly if case matches exactly
+  if (fs::exists (input_path))
+      return fs::canonical (input_path);
+
+  fs::path current;
+
+  if (input_path.is_absolute())
+    current = input_path.root_path();
+  else
+    current = fs::current_path();
+
+  for (const auto& part : input_path.relative_path())
+    {
+      // if exact subpath exists, take it directly
+      fs::path candidate = current / part;
+      if (fs::exists (candidate))
+        {
+          current = candidate;
+          continue;
+        }
+
+      // otherwise fall back to case-insensitive search
+      if (!fs::exists (current) || !fs::is_directory (current))
+        return path; // fail -> caller will see open failed for path
+
+      auto match = find_case_insensitive (current, part.string());
+      if (!match)
+        return path; // fail -> caller will see open failed for path
+
+      current /= *match;
+    }
+  return current;
 }
 
 /*

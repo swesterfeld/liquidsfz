@@ -293,7 +293,7 @@ public:
         auto elem = program.child ("AriaElement");
         std::string p = elem.attribute ("path").as_string();
 
-        programs.push_back (ProgramInfo { i++, name, path_absolute (path_join (path_dirname (filename), p)) });
+        programs.push_back (ProgramInfo { i++, name, path_resolve_case_insensitive (path_absolute (path_join (path_dirname (filename), p))) });
       }
     std::vector<Control::Define> defines;
     for (pugi::xml_node define : bank.children ("Define"))
