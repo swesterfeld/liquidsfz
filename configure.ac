@@ -184,7 +184,7 @@ fi
 AC_SUBST(PLUGIN_EXT)
 
 AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile lv2/Makefile lv2/liquidsfz.ttl lv2/manifest.ttl
-                 tests/Makefile static/config.sh liquidsfz.pc])
+                 tests/Makefile static/config.sh 3rdparty/Makefile liquidsfz.pc])
 AC_OUTPUT
 
 echo
