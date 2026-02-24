@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#include "liquidsfz.hh"
 #include "midnam.hh"
 #include "log.hh"
 #include "lv2plugin.hh"
@@ -427,6 +426,13 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
     }
 
   return LV2_STATE_SUCCESS;
+}
+
+void
+LV2Plugin::load_threadsafe (const string& filename)
+{
+  // FIXME: not threadsafe
+  queue_filename = filename;
 }
 
 static LV2_Handle

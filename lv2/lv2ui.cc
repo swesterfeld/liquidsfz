@@ -1,9 +1,13 @@
-// Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl-2.1.html
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <inttypes.h>
 #include <string.h>
+#include <unistd.h>
+#include <poll.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "pugl/pugl.h"
 #include "pugl/gl.h"
@@ -11,10 +15,132 @@
 #include "imgui_impl_opengl3.h"
 #include "lv2/ui/ui.h"
 #include "lv2/instance-access/instance-access.h"
+#include "lv2plugin.hh"
 
 #define LIQUIDSFZ_UI_URI      "http://spectmorph.org/plugins/liquidsfz#ui"
 
-class LV2Plugin;
+using std::string;
+
+class FileDialog
+{
+  int file_input_fd = -1;
+  pid_t pid = -1;
+  enum {
+    NONE,
+    ERROR,
+    OPEN,
+    DONE
+  } state = NONE;
+public:
+  FileDialog();
+  ~FileDialog();
+
+  bool is_open ();
+  string get_filename();
+};
+
+FileDialog::FileDialog()
+{
+  int pipe_fds[2];
+  if (pipe (pipe_fds) == -1)
+    {
+      state = ERROR;
+      fprintf (stderr, "LiquidSFZ: FileDialog: pipe() failed");
+      return;
+    }
+  pid = fork();
+  if (pid < 0)
+    {
+      state = ERROR;
+      close (pipe_fds[0]);
+      close (pipe_fds[1]);
+      fprintf (stderr, "LiquidSFZ: FileDialog: fork() failed");
+      return;
+    }
+  if (pid == 0) /* child process */
+    {
+      // replace stdout with pipe
+      if (dup2 (pipe_fds[1], STDOUT_FILENO) == -1)
+        {
+          perror ("LiquidSFZ: FileDialog: dup2() failed");
+          exit (127);
+        }
+
+      // close remaining pipe fds
+      close (pipe_fds[0]);
+      close (pipe_fds[1]);
+
+      static char *argv[3] {
+        (char *) "/usr/bin/kdialog",
+        (char *) "--getopenfilename",
+        nullptr
+      };
+      execvp (argv[0], argv);
+      perror ("LiquidSFZ: FileDialog: execvp() failed");
+
+      // should not be reached in normal operation, so exec failed
+      exit (127);
+    }
+  close (pipe_fds[1]); // close pipe write fd
+  file_input_fd = pipe_fds[0];
+  state = OPEN;
+}
+
+FileDialog::~FileDialog()
+{
+  if (state == OPEN)
+    kill (pid, SIGKILL);
+
+  if (state != ERROR)
+    {
+      assert (file_input_fd >= 0);
+      close (file_input_fd);
+
+      int status;
+      pid_t exited = waitpid (pid, &status, 0);
+      if (exited < 0)
+        fprintf (stderr, "LiquidSFZ: FileDialog: waitpid() failed");
+
+      if (WIFEXITED (status))
+        {
+          int exit_status = WEXITSTATUS (status);
+          if (exit_status != 0)
+            fprintf (stderr, "LiquidSFZ: FileDialog: subprocess failed, exit_status %d", exit_status);
+        }
+      else
+        fprintf (stderr, "LiquidSFZ: FileDialog: child didn't exit normally");
+    }
+}
+
+bool
+FileDialog::is_open()
+{
+  return state == OPEN;
+}
+
+string
+FileDialog::get_filename()
+{
+  assert (state == OPEN);
+
+  struct pollfd pfd;
+  pfd.fd = file_input_fd;
+  pfd.events = POLLIN;
+
+  int ret = poll(&pfd, 1, 0); // 0 ms timeout => non-blocking
+  if (ret > 0 && (pfd.revents & POLLIN))
+    {
+      FILE *f = fdopen (file_input_fd, "r");
+      string filename;
+      int ch;
+      while ((ch = fgetc (f)) > 0)
+        if (ch != '\n')
+          filename += ch;
+      state = DONE;
+      return filename;
+    }
+  return "";
+}
 
 static int width = 0; //XXX
 static int height = 0;
@@ -25,6 +151,13 @@ struct LV2UI
   PuglWorld *world = nullptr;
   PuglView *view = nullptr;
   LV2UI_Resize *ui_resize = nullptr;
+  std::unique_ptr<FileDialog> file_dialog = nullptr;
+  LV2Plugin *plugin = nullptr;
+
+  ~LV2UI()
+  {
+    printf ("LV2UI deleted\n");
+  }
 
   void idle();
 } *hack = nullptr;
@@ -41,6 +174,16 @@ LV2UI::idle()
       printf ("uirz=%p\n", hack->ui_resize);
       hack->ui_resize->ui_resize (hack->ui_resize->handle, width, height);
       resize = false;
+    }
+  if (hack->file_dialog)
+    {
+      string s = file_dialog->get_filename();
+      if (s != "")
+        {
+          printf ("%s\n", s.c_str());
+          plugin->load_threadsafe (s);
+          file_dialog.reset();
+        }
     }
 }
 
@@ -129,6 +272,18 @@ onEvent (PuglView *view, const PuglEvent *event)
           ImGui::Begin("MainUI", nullptr, ImGuiWindowFlags_NoResize);
 #endif
 
+          ImGui::BeginDisabled (hack->file_dialog != nullptr);
+          if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, 0)))
+            {
+              hack->file_dialog = std::make_unique<FileDialog>();
+
+              if (!hack->file_dialog->is_open())
+                {
+                  /* something went wrong creating the filedialog */
+                  hack->file_dialog.reset();
+                }
+            }
+          ImGui::EndDisabled();
           if (ImGui::BeginTable("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
             {
               const char* items1[] = { "Option A", "Option B", "Option C" };
@@ -224,6 +379,7 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   fprintf (stderr, "parent_win_id=%ld\n", parent_win_id);
   LV2UI *ui = new LV2UI;
   hack = ui;
+  hack->plugin = plugin;
 
   // 1. Setup Pugl World and View
   PuglWorld* world = puglNewWorld (PUGL_MODULE, 0);
@@ -259,7 +415,9 @@ instantiate (const LV2UI_Descriptor*   descriptor,
 
   // 2. Setup ImGui
   IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
+  //ImGui::CreateContext();
+  ImGuiContext* ctx = ImGui::CreateContext();
+  ImGui::SetCurrentContext(ctx); // FIXME: need to set this context every time we access ImGui
   ImGuiIO& io = ImGui::GetIO(); (void)io;
   ImGui::StyleColorsDark();
 
@@ -315,14 +473,9 @@ instantiate (const LV2UI_Descriptor*   descriptor,
 static void
 cleanup (LV2UI_Handle handle)
 {
-#if 0
-  LV2_DEBUG ("cleanup called for ui\n");
-
+  printf ("cleanup\n");
   LV2UI *ui = static_cast <LV2UI *> (handle);
   delete ui;
-
-  sm_plugin_cleanup();
-#endif
 }
 
 static void

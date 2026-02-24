@@ -1,3 +1,12 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+#pragma once
+
+#include <string>
+#include <mutex>
+
+#include "liquidsfz.hh"
+
 #if __has_include (<lv2/core/lv2.h>)
 // new versions of LV2 use different location for headers
 #include "lv2/atom/atom.h"
@@ -76,7 +85,6 @@ class LV2Plugin
   std::string              midnam_str;
   std::mutex               midnam_str_mutex;
 public:
-
   LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam);
 
   const char *read_set_filename (const LV2_Atom_Object *obj);
@@ -92,4 +100,6 @@ public:
   void connect_port (uint32_t port, void* data);
   LV2_State_Status save (LV2_State_Store_Function store, LV2_State_Handle handle, const LV2_Feature* const* features);
   LV2_State_Status restore (LV2_State_Retrieve_Function retrieve, LV2_State_Handle handle, const LV2_Feature* const* features);
+
+  void load_threadsafe (const std::string& filename);
 };
