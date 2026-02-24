@@ -16,18 +16,33 @@
 
 class LV2Plugin;
 
+static int width = 0; //XXX
+static int height = 0;
+static bool resize = false;
+
 struct LV2UI
 {
   PuglWorld *world = nullptr;
   PuglView *view = nullptr;
+  LV2UI_Resize *ui_resize = nullptr;
 
-  void
-  idle()
-  {
-    puglUpdate (world, 0.0);
-    puglObscureView (view); // FIXME: should only update on change
-  }
-};
+  void idle();
+} *hack = nullptr;
+
+void
+LV2UI::idle()
+{
+  puglUpdate (world, 0.0);
+  puglObscureView (view); // FIXME: should only update on change
+  if (resize)
+    {
+      printf ("set size hint %d %d\n", width, height);
+      puglSetSizeHint (view, PUGL_CURRENT_SIZE, width, height);
+      printf ("uirz=%p\n", hack->ui_resize);
+      hack->ui_resize->ui_resize (hack->ui_resize->handle, width, height);
+      resize = false;
+    }
+}
 
 PuglStatus
 onEvent (PuglView *view, const PuglEvent *event)
@@ -86,16 +101,19 @@ onEvent (PuglView *view, const PuglEvent *event)
           ImGui_ImplOpenGL3_NewFrame();
           ImGui::NewFrame();
 
-          static int width = 0; //XXX
-          static int height = 0;
           // 3. Single full-window UI
           ImGui::SetNextWindowPos (ImVec2 (0, 0));
-          ImGui::SetNextWindowSize (io.DisplaySize);
-#if 0
+          //ImGui::SetNextWindowSize (io.DisplaySize);
+          //
           if (width)
             ImGui::SetNextWindowSize (io.DisplaySize);
           else
-            ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, 0), ImGuiCond_Always);
+            {
+              ImGui::SetNextWindowSize(ImVec2(552, 0), ImGuiCond_Always);
+              io.DisplaySize = ImVec2 (800, 600);
+            }
+          //printf ("dsz %f %f\n", io.DisplaySize.x, io.DisplaySize.y);
+#if 0
 #endif
           ImGuiWindowFlags flags =
               ImGuiWindowFlags_NoTitleBar |
@@ -148,6 +166,7 @@ onEvent (PuglView *view, const PuglEvent *event)
               width = required_size.x;
               height = required_size.y;
               printf ("required_size: %f %f\n", required_size.x, required_size.y);
+              resize = true;
             }
           ImGui::End();
 
@@ -204,19 +223,21 @@ instantiate (const LV2UI_Descriptor*   descriptor,
     }
   fprintf (stderr, "parent_win_id=%ld\n", parent_win_id);
   LV2UI *ui = new LV2UI;
+  hack = ui;
 
   // 1. Setup Pugl World and View
   PuglWorld* world = puglNewWorld (PUGL_MODULE, 0);
   PuglView* view = puglNewView (world);
   ui->world = world;
   ui->view = view;
+  ui->ui_resize = ui_resize;
 
   // XXXpuglSetClassName(world, "ImGui Minimal Example");
   // XXXpuglSetWindowTitle(view, "ImGui Minimal Example");
-  puglSetSizeHint (view, PUGL_MIN_SIZE, 128, 128);
+  puglSetSizeHint (view, PUGL_MIN_SIZE, 64, 64);
   puglSetSizeHint (view, PUGL_MAX_SIZE, 2048, 2048);
-  puglSetSizeHint (view, PUGL_DEFAULT_SIZE, 800, 600);
-  puglSetViewHint (view, PUGL_RESIZABLE, true);
+  puglSetSizeHint (view, PUGL_DEFAULT_SIZE, 400, 100);
+  puglSetViewHint (view, PUGL_RESIZABLE, false);
   puglSetBackend (view, puglGlBackend());
 
   // Request OpenGL 3.3 Core Profile (adjust to match your ImGui glsl version)
@@ -252,7 +273,8 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   // 2. Scale the default font
   double base_font_size = 12.f;
   io.Fonts->AddFontFromFileTTF("/home/stefan/.local/share/spectmorph/fonts/dejavu-lgc-sans-bold.ttf", base_font_size * scale_factor);
-  puglSetSizeHint (view, PUGL_CURRENT_SIZE, 400 * scale_factor, 400 * scale_factor);
+  //puglSetSizeHint (view, PUGL_CURRENT_SIZE, 400 * scale_factor, 400 * scale_factor);
+  printf ("%f\n", 400 * scale_factor);
   // ---------------------
 
   // Note: To call OpenGL initialization outside of a Pugl event,
@@ -261,6 +283,16 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   ImGui_ImplOpenGL3_Init("#version 130");
   puglLeaveContext(view);
 
+  while (!width)
+    {
+      hack->idle();
+      printf ("w=%d h=%d\n", width, height);
+    }
+  printf ("ssh %d %d\n", width, height);
+  //puglSetSizeHint (view, PUGL_DEFAULT_SIZE, width, height);
+   hack->ui_resize->ui_resize (hack->ui_resize->handle, width, height);
+   //puglSetSizeHint (view, PUGL_CURRENT_SIZE, width, height);
+   resize = true;
   *widget = (void *) puglGetNativeView (view);
   return ui;
 #if 0
