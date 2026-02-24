@@ -148,19 +148,32 @@ static bool resize = false;
 
 struct LV2UI
 {
+  ImGuiContext *imgui_ctx = nullptr;
   PuglWorld *world = nullptr;
   PuglView *view = nullptr;
   LV2UI_Resize *ui_resize = nullptr;
   std::unique_ptr<FileDialog> file_dialog = nullptr;
   LV2Plugin *plugin = nullptr;
 
-  ~LV2UI()
-  {
-    printf ("LV2UI deleted\n");
-  }
+  ~LV2UI();
 
+  PuglStatus on_event (const PuglEvent *event);
   void idle();
-} *hack = nullptr;
+};
+
+
+LV2UI::~LV2UI()
+{
+  ImGui::SetCurrentContext (imgui_ctx);
+
+  puglEnterContext(view);
+  ImGui_ImplOpenGL3_Shutdown();
+  puglLeaveContext(view);
+
+  ImGui::DestroyContext();
+  puglFreeView(view);
+  puglFreeWorld(world);
+}
 
 void
 LV2UI::idle()
@@ -171,11 +184,11 @@ LV2UI::idle()
     {
       printf ("set size hint %d %d\n", width, height);
       puglSetSizeHint (view, PUGL_CURRENT_SIZE, width, height);
-      printf ("uirz=%p\n", hack->ui_resize);
-      hack->ui_resize->ui_resize (hack->ui_resize->handle, width, height);
+      printf ("uirz=%p\n", ui_resize);
+      ui_resize->ui_resize (ui_resize->handle, width, height);
       resize = false;
     }
-  if (hack->file_dialog)
+  if (file_dialog)
     {
       string s = file_dialog->get_filename();
       if (s != "")
@@ -188,7 +201,7 @@ LV2UI::idle()
 }
 
 PuglStatus
-onEvent (PuglView *view, const PuglEvent *event)
+LV2UI::on_event (const PuglEvent *event)
 {
   if (event->type == PUGL_REALIZE || event->type == PUGL_UNREALIZE)
     return PUGL_SUCCESS;
@@ -199,6 +212,7 @@ onEvent (PuglView *view, const PuglEvent *event)
   } s;
   auto state = &s;
 
+  ImGui::SetCurrentContext (imgui_ctx);
   ImGuiIO& io = ImGui::GetIO();
 
   switch (event->type)
@@ -272,15 +286,15 @@ onEvent (PuglView *view, const PuglEvent *event)
           ImGui::Begin("MainUI", nullptr, ImGuiWindowFlags_NoResize);
 #endif
 
-          ImGui::BeginDisabled (hack->file_dialog != nullptr);
+          ImGui::BeginDisabled (file_dialog != nullptr);
           if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, 0)))
             {
-              hack->file_dialog = std::make_unique<FileDialog>();
+              file_dialog = std::make_unique<FileDialog>();
 
-              if (!hack->file_dialog->is_open())
+              if (!file_dialog->is_open())
                 {
                   /* something went wrong creating the filedialog */
-                  hack->file_dialog.reset();
+                  file_dialog.reset();
                 }
             }
           ImGui::EndDisabled();
@@ -378,8 +392,7 @@ instantiate (const LV2UI_Descriptor*   descriptor,
     }
   fprintf (stderr, "parent_win_id=%ld\n", parent_win_id);
   LV2UI *ui = new LV2UI;
-  hack = ui;
-  hack->plugin = plugin;
+  ui->plugin = plugin;
 
   // 1. Setup Pugl World and View
   PuglWorld* world = puglNewWorld (PUGL_MODULE, 0);
@@ -403,8 +416,13 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   puglSetParent (view, parent_win_id);
 
   // Bind our app state and event handler
-  //puglSetHandle (view, &state); // FIXME
-  puglSetEventFunc (view, onEvent);
+  puglSetHandle (view, ui); // FIXME
+  puglSetEventFunc (view,
+    [] (PuglView *view, const PuglEvent *event)
+      {
+        LV2UI *ui = (LV2UI *) puglGetHandle (view);
+        return ui->on_event (event);
+      });
 
   if (puglRealize (view) != PUGL_SUCCESS)
     {
@@ -415,9 +433,9 @@ instantiate (const LV2UI_Descriptor*   descriptor,
 
   // 2. Setup ImGui
   IMGUI_CHECKVERSION();
-  //ImGui::CreateContext();
   ImGuiContext* ctx = ImGui::CreateContext();
-  ImGui::SetCurrentContext(ctx); // FIXME: need to set this context every time we access ImGui
+  ui->imgui_ctx = ctx;
+  ImGui::SetCurrentContext (ctx);
   ImGuiIO& io = ImGui::GetIO(); (void)io;
   ImGui::StyleColorsDark();
 
@@ -443,12 +461,12 @@ instantiate (const LV2UI_Descriptor*   descriptor,
 
   while (!width)
     {
-      hack->idle();
+      ui->idle();
       printf ("w=%d h=%d\n", width, height);
     }
   printf ("ssh %d %d\n", width, height);
   //puglSetSizeHint (view, PUGL_DEFAULT_SIZE, width, height);
-   hack->ui_resize->ui_resize (hack->ui_resize->handle, width, height);
+   ui->ui_resize->ui_resize (ui->ui_resize->handle, width, height);
    //puglSetSizeHint (view, PUGL_CURRENT_SIZE, width, height);
    resize = true;
   *widget = (void *) puglGetNativeView (view);
