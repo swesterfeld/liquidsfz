@@ -58,6 +58,8 @@ dnl
 AC_DEFUN([AC_LV2_REQUIREMENTS],
 [
   PKG_CHECK_MODULES([LV2], [[lv2 >= 1.2.0]])
+  PKG_CHECK_MODULES([GL], [gl])
+  PKG_CHECK_MODULES([X11], [x11 xext xrandr xcursor])
 ])
 
 dnl
