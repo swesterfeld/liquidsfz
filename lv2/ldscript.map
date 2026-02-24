@@ -1,4 +1,6 @@
 {
-  global: lv2_descriptor;
+  global:
+    lv2_descriptor;
+    lv2ui_descriptor;
   local: *;
 };

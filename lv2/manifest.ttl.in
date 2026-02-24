@@ -10,3 +10,8 @@
   a lv2:Plugin ;
   lv2:binary <liquidsfz_lv2.@PLUGIN_EXT@>;
   rdfs:seeAlso <liquidsfz.ttl> .
+
+<http://spectmorph.org/plugins/liquidsfz#ui>
+  a ui:X11UI;
+  ui:binary <liquidsfz_lv2.@PLUGIN_EXT@>;
+  rdfs:seeAlso <liquidsfz.ttl> .
