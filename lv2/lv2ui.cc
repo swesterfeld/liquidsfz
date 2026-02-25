@@ -142,10 +142,6 @@ FileDialog::get_filename()
   return "";
 }
 
-static int width = 0; //XXX
-static int height = 0;
-static bool resize = false;
-
 struct LV2UI
 {
   ImGuiContext *imgui_ctx = nullptr;
@@ -154,11 +150,15 @@ struct LV2UI
   LV2UI_Resize *ui_resize = nullptr;
   std::unique_ptr<FileDialog> file_dialog = nullptr;
   LV2Plugin *plugin = nullptr;
+  bool configured = false;
+  int width = 0;
+  int height = 0;
 
   ~LV2UI();
 
   PuglStatus on_event (const PuglEvent *event);
   void idle();
+  ImVec2 render_frame();
 };
 
 
@@ -180,14 +180,6 @@ LV2UI::idle()
 {
   puglUpdate (world, 0.0);
   puglObscureView (view); // FIXME: should only update on change
-  if (resize)
-    {
-      printf ("set size hint %d %d\n", width, height);
-      puglSetSizeHint (view, PUGL_CURRENT_SIZE, width, height);
-      printf ("uirz=%p\n", ui_resize);
-      ui_resize->ui_resize (ui_resize->handle, width, height);
-      resize = false;
-    }
   if (file_dialog)
     {
       string s = file_dialog->get_filename();
@@ -206,12 +198,6 @@ LV2UI::on_event (const PuglEvent *event)
   if (event->type == PUGL_REALIZE || event->type == PUGL_UNREALIZE)
     return PUGL_SUCCESS;
 
-  static struct State { //XXX
-    int current_item1{};
-    int current_item2{};
-  } s;
-  auto state = &s;
-
   ImGui::SetCurrentContext (imgui_ctx);
   ImGuiIO& io = ImGui::GetIO();
 
@@ -223,6 +209,7 @@ LV2UI::on_event (const PuglEvent *event)
         // Pugl automatically binds the GL context before configure/expose events
         glViewport (0, 0, event->configure.width, event->configure.height);
         printf ("rsz %d %d\n", event->configure.width, event->configure.height);
+        configured = true;
         break;
       case PUGL_CLOSE:
         //state->quit = true;
@@ -257,88 +244,7 @@ LV2UI::on_event (const PuglEvent *event)
           // 2. Start ImGui Frame
           ImGui_ImplOpenGL3_NewFrame();
           ImGui::NewFrame();
-
-          // 3. Single full-window UI
-          ImGui::SetNextWindowPos (ImVec2 (0, 0));
-          //ImGui::SetNextWindowSize (io.DisplaySize);
-          //
-          if (width)
-            ImGui::SetNextWindowSize (io.DisplaySize);
-          else
-            {
-              ImGui::SetNextWindowSize(ImVec2(552, 0), ImGuiCond_Always);
-              io.DisplaySize = ImVec2 (800, 600);
-            }
-          //printf ("dsz %f %f\n", io.DisplaySize.x, io.DisplaySize.y);
-#if 0
-#endif
-          ImGuiWindowFlags flags =
-              ImGuiWindowFlags_NoTitleBar |
-              ImGuiWindowFlags_NoResize |
-              ImGuiWindowFlags_NoMove |
-              ImGuiWindowFlags_NoCollapse |
-              ImGuiWindowFlags_NoBringToFrontOnFocus;
-#if 0
-          ImGui::Begin("MainUI", nullptr, flags);
-#endif
-          ImGui::Begin("CalcSize", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
-#if 0
-          ImGui::Begin("MainUI", nullptr, ImGuiWindowFlags_NoResize);
-#endif
-
-          ImGui::BeginDisabled (file_dialog != nullptr);
-          if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, 0)))
-            {
-              file_dialog = std::make_unique<FileDialog>();
-
-              if (!file_dialog->is_open())
-                {
-                  /* something went wrong creating the filedialog */
-                  file_dialog.reset();
-                }
-            }
-          ImGui::EndDisabled();
-          if (ImGui::BeginTable("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
-            {
-              const char* items1[] = { "Option A", "Option B", "Option C" };
-              const char* items2[] = { "Red", "Green", "Blue" };
-
-              ImGui::TableNextRow();
-              ImGui::TableSetColumnIndex (0);
-              ImGui::AlignTextToFramePadding();
-              ImGui::Text("Select Option:");
-              ImGui::TableSetColumnIndex (1);
-              ImGui::SetNextItemWidth (-FLT_MIN);      // Fill remaining column
-              ImGui::Combo("##combo1", &state->current_item1, items1, IM_ARRAYSIZE(items1));
-
-              ImGui::TableNextRow();
-              ImGui::TableSetColumnIndex (0);
-              ImGui::AlignTextToFramePadding();
-              ImGui::Text("Select Color:");
-              ImGui::TableSetColumnIndex (1);
-              ImGui::SetNextItemWidth (-FLT_MIN);      // Fill remaining column
-              ImGui::Combo("##combo2", &state->current_item2, items2, IM_ARRAYSIZE(items2));
-
-              ImGui::TableNextRow();
-              ImGui::TableSetColumnIndex (0);
-              ImGui::AlignTextToFramePadding();
-              ImGui::Text("Select Color:");
-              ImGui::TableSetColumnIndex (1);
-              ImGui::SetNextItemWidth (-FLT_MIN);      // Fill remaining column
-              ImGui::Combo("##combo3", &state->current_item2, items2, IM_ARRAYSIZE(items2));
-              ImGui::EndTable();
-            }
-          ImVec2 required_size = ImGui::GetWindowSize();
-          static int frame_count = 0; // XXX
-          if (frame_count++ == 1)
-            {
-              width = required_size.x;
-              height = required_size.y;
-              printf ("required_size: %f %f\n", required_size.x, required_size.y);
-              resize = true;
-            }
-          ImGui::End();
-
+          render_frame();
           // 4. Rendering
           ImGui::Render();
           glClearColor (0.1f, 0.1f, 0.1f, 1.0f);
@@ -349,9 +255,95 @@ LV2UI::on_event (const PuglEvent *event)
       default:
         break;
     }
-
-     return PUGL_SUCCESS;
+  return PUGL_SUCCESS;
 }
+
+ImVec2
+LV2UI::render_frame()
+{
+  static struct State { //XXX
+    int current_item1{};
+    int current_item2{};
+  } s;
+  auto state = &s;
+
+  ImGuiIO& io = ImGui::GetIO();
+
+  // 3. Single full-window UI
+  ImGui::SetNextWindowPos (ImVec2 (0, 0));
+  if (width)
+    {
+      ImGui::SetNextWindowSize (io.DisplaySize);
+    }
+  else
+    {
+      ImGui::SetNextWindowSize(ImVec2(552, 0), ImGuiCond_Always);
+      io.DisplaySize = ImVec2 (800, 600);
+    }
+  //printf ("dsz %f %f\n", io.DisplaySize.x, io.DisplaySize.y);
+#if 0
+#endif
+  ImGuiWindowFlags flags =
+      ImGuiWindowFlags_NoTitleBar |
+      ImGuiWindowFlags_NoResize |
+      ImGuiWindowFlags_NoMove |
+      ImGuiWindowFlags_NoCollapse |
+      ImGuiWindowFlags_NoBringToFrontOnFocus;
+#if 0
+  ImGui::Begin("MainUI", nullptr, flags);
+#endif
+  ImGui::Begin("CalcSize", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+#if 0
+  ImGui::Begin("MainUI", nullptr, ImGuiWindowFlags_NoResize);
+#endif
+
+  ImGui::BeginDisabled (file_dialog != nullptr);
+  if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, 0)))
+    {
+      file_dialog = std::make_unique<FileDialog>();
+
+      if (!file_dialog->is_open())
+        {
+          /* something went wrong creating the filedialog */
+          file_dialog.reset();
+        }
+    }
+  ImGui::EndDisabled();
+  if (ImGui::BeginTable("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
+    {
+      const char* items1[] = { "Option A", "Option B", "Option C" };
+      const char* items2[] = { "Red", "Green", "Blue" };
+
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex (0);
+      ImGui::AlignTextToFramePadding();
+      ImGui::Text("Select Option:");
+      ImGui::TableSetColumnIndex (1);
+      ImGui::SetNextItemWidth (-FLT_MIN);      // Fill remaining column
+      ImGui::Combo("##combo1", &state->current_item1, items1, IM_ARRAYSIZE(items1));
+
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex (0);
+      ImGui::AlignTextToFramePadding();
+      ImGui::Text("Select Color:");
+      ImGui::TableSetColumnIndex (1);
+      ImGui::SetNextItemWidth (-FLT_MIN);      // Fill remaining column
+      ImGui::Combo("##combo2", &state->current_item2, items2, IM_ARRAYSIZE(items2));
+
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex (0);
+      ImGui::AlignTextToFramePadding();
+      ImGui::Text("Select Color:");
+      ImGui::TableSetColumnIndex (1);
+      ImGui::SetNextItemWidth (-FLT_MIN);      // Fill remaining column
+      ImGui::Combo("##combo3", &state->current_item2, items2, IM_ARRAYSIZE(items2));
+      ImGui::EndTable();
+    }
+  ImVec2 required_size = ImGui::GetWindowSize();
+  ImGui::End();
+  return required_size;
+}
+
 
 static LV2UI_Handle
 instantiate (const LV2UI_Descriptor*   descriptor,
@@ -457,18 +449,30 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   // we must manually make the context current first.
   puglEnterContext(view);
   ImGui_ImplOpenGL3_Init("#version 130");
+  ImVec2 required_size;
+  for (int frames = 0; frames < 2; frames++)
+    {
+      ImGui_ImplOpenGL3_NewFrame();
+      io.DisplaySize = ImVec2 (800, 600);
+
+      // ImGui doesn't return correct size on first frame, so we need to render twice
+      ImGui::NewFrame();
+      required_size = ui->render_frame();
+      ImGui::EndFrame();
+    }
+  ui->width = required_size.x;
+  ui->height = required_size.y;
+  printf ("required_size: %f %f\n", required_size.x, required_size.y);
   puglLeaveContext(view);
 
-  while (!width)
+  puglSetSizeHint (view, PUGL_CURRENT_SIZE, ui->width, ui->height);
+
+  while (!ui->configured)
     {
+      usleep (50000);
       ui->idle();
-      printf ("w=%d h=%d\n", width, height);
     }
-  printf ("ssh %d %d\n", width, height);
-  //puglSetSizeHint (view, PUGL_DEFAULT_SIZE, width, height);
-   ui->ui_resize->ui_resize (ui->ui_resize->handle, width, height);
-   //puglSetSizeHint (view, PUGL_CURRENT_SIZE, width, height);
-   resize = true;
+
   *widget = (void *) puglGetNativeView (view);
   return ui;
 #if 0
