@@ -3,7 +3,8 @@ FROM archlinux
 RUN pacman -Syu --noconfirm
 RUN pacman -S --noconfirm \
     gcc clang make automake autoconf libtool pkg-config \
-    jack libsndfile lv2 lv2lint fftw
+    jack libsndfile lv2 lv2lint fftw mesa libxcursor \
+    libxrandr
 
 ADD . /liquidsfz
 WORKDIR /liquidsfz
