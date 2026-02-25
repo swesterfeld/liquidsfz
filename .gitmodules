@@ -1,5 +1,5 @@
 [submodule "3rdparty/pugl"]
-	path = 3rdparty/pugl
+	path = 3rdparty/pugl-old
 	url = https://github.com/lv2/pugl.git
 [submodule "3rdparty/imgui"]
 	path = 3rdparty/imgui
