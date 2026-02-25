@@ -84,6 +84,12 @@ dnl -------------------- lv2 support is optional ----------------------------
 AC_ARG_WITH([lv2], [AS_HELP_STRING([--with-lv2], [build support for LV2])], [], [with_lv2=yes])
 if test "x$with_lv2" != "xno"; then
   AC_LV2_REQUIREMENTS
+  if test ! -f "3rdparty/imgui/imgui.cpp"; then
+    echo "IMGUI is missing. Usually this means you cloned the repo without submodules, use"
+    echo
+    echo "git submodule update --init --recursive"
+    exit 1
+  fi
 fi
 AM_CONDITIONAL([COND_WITH_LV2], [test "x$with_lv2" != "xno"])
 dnl -------------------------------------------------------------------------
