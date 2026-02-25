@@ -163,10 +163,11 @@ struct LV2UI
   PuglWorld *world = nullptr;
   PuglView *view = nullptr;
   LV2UI_Resize *ui_resize = nullptr;
-  std::unique_ptr<FileDialog> file_dialog = nullptr;
+  std::unique_ptr<FileDialog> file_dialog;
   LV2Plugin *plugin = nullptr;
   bool configured = false;
   double last_time = 0;
+  int frame_count = 0;
 
   ~LV2UI();
 
@@ -193,7 +194,16 @@ void
 LV2UI::idle()
 {
   puglUpdate (world, 0.0);
-  puglObscureView (view); // FIXME: should only update on change
+
+  if (frame_count < 50)
+    {
+      /* HACK: ImGui rendering is not correct for the first few frames,
+       * so we enforce redrawing a few frames after initialization
+       */
+      puglObscureView (view);
+      frame_count++;
+    }
+
   if (file_dialog)
     {
       string s = file_dialog->get_filename();
@@ -232,6 +242,7 @@ LV2UI::on_event (const PuglEvent *event)
 
       case PUGL_MOTION:
         io.AddMousePosEvent (event->motion.x, event->motion.y);
+        puglObscureView (view);
         break;
 
       case PUGL_BUTTON_PRESS:
@@ -242,11 +253,13 @@ LV2UI::on_event (const PuglEvent *event)
           else if (event->button.button == 2) button = 2; // Middle
           else if (event->button.button == 3) button = 1; // Right
           io.AddMouseButtonEvent (button, event->type == PUGL_BUTTON_PRESS);
+          puglObscureView (view);
           break;
         }
 
       case PUGL_SCROLL:
         io.AddMouseWheelEvent (event->scroll.dx, event->scroll.dy);
+        puglObscureView (view);
         break;
 
       case PUGL_EXPOSE:
@@ -460,7 +473,6 @@ instantiate (const LV2UI_Descriptor*   descriptor,
       ImGui::EndFrame();
     }
   puglLeaveContext (view);
-
   puglSetSizeHint (view, PUGL_CURRENT_SIZE, required_size.x, required_size.y);
 
   while (!ui->configured)
