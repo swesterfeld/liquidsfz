@@ -22,6 +22,7 @@
 #include "config.h"
 
 #include <term.h>
+#include <termios.h>
 #include <sys/resource.h>
 
 using std::vector;
