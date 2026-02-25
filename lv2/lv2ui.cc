@@ -244,6 +244,7 @@ LV2UI::on_event (const PuglEvent *event)
           // 2. Start ImGui Frame
           ImGui_ImplOpenGL3_NewFrame();
           ImGui::NewFrame();
+          ImGui::SetNextWindowSize (io.DisplaySize);
           render_frame();
           // 4. Rendering
           ImGui::Render();
@@ -271,15 +272,6 @@ LV2UI::render_frame()
 
   // 3. Single full-window UI
   ImGui::SetNextWindowPos (ImVec2 (0, 0));
-  if (width)
-    {
-      ImGui::SetNextWindowSize (io.DisplaySize);
-    }
-  else
-    {
-      ImGui::SetNextWindowSize(ImVec2(552, 0), ImGuiCond_Always);
-      io.DisplaySize = ImVec2 (800, 600);
-    }
   //printf ("dsz %f %f\n", io.DisplaySize.x, io.DisplaySize.y);
 #if 0
 #endif
@@ -382,7 +374,6 @@ instantiate (const LV2UI_Descriptor*   descriptor,
     {
       return nullptr; // host bug, we need this feature
     }
-  fprintf (stderr, "parent_win_id=%ld\n", parent_win_id);
   LV2UI *ui = new LV2UI;
   ui->plugin = plugin;
 
@@ -453,10 +444,11 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   for (int frames = 0; frames < 2; frames++)
     {
       ImGui_ImplOpenGL3_NewFrame();
-      io.DisplaySize = ImVec2 (800, 600);
+      io.DisplaySize = ImVec2 (400 * scale_factor, 400 * scale_factor);
 
       // ImGui doesn't return correct size on first frame, so we need to render twice
       ImGui::NewFrame();
+      ImGui::SetNextWindowSize (ImVec2 (400 * scale_factor, 0));
       required_size = ui->render_frame();
       ImGui::EndFrame();
     }
