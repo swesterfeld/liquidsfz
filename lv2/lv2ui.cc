@@ -414,7 +414,7 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   puglSetParent (view, parent_win_id);
 
   // Bind our app state and event handler
-  puglSetHandle (view, ui); // FIXME
+  puglSetHandle (view, ui);
   puglSetEventFunc (view,
     [] (PuglView *view, const PuglEvent *event)
       {
