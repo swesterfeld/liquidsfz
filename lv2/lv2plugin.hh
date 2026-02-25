@@ -33,6 +33,7 @@
 
 class LV2Plugin
 {
+public:
   enum PortIndex
   {
     MIDI_IN    = 0,
@@ -43,6 +44,7 @@ class LV2Plugin
     NOTIFY     = 5
   };
 
+private:
   // URIs
   struct URIS
   {

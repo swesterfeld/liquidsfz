@@ -165,13 +165,20 @@ struct LV2UI
   LV2UI_Resize *ui_resize = nullptr;
   std::unique_ptr<FileDialog> file_dialog;
   LV2Plugin *plugin = nullptr;
+  LV2UI_Write_Function write_function = nullptr;
+  LV2UI_Controller controller = nullptr;
+
   bool configured = false;
   double last_time = 0;
   int frame_count = 0;
 
+  float plugin_control_level = 0;
+  int test_item1 = 0;
+
   ~LV2UI();
 
   PuglStatus on_event (const PuglEvent *event);
+  void port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer);
   void idle();
   ImVec2 render_frame();
 };
@@ -290,12 +297,6 @@ LV2UI::on_event (const PuglEvent *event)
 ImVec2
 LV2UI::render_frame()
 {
-  static struct State { //XXX
-    int current_item1{};
-    int current_item2{};
-  } s;
-  auto state = &s;
-
   ImGuiIO& io = ImGui::GetIO();
 
   double current_time = puglGetTime (puglGetWorld (view));
@@ -304,7 +305,7 @@ LV2UI::render_frame()
 
   // 3. Single full-window UI
   ImGui::SetNextWindowPos (ImVec2 (0, 0));
- 
+
   ImGuiWindowFlags flags =
       ImGuiWindowFlags_NoTitleBar |
       ImGuiWindowFlags_NoResize |
@@ -330,31 +331,26 @@ LV2UI::render_frame()
   if (ImGui::BeginTable("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
     {
       const char* items1[] = { "Option A", "Option B", "Option C" };
-      const char* items2[] = { "Red", "Green", "Blue" };
+
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex (0);
+      ImGui::AlignTextToFramePadding();
+      ImGui::Text("Output Level:");
+      ImGui::TableSetColumnIndex (1);
+      ImGui::SetNextItemWidth (-FLT_MIN);
+      if (ImGui::SliderFloat("##slider1", &plugin_control_level, -80.f, 20.f))
+        {
+          write_function (controller, LV2Plugin::LEVEL, sizeof (float), 0, &plugin_control_level);
+        }
 
       ImGui::TableNextRow();
       ImGui::TableSetColumnIndex (0);
       ImGui::AlignTextToFramePadding();
       ImGui::Text("Select Option:");
       ImGui::TableSetColumnIndex (1);
-      ImGui::SetNextItemWidth (-FLT_MIN);      // Fill remaining column
-      ImGui::Combo("##combo1", &state->current_item1, items1, IM_ARRAYSIZE(items1));
+      ImGui::SetNextItemWidth (-FLT_MIN);
+      ImGui::Combo("##combo1", &test_item1, items1, IM_ARRAYSIZE(items1));
 
-      ImGui::TableNextRow();
-      ImGui::TableSetColumnIndex (0);
-      ImGui::AlignTextToFramePadding();
-      ImGui::Text("Select Color:");
-      ImGui::TableSetColumnIndex (1);
-      ImGui::SetNextItemWidth (-FLT_MIN);      // Fill remaining column
-      ImGui::Combo("##combo2", &state->current_item2, items2, IM_ARRAYSIZE(items2));
-
-      ImGui::TableNextRow();
-      ImGui::TableSetColumnIndex (0);
-      ImGui::AlignTextToFramePadding();
-      ImGui::Text("Select Color:");
-      ImGui::TableSetColumnIndex (1);
-      ImGui::SetNextItemWidth (-FLT_MIN);      // Fill remaining column
-      ImGui::Combo("##combo3", &state->current_item2, items2, IM_ARRAYSIZE(items2));
       ImGui::EndTable();
     }
   ImVec2 required_size = ImGui::GetWindowSize();
@@ -362,6 +358,15 @@ LV2UI::render_frame()
   return required_size;
 }
 
+void
+LV2UI::port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer)
+{
+  if (port_index == LV2Plugin::LEVEL)
+    {
+      plugin_control_level = *(const float *) buffer;
+      puglObscureView (view);
+    }
+}
 
 static LV2UI_Handle
 instantiate (const LV2UI_Descriptor*   descriptor,
@@ -409,6 +414,8 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   ui->world = world;
   ui->view = view;
   ui->ui_resize = ui_resize;
+  ui->write_function = write_function;
+  ui->controller = controller;
 
   // XXXpuglSetClassName(world, "ImGui Minimal Example");
   // XXXpuglSetWindowTitle(view, "ImGui Minimal Example");
@@ -515,17 +522,14 @@ cleanup (LV2UI_Handle handle)
 }
 
 static void
-port_event(LV2UI_Handle handle,
-           uint32_t     port_index,
-           uint32_t     buffer_size,
-           uint32_t     format,
-           const void*  buffer)
+port_event (LV2UI_Handle handle,
+            uint32_t     port_index,
+            uint32_t     buffer_size,
+            uint32_t     format,
+            const void*  buffer)
 {
-#if 0
   LV2UI *ui = static_cast <LV2UI *> (handle);
   ui->port_event (port_index, buffer_size, format, buffer);
-#endif
-
 }
 
 static int
