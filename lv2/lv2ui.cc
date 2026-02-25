@@ -168,6 +168,7 @@ struct LV2UI
   bool configured = false;
   int width = 0;
   int height = 0;
+  double last_time = 0;
 
   ~LV2UI();
 
@@ -252,18 +253,12 @@ LV2UI::on_event (const PuglEvent *event)
 
       case PUGL_EXPOSE:
         {
-          // 1. Calculate Delta Time
-          double current_time = puglGetTime (puglGetWorld (view));
-          //io.DeltaTime = state->last_time > 0.0 ? (float)(current_time - state->last_time) : (1.0f / 60.0f);
-          //state->last_time = current_time;
-
-          // 2. Start ImGui Frame
           ImGui_ImplOpenGL3_NewFrame();
           ImGui::NewFrame();
           ImGui::SetNextWindowSize (io.DisplaySize);
           render_frame();
-          // 4. Rendering
           ImGui::Render();
+
           glClearColor (0.1f, 0.1f, 0.1f, 1.0f);
           glClear (GL_COLOR_BUFFER_BIT);
           ImGui_ImplOpenGL3_RenderDrawData (ImGui::GetDrawData());
@@ -285,6 +280,10 @@ LV2UI::render_frame()
   auto state = &s;
 
   ImGuiIO& io = ImGui::GetIO();
+
+  double current_time = puglGetTime (puglGetWorld (view));
+  io.DeltaTime = last_time > 0.0 ? (current_time - last_time) : (1.0f / 60.0f);
+  last_time = current_time;
 
   // 3. Single full-window UI
   ImGui::SetNextWindowPos (ImVec2 (0, 0));
