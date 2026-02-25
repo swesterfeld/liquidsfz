@@ -166,8 +166,6 @@ struct LV2UI
   std::unique_ptr<FileDialog> file_dialog = nullptr;
   LV2Plugin *plugin = nullptr;
   bool configured = false;
-  int width = 0;
-  int height = 0;
   double last_time = 0;
 
   ~LV2UI();
@@ -447,8 +445,8 @@ instantiate (const LV2UI_Descriptor*   descriptor,
 
   // Note: To call OpenGL initialization outside of a Pugl event,
   // we must manually make the context current first.
-  puglEnterContext(view);
-  ImGui_ImplOpenGL3_Init("#version 130");
+  puglEnterContext (view);
+  ImGui_ImplOpenGL3_Init ("#version 130");
   ImVec2 required_size;
   for (int frames = 0; frames < 2; frames++)
     {
@@ -461,12 +459,9 @@ instantiate (const LV2UI_Descriptor*   descriptor,
       required_size = ui->render_frame();
       ImGui::EndFrame();
     }
-  ui->width = required_size.x;
-  ui->height = required_size.y;
-  printf ("required_size: %f %f\n", required_size.x, required_size.y);
-  puglLeaveContext(view);
+  puglLeaveContext (view);
 
-  puglSetSizeHint (view, PUGL_CURRENT_SIZE, ui->width, ui->height);
+  puglSetSizeHint (view, PUGL_CURRENT_SIZE, required_size.x, required_size.y);
 
   while (!ui->configured)
     {
