@@ -10,7 +10,7 @@ CLEANFILES = liquidsfz.ttl liquidsfz_lv2.$(PLUGIN_EXT)
 liquidsfz.ttl: $(top_builddir)/config.status
 
 FONT = dejavu-lgc-sans.ttf
-EXTRA_DIST = manifest.ttl lv2plugin.cc lv2_midnam.h ldscript.map macos_export_symbols $(FONT).xz
+EXTRA_DIST = manifest.ttl lv2plugin.cc lv2plugin.hh lv2ui.cc lv2_midnam.h ldscript.map macos_export_symbols $(FONT).xz
 
 all-local: liquidsfz_lv2.$(PLUGIN_EXT)
 
@@ -18,15 +18,13 @@ install-exec-hook: liquidsfz_lv2.$(PLUGIN_EXT)
 	mkdir -p $(DESTDIR)$(liquidsfz_lv2dir)
 	cp liquidsfz_lv2.$(PLUGIN_EXT) $(DESTDIR)$(liquidsfz_lv2dir)
 
-uninstall-hook:
-	rm -f $(DESTDIR)$(liquidsfz_lv2dir)/liquidsfz_lv2.$(PLUGIN_EXT)
-
 install-data-hook:
 	mkdir -p $(DESTDIR)$(liquidsfz_lv2dir)
-	xzcat $(FONT).xz > $(DESTDIR)$(liquidsfz_lv2dir)/$(FONT)
+	xzcat $(srcdir)/$(FONT).xz > $(DESTDIR)$(liquidsfz_lv2dir)/$(FONT)
 
-uninstall-local:
-	rm $(DESTDIR)$(liquidsfz_lv2dir)/$(FONT)
+uninstall-hook:
+	rm -f $(DESTDIR)$(liquidsfz_lv2dir)/liquidsfz_lv2.$(PLUGIN_EXT)
+	rm -f $(DESTDIR)$(liquidsfz_lv2dir)/$(FONT)
 
 if COND_MACOS
 liquidsfz_lv2.$(PLUGIN_EXT): $(srcdir)/lv2plugin.cc $(srcdir)/lv2ui.cc $(top_builddir)/lib/libliquidsfz.la
