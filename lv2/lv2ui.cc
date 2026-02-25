@@ -442,11 +442,11 @@ instantiate (const LV2UI_Descriptor*   descriptor,
 
   // 1. Scale all UI elements (buttons, sliders, padding)
   ImGuiStyle& style = ImGui::GetStyle();
-  style.ScaleAllSizes(scale_factor);
+  style.ScaleAllSizes (scale_factor);
 
   // 2. Scale the default font
   double base_font_size = 12.f;
-  io.Fonts->AddFontFromFileTTF("/home/stefan/.local/share/spectmorph/fonts/dejavu-lgc-sans-bold.ttf", base_font_size * scale_factor);
+  io.Fonts->AddFontFromFileTTF ((string (bundle_path) + "/dejavu-lgc-sans.ttf").c_str(), base_font_size * scale_factor);
   // ---------------------
 
   // Note: To call OpenGL initialization outside of a Pugl event,
