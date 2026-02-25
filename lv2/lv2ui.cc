@@ -236,12 +236,18 @@ LV2UI::on_event (const PuglEvent *event)
         printf ("rsz %d %d\n", event->configure.width, event->configure.height);
         configured = true;
         break;
+
       case PUGL_CLOSE:
         //state->quit = true;
         break;
 
       case PUGL_MOTION:
         io.AddMousePosEvent (event->motion.x, event->motion.y);
+        puglObscureView (view);
+        break;
+
+      case PUGL_POINTER_OUT:
+        io.AddMousePosEvent (-FLT_MAX, -FLT_MAX); // place mouse pointer "off-screen"
         puglObscureView (view);
         break;
 
