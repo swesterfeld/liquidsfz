@@ -4,19 +4,12 @@ FROM ubuntu:18.04
 
 RUN sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 
-RUN apt-get update && apt-get install -y build-essential
-RUN apt-get install -y dpkg-dev
-RUN apt-get install -y autoconf-archive
-RUN apt-get install -y libtool
-RUN apt-get install -y pkg-config
-RUN apt-get install -y lv2-dev
-RUN apt-get install -y curl
-RUN apt-get install -y software-properties-common
+RUN apt-get update && apt-get install -y software-properties-common
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
-RUN apt-get update
-RUN apt-get install -y g++-11
-RUN apt-get install -y libtool-bin
-RUN apt-get install -y gettext
+RUN apt-get update && apt-get install -y build-essential \
+    dpkg-dev autoconf-archive libtool libtool-bin \
+    pkg-config lv2-dev curl g++-11 gettext \
+    libgl1-mesa-dev libxrandr-dev libxcursor-dev
 
 ENV CC gcc-11
 ENV CXX g++-11
