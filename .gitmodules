@@ -1,6 +1,3 @@
-[submodule "3rdparty/pugl"]
-	path = 3rdparty/pugl
-	url = https://github.com/lv2/pugl.git
 [submodule "3rdparty/imgui"]
 	path = 3rdparty/imgui
 	url = https://github.com/ocornut/imgui.git
