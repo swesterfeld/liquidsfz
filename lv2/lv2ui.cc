@@ -479,27 +479,11 @@ instantiate (const LV2UI_Descriptor*   descriptor,
 
   *widget = (void *) puglGetNativeView (view);
   return ui;
-#if 0
-  sm_plugin_init();
-
-  LV2_DEBUG ("instantiate called for ui\n");
-
-  LV2Common::detect_repeated_features (features);
-
-  LV2UI *ui = new LV2UI (parent_win_id, ui_resize, plugin);
-  ui->init_map (map);
-
-  /* set initial window size */
-  ui->on_update_window_size();
-
-  return ui;
-#endif
 }
 
 static void
 cleanup (LV2UI_Handle handle)
 {
-  printf ("cleanup\n");
   LV2UI *ui = static_cast <LV2UI *> (handle);
   delete ui;
 }
