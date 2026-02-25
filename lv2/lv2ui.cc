@@ -45,7 +45,7 @@ FileDialog::FileDialog()
   if (pipe (pipe_fds) == -1)
     {
       state = ERROR;
-      fprintf (stderr, "LiquidSFZ: FileDialog: pipe() failed");
+      fprintf (stderr, "LiquidSFZ: FileDialog: pipe() failed\n");
       return;
     }
   pid = fork();
@@ -54,7 +54,7 @@ FileDialog::FileDialog()
       state = ERROR;
       close (pipe_fds[0]);
       close (pipe_fds[1]);
-      fprintf (stderr, "LiquidSFZ: FileDialog: fork() failed");
+      fprintf (stderr, "LiquidSFZ: FileDialog: fork() failed\n");
       return;
     }
   if (pid == 0) /* child process */
@@ -99,16 +99,16 @@ FileDialog::~FileDialog()
       int status;
       pid_t exited = waitpid (pid, &status, 0);
       if (exited < 0)
-        fprintf (stderr, "LiquidSFZ: FileDialog: waitpid() failed");
+        fprintf (stderr, "LiquidSFZ: FileDialog: waitpid() failed\n");
 
       if (WIFEXITED (status))
         {
           int exit_status = WEXITSTATUS (status);
           if (exit_status != 0)
-            fprintf (stderr, "LiquidSFZ: FileDialog: subprocess failed, exit_status %d", exit_status);
+            fprintf (stderr, "LiquidSFZ: FileDialog: subprocess failed, exit_status %d\n", exit_status);
         }
       else
-        fprintf (stderr, "LiquidSFZ: FileDialog: child didn't exit normally");
+        fprintf (stderr, "LiquidSFZ: FileDialog: child didn't exit normally\n");
     }
 }
 
@@ -150,7 +150,7 @@ FileDialog::get_filename()
         }
       if (pfd.revents & POLLHUP)
         {
-          state = ERROR;
+          state = DONE;
           return "";
         }
     }
@@ -287,22 +287,16 @@ LV2UI::render_frame()
 
   // 3. Single full-window UI
   ImGui::SetNextWindowPos (ImVec2 (0, 0));
-  //printf ("dsz %f %f\n", io.DisplaySize.x, io.DisplaySize.y);
-#if 0
-#endif
+ 
   ImGuiWindowFlags flags =
       ImGuiWindowFlags_NoTitleBar |
       ImGuiWindowFlags_NoResize |
       ImGuiWindowFlags_NoMove |
       ImGuiWindowFlags_NoCollapse |
-      ImGuiWindowFlags_NoBringToFrontOnFocus;
-#if 0
+      ImGuiWindowFlags_NoBringToFrontOnFocus |
+      ImGuiWindowFlags_AlwaysAutoResize;
+
   ImGui::Begin("MainUI", nullptr, flags);
-#endif
-  ImGui::Begin("CalcSize", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
-#if 0
-  ImGui::Begin("MainUI", nullptr, ImGuiWindowFlags_NoResize);
-#endif
 
   ImGui::BeginDisabled (file_dialog != nullptr);
   if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, 0)))
