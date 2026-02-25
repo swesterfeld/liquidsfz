@@ -128,16 +128,31 @@ FileDialog::get_filename()
   pfd.events = POLLIN;
 
   int ret = poll(&pfd, 1, 0); // 0 ms timeout => non-blocking
-  if (ret > 0 && (pfd.revents & POLLIN))
+  if (ret > 0)
     {
-      FILE *f = fdopen (file_input_fd, "r");
-      string filename;
-      int ch;
-      while ((ch = fgetc (f)) > 0)
-        if (ch != '\n')
-          filename += ch;
-      state = DONE;
-      return filename;
+      if (pfd.revents & POLLIN)
+        {
+          FILE *f = fdopen (file_input_fd, "r");
+          if (!f)
+            {
+              state = ERROR;
+              perror ("LiquidSFZ: FileDialog: fdopen() failed"); // really should not happen
+              return "";
+            }
+          string filename;
+          int ch;
+          while ((ch = fgetc (f)) > 0)
+            if (ch != '\n')
+              filename += ch;
+          state = DONE;
+          fclose (f);
+          return filename;
+        }
+      if (pfd.revents & POLLHUP)
+        {
+          state = ERROR;
+          return "";
+        }
     }
   return "";
 }
@@ -185,10 +200,11 @@ LV2UI::idle()
       string s = file_dialog->get_filename();
       if (s != "")
         {
-          printf ("%s\n", s.c_str());
           plugin->load_threadsafe (s);
           file_dialog.reset();
         }
+      else if (!file_dialog->is_open()) // user closed dialog
+        file_dialog.reset();
     }
 }
 
