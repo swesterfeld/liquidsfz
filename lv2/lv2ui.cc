@@ -127,7 +127,7 @@ FileDialog::get_filename()
   pfd.fd = file_input_fd;
   pfd.events = POLLIN;
 
-  int ret = poll(&pfd, 1, 0); // 0 ms timeout => non-blocking
+  int ret = poll (&pfd, 1, 0); // 0 ms timeout => non-blocking
   if (ret > 0)
     {
       if (pfd.revents & POLLIN)
@@ -160,17 +160,17 @@ FileDialog::get_filename()
 struct LV2UI
 {
   ImGuiContext *imgui_ctx = nullptr;
-  PuglWorld *world = nullptr;
-  PuglView *view = nullptr;
-  LV2UI_Resize *ui_resize = nullptr;
-  std::unique_ptr<FileDialog> file_dialog;
-  LV2Plugin *plugin = nullptr;
-  LV2UI_Write_Function write_function = nullptr;
-  LV2UI_Controller controller = nullptr;
+  PuglWorld    *world     = nullptr;
+  PuglView     *view      = nullptr;
+  LV2Plugin    *plugin    = nullptr;
 
-  bool configured = false;
+  LV2UI_Write_Function write_function = nullptr;
+  LV2UI_Controller     controller     = nullptr;
+
+  std::unique_ptr<FileDialog> file_dialog;
+
+  bool configured  = false;
   double last_time = 0;
-  int frame_count = 0;
 
   float plugin_control_level = 0;
   int test_item1 = 0;
@@ -202,15 +202,6 @@ LV2UI::idle()
 {
   puglUpdate (world, 0.0);
 
-  if (frame_count < 50)
-    {
-      /* HACK: ImGui rendering is not correct for the first few frames,
-       * so we enforce redrawing a few frames after initialization
-       */
-      puglObscureView (view);
-      frame_count++;
-    }
-
   if (file_dialog)
     {
       string s = file_dialog->get_filename();
@@ -236,11 +227,8 @@ LV2UI::on_event (const PuglEvent *event)
   switch (event->type)
     {
       case PUGL_CONFIGURE:
-        // Update display size
         io.DisplaySize = ImVec2 (event->configure.width, event->configure.height);
-        // Pugl automatically binds the GL context before configure/expose events
         glViewport (0, 0, event->configure.width, event->configure.height);
-        printf ("rsz %d %d\n", event->configure.width, event->configure.height);
         configured = true;
         break;
 
@@ -328,7 +316,7 @@ LV2UI::render_frame()
         }
     }
   ImGui::EndDisabled();
-  if (ImGui::BeginTable("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
+  if (ImGui::BeginTable ("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
     {
       const char* items1[] = { "Option A", "Option B", "Option C" };
 
@@ -380,7 +368,6 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   LV2Plugin *plugin = nullptr;
   PuglNativeView parent_win_id = 0;
   LV2_URID_Map* map = nullptr;
-  LV2UI_Resize *ui_resize = nullptr;
 
   for (int i = 0; features[i]; i++)
     {
@@ -391,10 +378,6 @@ instantiate (const LV2UI_Descriptor*   descriptor,
       else if (!strcmp (features[i]->URI, LV2_UI__parent))
         {
           parent_win_id = (PuglNativeView)features[i]->data;
-        }
-      else if (!strcmp (features[i]->URI, LV2_UI__resize))
-        {
-          ui_resize = (LV2UI_Resize*)features[i]->data;
         }
       else if (!strcmp (features[i]->URI, LV2_INSTANCE_ACCESS_URI))
         {
@@ -413,7 +396,6 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   PuglView* view = puglNewView (world);
   ui->world = world;
   ui->view = view;
-  ui->ui_resize = ui_resize;
   ui->write_function = write_function;
   ui->controller = controller;
 
@@ -465,8 +447,6 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   // 2. Scale the default font
   double base_font_size = 12.f;
   io.Fonts->AddFontFromFileTTF("/home/stefan/.local/share/spectmorph/fonts/dejavu-lgc-sans-bold.ttf", base_font_size * scale_factor);
-  //puglSetSizeHint (view, PUGL_CURRENT_SIZE, 400 * scale_factor, 400 * scale_factor);
-  printf ("%f\n", 400 * scale_factor);
   // ---------------------
 
   // Note: To call OpenGL initialization outside of a Pugl event,
@@ -474,12 +454,15 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   puglEnterContext (view);
   ImGui_ImplOpenGL3_Init ("#version 130");
   ImVec2 required_size;
-  for (int frames = 0; frames < 2; frames++)
+
+  // * ImGui doesn't return correct size on first frame, so we need to render twice
+  // * ImGui also doesn't correctly layout the first few frames, so we render a bunch
+  //   of frames to "warm up" the layout
+  for (int frames = 0; frames < 50; frames++)
     {
       ImGui_ImplOpenGL3_NewFrame();
       io.DisplaySize = ImVec2 (400 * scale_factor, 400 * scale_factor);
 
-      // ImGui doesn't return correct size on first frame, so we need to render twice
       ImGui::NewFrame();
       ImGui::SetNextWindowSize (ImVec2 (400 * scale_factor, 0));
       required_size = ui->render_frame();
