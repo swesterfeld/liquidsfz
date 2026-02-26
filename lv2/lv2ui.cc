@@ -381,6 +381,8 @@ LV2UI::render_frame()
         {
           for (int i = 0; i < (int) show_programs.size(); i++)
             {
+              ImGui::PushID (i);
+
               bool is_selected = (plugin_program == i);
               if (ImGui::Selectable (show_programs[i].c_str(), is_selected))
                 {
@@ -390,7 +392,9 @@ LV2UI::render_frame()
                 }
 
               if (is_selected)
-                  ImGui::SetItemDefaultFocus();
+                ImGui::SetItemDefaultFocus();
+
+              ImGui::PopID();
             }
           ImGui::EndCombo();
         }
