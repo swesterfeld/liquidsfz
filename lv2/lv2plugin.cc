@@ -151,7 +151,27 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
     {
       debug ("loading file %s\n", load_filename.c_str());
 
-      synth.load (load_filename);
+      if (synth.is_bank (load_filename))
+        {
+          if (synth.load_bank (load_filename))
+            {
+              auto programs = synth.list_programs();
+              if (load_program >= programs.size())
+                {
+                  fprintf (stderr, "unsupported program file %s, program %d\n", load_filename.c_str(), load_program);
+                  load_program = 0;
+                }
+              else
+                synth.select_program (load_program);
+            }
+        }
+      else
+        {
+          synth.load (load_filename);
+        }
+      /* FIXME: handle load errors and report to the UI */
+      if (load_notify)
+        load_notify (load_filename, load_program, synth);
 
       { // midnam string is accessed from other threads than the worker thread
         std::lock_guard lg (midnam_str_mutex);
@@ -265,6 +285,7 @@ LV2Plugin::run (uint32_t n_samples)
     {
       load_in_progress = true;
       load_filename    = queue_filename;
+      load_program     = queue_program;
       queue_filename   = "";
 
       schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
@@ -429,10 +450,17 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
 }
 
 void
-LV2Plugin::load_threadsafe (const string& filename)
+LV2Plugin::load_threadsafe (const string& filename, uint program)
 {
   // FIXME: not threadsafe
   queue_filename = filename;
+  queue_program = program;
+}
+
+void
+LV2Plugin::set_load_notify (std::function<void(const string&, int program, Synth&)> func)
+{
+  load_notify = func;
 }
 
 static LV2_Handle

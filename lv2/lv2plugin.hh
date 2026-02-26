@@ -75,6 +75,8 @@ private:
   std::string              load_filename;
   bool                     load_in_progress = false;
   bool                     inform_ui = false;
+  uint                     queue_program = 0;
+  uint                     load_program = 0;
   static constexpr int     command_load = 0x10001234; // just some random number
   float                    old_level = 1000;          // outside range [-80:20]
   float                    old_freewheel = -1;        // outside boolean range [0:1]
@@ -86,6 +88,8 @@ private:
   std::string              midnam_model;
   std::string              midnam_str;
   std::mutex               midnam_str_mutex;
+
+  std::function<void(const std::string&, int program, LiquidSFZ::Synth&)> load_notify;
 public:
   LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam);
 
@@ -103,5 +107,6 @@ public:
   LV2_State_Status save (LV2_State_Store_Function store, LV2_State_Handle handle, const LV2_Feature* const* features);
   LV2_State_Status restore (LV2_State_Retrieve_Function retrieve, LV2_State_Handle handle, const LV2_Feature* const* features);
 
-  void load_threadsafe (const std::string& filename);
+  void load_threadsafe (const std::string& filename, uint program);
+  void set_load_notify (const std::function<void(const std::string&, int program, LiquidSFZ::Synth&)>);
 };

@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <filesystem>
 
 #include "pugl/pugl.h"
 #include "pugl/gl.h"
@@ -20,6 +21,7 @@
 #define LIQUIDSFZ_UI_URI      "http://spectmorph.org/plugins/liquidsfz#ui"
 
 using std::string;
+using std::vector;
 
 class FileDialog
 {
@@ -168,24 +170,29 @@ struct LV2UI
   LV2UI_Controller     controller     = nullptr;
 
   std::unique_ptr<FileDialog> file_dialog;
+  std::string                 file_name;
+  std::string                 sfz_program_name;
 
   bool configured  = false;
   double last_time = 0;
 
   float plugin_control_level = 0;
-  int test_item1 = 0;
+  int   plugin_program = 0;
+  vector<string> programs;
 
   ~LV2UI();
 
   PuglStatus on_event (const PuglEvent *event);
   void port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer);
   void idle();
+  void load_notify (const string& filename, int program, LiquidSFZ::Synth& synth);
   ImVec2 render_frame();
 };
 
 
 LV2UI::~LV2UI()
 {
+  plugin->set_load_notify (nullptr);
   ImGui::SetCurrentContext (imgui_ctx);
 
   puglEnterContext(view);
@@ -207,7 +214,8 @@ LV2UI::idle()
       string s = file_dialog->get_filename();
       if (s != "")
         {
-          plugin->load_threadsafe (s);
+          file_name = s;
+          plugin->load_threadsafe (file_name, 0);
           file_dialog.reset();
         }
       else if (!file_dialog->is_open()) // user closed dialog
@@ -318,8 +326,6 @@ LV2UI::render_frame()
   ImGui::EndDisabled();
   if (ImGui::BeginTable ("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
     {
-      const char* items1[] = { "Option A", "Option B", "Option C" };
-
       ImGui::TableNextRow();
       ImGui::TableSetColumnIndex (0);
       ImGui::AlignTextToFramePadding();
@@ -334,10 +340,37 @@ LV2UI::render_frame()
       ImGui::TableNextRow();
       ImGui::TableSetColumnIndex (0);
       ImGui::AlignTextToFramePadding();
-      ImGui::Text("Select Option:");
+      ImGui::Text ("Program:");
       ImGui::TableSetColumnIndex (1);
       ImGui::SetNextItemWidth (-FLT_MIN);
-      ImGui::Combo("##combo1", &test_item1, items1, IM_ARRAYSIZE(items1));
+
+      vector<string> show_programs;
+      if (programs.size() == 0)
+        {
+          show_programs = { sfz_program_name };
+        }
+      else
+        show_programs = programs;
+
+      // FIXME: we should query state from the LV2Plugin and disable some of the
+      // UI elements while loading, and display progress
+      if (ImGui::BeginCombo ("##programs", show_programs[plugin_program].c_str()))
+        {
+          for (int i = 0; i < (int) show_programs.size(); i++)
+           {
+              bool is_selected = (plugin_program == i);
+              if (ImGui::Selectable (show_programs[i].c_str(), is_selected))
+                {
+                  // FIXME: should we do it here already or in the load notification function
+                  plugin_program = i;
+                  plugin->load_threadsafe (file_name, plugin_program);
+                }
+
+              if (is_selected)
+                  ImGui::SetItemDefaultFocus();
+            }
+          ImGui::EndCombo();
+        }
 
       ImGui::EndTable();
     }
@@ -354,6 +387,20 @@ LV2UI::port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, c
       plugin_control_level = *(const float *) buffer;
       puglObscureView (view);
     }
+}
+
+void
+LV2UI::load_notify (const string& filename, int program, LiquidSFZ::Synth& synth)
+{
+  programs.clear();
+  for (auto& program : synth.list_programs())
+    programs.push_back (program.label());
+  plugin_program = program;
+
+  std::filesystem::path filepath = filename;
+  sfz_program_name = filepath.stem().string();
+
+  puglObscureView (view);
 }
 
 static LV2UI_Handle
@@ -398,6 +445,11 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   ui->view = view;
   ui->write_function = write_function;
   ui->controller = controller;
+  plugin->set_load_notify ([ui] (const string& filename, int program, LiquidSFZ::Synth& synth)
+    {
+      ui->load_notify (filename, program, synth);
+    });
+
 
   // XXXpuglSetClassName(world, "ImGui Minimal Example");
   // XXXpuglSetWindowTitle(view, "ImGui Minimal Example");
