@@ -31,6 +31,15 @@
 
 #include "lv2_midnam.h"
 
+class RTLock
+{
+  std::atomic_flag locked_flag = ATOMIC_FLAG_INIT;
+public:
+  bool try_lock();
+  void wait_for_lock();
+  void unlock();
+};
+
 class LV2Plugin
 {
 public:
@@ -74,6 +83,7 @@ private:
   std::string              current_filename;
   std::string              load_filename;
   bool                     load_in_progress = false;
+  RTLock                   rt_lock;
   bool                     inform_ui = false;
   uint                     queue_program = 0;
   uint                     load_program = 0;

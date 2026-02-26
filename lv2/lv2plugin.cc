@@ -53,6 +53,35 @@ debug (const char *format, ...)
 }
 #endif
 
+/*
+ * do not use a std::mutex here because it may not be hard RT safe to
+ * try_lock() / unlock() it (depending on how the mutex is implemented)
+ */
+bool
+RTLock::try_lock()
+{
+  return !locked_flag.test_and_set();
+}
+
+void
+RTLock::wait_for_lock()
+{
+  while (!try_lock())
+    {
+      // this doesn't happen very often and we are in a non-RT thread, so we
+      // can block it for some time
+      //  => wait for less than one frame drawing time until trying again
+      float fps = 240;
+      usleep (1000 * 1000 / fps);
+    }
+}
+
+void
+RTLock::unlock()
+{
+  locked_flag.clear();
+}
+
 LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam) :
   schedule (schedule),
   midnam (midnam)
@@ -228,29 +257,7 @@ LV2Plugin::run (uint32_t n_samples)
 
   LV2_ATOM_SEQUENCE_FOREACH (midi_in, ev)
     {
-      if (ev->body.type == uris.atom_Blank || ev->body.type == uris.atom_Object)
-        {
-          const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
-
-          if (obj->body.otype == uris.patch_Get)
-            {
-              debug ("got patch get message\n");
-
-              write_set_filename();
-            }
-          else if (obj->body.otype == uris.patch_Set && !load_in_progress)
-            {
-              if (const char *filename = read_set_filename (obj))
-                {
-                  size_t len = strlen (filename);
-                  if (len < queue_filename.capacity()) // avoid allocations in RT context
-                    {
-                      queue_filename = filename;
-                    }
-                }
-            }
-        }
-      else if (ev->body.type == uris.midi_MidiEvent && !load_in_progress)
+      if (ev->body.type == uris.midi_MidiEvent && !load_in_progress)
         {
           const uint8_t *msg = (const uint8_t*)(ev + 1);
 
@@ -281,14 +288,18 @@ LV2Plugin::run (uint32_t n_samples)
         left_out[i] = right_out[i] = 0;
     }
 
-  if (!load_in_progress && !queue_filename.empty())
+  if (rt_lock.try_lock())
     {
-      load_in_progress = true;
-      load_filename    = queue_filename;
-      load_program     = queue_program;
-      queue_filename   = "";
+      if (!load_in_progress && !queue_filename.empty())
+        {
+          load_in_progress = true;
+          load_filename    = queue_filename;
+          load_program     = queue_program;
+          queue_filename   = "";
 
-      schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
+          schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
+        }
+      rt_lock.unlock();
     }
   if (inform_ui)
     {
@@ -431,7 +442,7 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
 #endif
       if (real_path)
         {
-          queue_filename = real_path;
+          load_threadsafe (real_path, 0); /* FIXME: store / restore program */
           free (real_path);
         }
 #ifdef LV2_STATE__freePath
@@ -452,9 +463,10 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
 void
 LV2Plugin::load_threadsafe (const string& filename, uint program)
 {
-  // FIXME: not threadsafe
+  rt_lock.wait_for_lock();
   queue_filename = filename;
   queue_program = program;
+  rt_lock.unlock();
 }
 
 void
