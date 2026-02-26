@@ -87,7 +87,7 @@ private:
   bool                 idle_voices_changed_ = false;
   std::vector<Region>  regions_;
   Control control_;
-  std::vector<ProgramInfo> bank_program_list_;
+  std::vector<ProgramInfo> bank_programs_;
   std::vector<Control::Define> bank_defines_;
   std::vector<CCInfo> cc_list_;
   std::vector<KeyInfo> key_list_;
@@ -218,10 +218,19 @@ public:
     return gain_;
   }
   bool
-  load (const std::string& filename, std::vector<Control::Define> defines = {})
+  load (const std::string& filename)
+  {
+    /* plain SFZ load -> no programs, no defines */
+    bank_defines_.clear();
+    bank_programs_.clear();
+
+    return load_internal (filename);
+  }
+  bool
+  load_internal (const std::string& filename)
   {
     Loader loader (this);
-    if (loader.parse (filename, global_->sample_cache, defines))
+    if (loader.parse (filename, global_->sample_cache, bank_defines_))
       {
         regions_      = loader.regions;
         control_      = loader.control;
@@ -308,7 +317,7 @@ public:
       }
     if (programs.size())
       {
-        bank_program_list_ = programs;
+        bank_programs_ = programs;
         bank_defines_ = defines;
         return true;
       }
@@ -318,12 +327,12 @@ public:
   bool
   select_program (uint program)
   {
-    return load (bank_program_list_[program].sfz_filename, bank_defines_);
+    return load_internal (bank_programs_[program].sfz_filename);
   }
   std::vector<ProgramInfo>
   list_programs()
   {
-    return bank_program_list_;
+    return bank_programs_;
   }
   std::vector<CCInfo>
   list_ccs()
