@@ -91,6 +91,7 @@ private:
   uint                     queue_program = 0;
   uint                     load_program = 0;
   int                      current_program = 0;
+  std::vector<std::string> current_programs;
   static constexpr int     command_load = 0x10001234; // just some random number
   float                    old_level = 1000;          // outside range [-80:20]
   float                    old_freewheel = -1;        // outside boolean range [0:1]
@@ -104,7 +105,7 @@ private:
   std::string              midnam_str;
   std::mutex               midnam_str_mutex;
 
-  std::function<void(const std::string&, int program, LiquidSFZ::Synth&)> load_notify;
+  std::function<void(const std::string&, int program, std::vector<std::string> &)> load_notify;
 public:
   LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam);
 
@@ -122,5 +123,5 @@ public:
 
   void load_threadsafe (const std::string& filename, uint program);
   float load_progress_threadsafe() const;
-  void set_load_notify (const std::function<void(const std::string&, int program, LiquidSFZ::Synth&)>);
+  void set_load_notify (const std::function<void(const std::string&, int, const std::vector<std::string> &)>);
 };

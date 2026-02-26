@@ -186,7 +186,7 @@ struct LV2UI
   PuglStatus on_event (const PuglEvent *event);
   void port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer);
   void idle();
-  void load_notify (const string& filename, int program, LiquidSFZ::Synth& synth);
+  void load_notify (const string& filename, int program, const vector<string>& programs);
   ImVec2 render_frame();
 };
 
@@ -418,11 +418,9 @@ LV2UI::port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, c
 }
 
 void
-LV2UI::load_notify (const string& filename, int program, LiquidSFZ::Synth& synth)
+LV2UI::load_notify (const string& filename, int program, const vector<string>& current_programs)
 {
-  programs.clear();
-  for (auto& program : synth.list_programs())
-    programs.push_back (program.label());
+  programs = current_programs;
   plugin_program = program;
 
   std::filesystem::path filepath = filename;
@@ -473,9 +471,9 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   ui->view = view;
   ui->write_function = write_function;
   ui->controller = controller;
-  plugin->set_load_notify ([ui] (const string& filename, int program, LiquidSFZ::Synth& synth)
+  plugin->set_load_notify ([ui] (const string& filename, int program, vector<string> current_programs)
     {
-      ui->load_notify (filename, program, synth);
+      ui->load_notify (filename, program, current_programs);
     });
 
 

@@ -18,6 +18,7 @@
 using namespace LiquidSFZ;
 
 using std::string;
+using std::vector;
 
 #undef LIQUIDSFZ_LV2_DEBUG
 
@@ -167,9 +168,14 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
           synth.load (load_filename);
         }
       load_progress = -1;
+
       /* FIXME: handle load errors and report to the UI */
+      current_programs.clear();
+      for (auto& program : synth.list_programs())
+        current_programs.push_back (program.label());
+
       if (load_notify)
-        load_notify (load_filename, load_program, synth);
+        load_notify (load_filename, load_program, current_programs);
 
       { // midnam string is accessed from other threads than the worker thread
         std::lock_guard lg (midnam_str_mutex);
@@ -459,9 +465,11 @@ LV2Plugin::load_progress_threadsafe() const
 }
 
 void
-LV2Plugin::set_load_notify (std::function<void(const string&, int program, Synth&)> func)
+LV2Plugin::set_load_notify (std::function<void(const string&, int, const vector<string>&)> func)
 {
   load_notify = func;
+  if (load_notify)
+    load_notify (current_filename, current_program, current_programs);
 }
 
 static LV2_Handle
