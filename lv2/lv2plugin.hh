@@ -4,6 +4,7 @@
 
 #include <string>
 #include <mutex>
+#include <atomic>
 
 #include "liquidsfz.hh"
 
@@ -90,6 +91,7 @@ private:
   static constexpr int     command_load = 0x10001234; // just some random number
   float                    old_level = 1000;          // outside range [-80:20]
   float                    old_freewheel = -1;        // outside boolean range [0:1]
+  std::atomic<float>       load_progress = -1;
 
   LV2_Worker_Schedule     *schedule = nullptr;
   LV2_Midnam              *midnam = nullptr;
@@ -116,5 +118,6 @@ public:
   LV2_State_Status restore (LV2_State_Retrieve_Function retrieve, LV2_State_Handle handle, const LV2_Feature* const* features);
 
   void load_threadsafe (const std::string& filename, uint program);
+  float load_progress_threadsafe() const;
   void set_load_notify (const std::function<void(const std::string&, int program, LiquidSFZ::Synth&)>);
 };

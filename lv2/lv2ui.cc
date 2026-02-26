@@ -178,6 +178,7 @@ struct LV2UI
 
   float plugin_control_level = 0;
   int   plugin_program = 0;
+  float progress = -1;
   vector<string> programs;
 
   ~LV2UI();
@@ -209,6 +210,13 @@ LV2UI::idle()
 {
   puglUpdate (world, 0.0);
 
+  ImGui::SetCurrentContext (imgui_ctx);
+  if (ImGui::IsPopupOpen (nullptr, ImGuiPopupFlags_AnyPopupId))
+    {
+      /* unfortunately we cannot do "lazy redrawing" if any popup is open */
+      puglObscureView (view);
+    }
+
   if (file_dialog)
     {
       string s = file_dialog->get_filename();
@@ -220,6 +228,12 @@ LV2UI::idle()
         }
       else if (!file_dialog->is_open()) // user closed dialog
         file_dialog.reset();
+    }
+  float new_progress = plugin->load_progress_threadsafe();
+  if (new_progress != progress)
+    {
+      progress = new_progress;
+      puglObscureView (view);
     }
 }
 
@@ -312,18 +326,27 @@ LV2UI::render_frame()
 
   ImGui::Begin("MainUI", nullptr, flags);
 
-  ImGui::BeginDisabled (file_dialog != nullptr);
-  if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, 0)))
+  // Get the standard height for a widget in the current style
+  float widget_height = ImGui::GetFrameHeight();
+  if (progress >= 0)
     {
-      file_dialog = std::make_unique<FileDialog>();
-
-      if (!file_dialog->is_open())
-        {
-          /* something went wrong creating the filedialog */
-          file_dialog.reset();
-        }
+      ImGui::ProgressBar (progress / 100, ImVec2 (-FLT_MIN, widget_height));
     }
-  ImGui::EndDisabled();
+  else
+    {
+      ImGui::BeginDisabled (file_dialog != nullptr);
+      if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, widget_height)))
+        {
+          file_dialog = std::make_unique<FileDialog>();
+
+          if (!file_dialog->is_open())
+            {
+              /* something went wrong creating the filedialog */
+              file_dialog.reset();
+            }
+        }
+      ImGui::EndDisabled();
+    }
   if (ImGui::BeginTable ("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
     {
       ImGui::TableNextRow();
@@ -357,7 +380,7 @@ LV2UI::render_frame()
       if (ImGui::BeginCombo ("##programs", show_programs[plugin_program].c_str()))
         {
           for (int i = 0; i < (int) show_programs.size(); i++)
-           {
+            {
               bool is_selected = (plugin_program == i);
               if (ImGui::Selectable (show_programs[i].c_str(), is_selected))
                 {

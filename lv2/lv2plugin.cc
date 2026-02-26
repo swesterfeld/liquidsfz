@@ -5,7 +5,6 @@
 #include "lv2plugin.hh"
 
 #include <string>
-#include <atomic>
 #include <mutex>
 
 #include <math.h>
@@ -143,6 +142,10 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
     {
       debug ("loading file %s\n", load_filename.c_str());
 
+      synth.set_progress_function ([this] (double percent)
+        {
+          load_progress = percent;
+        });
       if (synth.is_bank (load_filename))
         {
           if (synth.load_bank (load_filename))
@@ -161,6 +164,7 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
         {
           synth.load (load_filename);
         }
+      load_progress = -1;
       /* FIXME: handle load errors and report to the UI */
       if (load_notify)
         load_notify (load_filename, load_program, synth);
@@ -429,6 +433,12 @@ LV2Plugin::load_threadsafe (const string& filename, uint program)
   queue_filename = filename;
   queue_program = program;
   rt_lock.unlock();
+}
+
+float
+LV2Plugin::load_progress_threadsafe() const
+{
+  return load_progress.load();
 }
 
 void
