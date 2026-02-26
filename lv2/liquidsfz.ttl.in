@@ -21,11 +21,6 @@
 midnam:interface a lv2:ExtensionData .
 midnam:update a lv2:Feature .
 
-<http://spectmorph.org/plugins/liquidsfz#sfzfile>
-  a lv2:Parameter;
-  rdfs:label "SFZ File";
-  rdfs:range atom:Path .
-
 <http://spectmorph.org/plugins/liquidsfz>
   a lv2:Plugin,
     lv2:InstrumentPlugin;

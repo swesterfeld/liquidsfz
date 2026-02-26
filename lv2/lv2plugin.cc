@@ -101,6 +101,7 @@ LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule
   uris.atom_Object        = map->map (map->handle, LV2_ATOM__Object);
   uris.atom_URID          = map->map (map->handle, LV2_ATOM__URID);
   uris.atom_Path          = map->map (map->handle, LV2_ATOM__Path);
+  uris.atom_Int           = map->map (map->handle, LV2_ATOM__Int);
   uris.patch_Get          = map->map (map->handle, LV2_PATCH__Get);
   uris.patch_Set          = map->map (map->handle, LV2_PATCH__Set);
   uris.patch_property     = map->map (map->handle, LV2_PATCH__property);
@@ -108,6 +109,7 @@ LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule
   uris.state_StateChanged = map->map (map->handle, LV2_STATE__StateChanged);
 
   uris.liquidsfz_sfzfile  = map->map (map->handle, LIQUIDSFZ_URI "#sfzfile");
+  uris.liquidsfz_program  = map->map (map->handle, LIQUIDSFZ_URI "#program");
 }
 
 void
@@ -183,6 +185,7 @@ LV2Plugin::work_response (uint32_t size, const void *data)
 {
   load_in_progress = false;
   current_filename = load_filename;
+  current_program  = load_program;
   inform_ui        = true; // send notification to UI that current filename has changed
 }
 
@@ -359,6 +362,12 @@ LV2Plugin::save (LV2_State_Store_Function store,
          uris.atom_Path,
          LV2_STATE_IS_POD);
 
+  store (handle, uris.liquidsfz_program,
+         &current_program,
+         sizeof (int32_t),
+         uris.atom_Int,
+         LV2_STATE_IS_POD);
+
   return LV2_STATE_SUCCESS;
 }
 
@@ -390,7 +399,15 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
   size_t      size;
   uint32_t    type;
   uint32_t    valflags;
-  const void *value = retrieve (handle, uris.liquidsfz_sfzfile, &size, &type, &valflags);
+  const void *value;
+
+  /* FIXME: racy, can have old state if save is done while loading */
+  int program = 0;
+  value = retrieve (handle, uris.liquidsfz_program, &size, &type, &valflags);
+  if (value && size == sizeof (int) && type == uris.atom_Int)
+    program = *(int *) value;
+
+  value = retrieve (handle, uris.liquidsfz_sfzfile, &size, &type, &valflags);
   if (value)
     {
       char *absolute_path = map_path->absolute_path (map_path->handle, (const char *)value);
@@ -408,7 +425,7 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
 #endif
       if (real_path)
         {
-          load_threadsafe (real_path, 0); /* FIXME: store / restore program */
+          load_threadsafe (real_path, program);
           free (real_path);
         }
 #ifdef LV2_STATE__freePath

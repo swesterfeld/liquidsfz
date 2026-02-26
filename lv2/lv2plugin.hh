@@ -62,6 +62,7 @@ private:
     LV2_URID atom_Object;
     LV2_URID atom_URID;
     LV2_URID atom_Path;
+    LV2_URID atom_Int;
     LV2_URID midi_MidiEvent;
     LV2_URID patch_Get;
     LV2_URID patch_Set;
@@ -70,6 +71,7 @@ private:
     LV2_URID state_StateChanged;
 
     LV2_URID liquidsfz_sfzfile;
+    LV2_URID liquidsfz_program;
   } uris;
 
   // Port buffers
@@ -88,6 +90,7 @@ private:
   bool                     inform_ui = false;
   uint                     queue_program = 0;
   uint                     load_program = 0;
+  int                      current_program = 0;
   static constexpr int     command_load = 0x10001234; // just some random number
   float                    old_level = 1000;          // outside range [-80:20]
   float                    old_freewheel = -1;        // outside boolean range [0:1]
