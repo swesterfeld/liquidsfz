@@ -258,6 +258,7 @@ LV2UI::on_event (const PuglEvent *event)
         //state->quit = true;
         break;
 
+      case PUGL_POINTER_IN:
       case PUGL_MOTION:
         io.AddMousePosEvent (event->motion.x, event->motion.y);
         puglObscureView (view);
