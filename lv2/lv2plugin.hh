@@ -103,8 +103,6 @@ private:
 public:
   LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam);
 
-  const char *read_set_filename (const LV2_Atom_Object *obj);
-  void write_set_filename();
   void write_state_changed();
   char *get_midnam_str();
   char *get_midnam_model();

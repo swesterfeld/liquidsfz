@@ -111,43 +111,6 @@ LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule
   uris.liquidsfz_sfzfile  = map->map (map->handle, LIQUIDSFZ_URI "#sfzfile");
 }
 
-const char *
-LV2Plugin::read_set_filename (const LV2_Atom_Object *obj)
-{
-  if (obj->body.otype != uris.patch_Set)
-    return nullptr;
-
-  const LV2_Atom *property = nullptr;
-  lv2_atom_object_get (obj, uris.patch_property, &property, 0);
-  if (!property || property->type != uris.atom_URID)
-    return nullptr;
-
-  if (((const LV2_Atom_URID *)property)->body != uris.liquidsfz_sfzfile)
-    return nullptr;
-
-  const LV2_Atom *file_path = nullptr;
-  lv2_atom_object_get (obj, uris.patch_value, &file_path, 0);
-  if (!file_path || file_path->type != uris.atom_Path)
-    return nullptr;
-
-  const char *filename = (const char *) (file_path + 1);
-  return filename;
-}
-
-void
-LV2Plugin::write_set_filename()
-{
-  LV2_Atom_Forge_Frame frame;
-
-  lv2_atom_forge_frame_time (&forge, 0);
-  lv2_atom_forge_object (&forge, &frame, 0, uris.patch_Set);
-  lv2_atom_forge_property_head (&forge, uris.patch_property, 0);
-  lv2_atom_forge_urid (&forge, uris.liquidsfz_sfzfile);
-  lv2_atom_forge_property_head (&forge, uris.patch_value, 0);
-  lv2_atom_forge_path (&forge, current_filename.c_str(), current_filename.length());
-  lv2_atom_forge_pop (&forge, &frame);
-}
-
 void
 LV2Plugin::write_state_changed()
 {
@@ -306,7 +269,6 @@ LV2Plugin::run (uint32_t n_samples)
       inform_ui = false;
 
       write_state_changed();
-      write_set_filename();
 
       if (midnam)
         midnam->update (midnam->handle);
