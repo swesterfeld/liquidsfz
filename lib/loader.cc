@@ -1241,6 +1241,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
       cc_list.push_back (cc10_info);
     }
 
+  std::set<string> samples_todo, samples_done;
+  for (size_t i = 0; i < regions.size(); i++)
+    samples_todo.insert (regions[i].sample);
   synth_->progress (0);
   for (size_t i = 0; i < regions.size(); i++)
     {
@@ -1250,6 +1253,10 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
 
       const auto load_result = sample_cache.load (region.sample, synth_->preload_time(), max_offset);
       region.cached_sample = load_result.sample;
+
+      /* update progress info */
+      samples_done.insert (region.sample);
+      synth_->progress (samples_done.size() * 100.0 / samples_todo.size());
 
       if (region.cached_sample)
         {
@@ -1307,9 +1314,6 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
 
       region.volume_cc7 = volume_cc7;
       region.pan_cc10   = pan_cc10;
-
-      /* update progress info */
-      synth_->progress ((i + 1) * 100.0 / regions.size());
     }
   // generate final key_list
   for (const auto& [key, key_info] : key_map)
