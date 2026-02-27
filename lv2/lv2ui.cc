@@ -505,7 +505,8 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   ImGuiContext* ctx = ImGui::CreateContext();
   ui->imgui_ctx = ctx;
   ImGui::SetCurrentContext (ctx);
-  ImGuiIO& io = ImGui::GetIO(); (void)io;
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = nullptr; // don't write imgui.ini
   ImGui::StyleColorsDark();
 
   // --- SCALING LOGIC ---
