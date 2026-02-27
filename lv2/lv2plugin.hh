@@ -32,7 +32,7 @@
 
 #include "lv2_midnam.h"
 
-class RTLock
+class RTMutex
 {
   std::atomic_flag locked_flag = ATOMIC_FLAG_INIT;
 public:
@@ -88,7 +88,7 @@ private:
   bool                     file_or_program_changed = false;
 
   bool                     load_in_progress = false;
-  RTLock                   rt_lock;
+  RTMutex                  rt_mutex;
   bool                     inform_ui = false;
   static constexpr int     command_load = 0x10001234; // just some random number
   float                    old_level = 1000;          // outside range [-80:20]
@@ -122,7 +122,7 @@ public:
   void load_threadsafe (const std::string& filename, uint program);
   float load_progress_threadsafe() const;
   void set_load_notify (const std::function<void()>);
-  std::vector<std::string> programs() const;
-  int program() const;
-  std::string filename() const;
+  std::vector<std::string> programs();
+  int program();
+  std::string filename();
 };

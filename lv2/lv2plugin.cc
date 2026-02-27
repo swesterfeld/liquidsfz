@@ -58,13 +58,13 @@ debug (const char *format, ...)
  * try_lock() / unlock() it (depending on how the mutex is implemented)
  */
 bool
-RTLock::try_lock()
+RTMutex::try_lock()
 {
   return !locked_flag.test_and_set();
 }
 
 void
-RTLock::wait_for_lock()
+RTMutex::wait_for_lock()
 {
   while (!try_lock())
     {
@@ -77,7 +77,7 @@ RTLock::wait_for_lock()
 }
 
 void
-RTLock::unlock()
+RTMutex::unlock()
 {
   locked_flag.clear();
 }
@@ -138,10 +138,10 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
 {
   if (size == sizeof (int) && *(int *) data == command_load)
     {
-      rt_lock.wait_for_lock();
+      rt_mutex.wait_for_lock();
       string filename = current_filename;
       int    program  = current_program;
-      rt_lock.unlock();
+      rt_mutex.unlock();
 
       debug ("loading file %s\n", filename.c_str());
 
@@ -169,9 +169,12 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
       load_progress = -1;
 
       /* FIXME: handle load errors and report to the UI */
+
+      rt_mutex.wait_for_lock();
       current_programs.clear();
       for (auto& program : synth.list_programs())
         current_programs.push_back (program.label());
+      rt_mutex.unlock();
 
       /* FIXME: not thread safe */
       if (load_notify)
@@ -262,7 +265,7 @@ LV2Plugin::run (uint32_t n_samples)
         left_out[i] = right_out[i] = 0;
     }
 
-  if (rt_lock.try_lock())
+  if (rt_mutex.try_lock())
     {
       if (!load_in_progress && file_or_program_changed)
         {
@@ -271,7 +274,7 @@ LV2Plugin::run (uint32_t n_samples)
 
           schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
         }
-      rt_lock.unlock();
+      rt_mutex.unlock();
     }
   if (inform_ui)
     {
@@ -312,7 +315,12 @@ LV2Plugin::save (LV2_State_Store_Function store,
                  LV2_State_Handle         handle,
                  const LV2_Feature* const* features)
 {
-  if (current_filename.empty())
+  rt_mutex.wait_for_lock();
+  int    program  = current_program;
+  string filename = current_filename;
+  rt_mutex.unlock();
+
+  if (filename.empty())
     {
       debug ("save: error: current filename is empty\n");
       return LV2_STATE_ERR_NO_PROPERTY;
@@ -336,7 +344,7 @@ LV2Plugin::save (LV2_State_Store_Function store,
 #endif
     }
 
-  string path = current_filename;
+  string path = filename;
   if (map_path)
     {
       char *abstract_path = map_path->abstract_path (map_path->handle, path.c_str());
@@ -365,7 +373,7 @@ LV2Plugin::save (LV2_State_Store_Function store,
          LV2_STATE_IS_POD);
 
   store (handle, uris.liquidsfz_program,
-         &current_program,
+         &program,
          sizeof (int32_t),
          uris.atom_Int,
          LV2_STATE_IS_POD);
@@ -448,11 +456,11 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
 void
 LV2Plugin::load_threadsafe (const string& filename, uint program)
 {
-  rt_lock.wait_for_lock();
+  rt_mutex.wait_for_lock();
   current_filename = filename;
   current_program = program;
   file_or_program_changed = true;
-  rt_lock.unlock();
+  rt_mutex.unlock();
 }
 
 float
@@ -468,23 +476,32 @@ LV2Plugin::set_load_notify (std::function<void()> func)
 }
 
 vector<string>
-LV2Plugin::programs() const
+LV2Plugin::programs()
 {
-  // FIXME: not threadsafe
-  return current_programs;
+  rt_mutex.wait_for_lock();
+  auto programs = current_programs;
+  rt_mutex.unlock();
+
+  return programs;
 }
 
 int
-LV2Plugin::program() const
+LV2Plugin::program()
 {
-  // FIXME: not threadsafe
-  return current_program;
+  rt_mutex.wait_for_lock();
+  auto program = current_program;
+  rt_mutex.unlock();
+
+  return program;
 }
 
 string
-LV2Plugin::filename() const
+LV2Plugin::filename()
 {
-  // FIXME: not threadsafe
+  rt_mutex.wait_for_lock();
+  auto filename = current_filename;
+  rt_mutex.unlock();
+
   return current_filename;
 }
 
