@@ -86,11 +86,6 @@ LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule
   schedule (schedule),
   midnam (midnam)
 {
-  /* avoid allocations in RT thread */
-  load_filename.reserve (1024);
-  queue_filename.reserve (1024);
-  current_filename.reserve (1024);
-
   synth.set_sample_rate (rate);
 
   midnam_model = LiquidSFZInternal::string_printf ("LiquidSFZ-%p\n", this);
@@ -143,29 +138,33 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
 {
   if (size == sizeof (int) && *(int *) data == command_load)
     {
-      debug ("loading file %s\n", load_filename.c_str());
+      rt_lock.wait_for_lock();
+      string filename = current_filename;
+      int    program  = current_program;
+      rt_lock.unlock();
+
+      debug ("loading file %s\n", filename.c_str());
 
       synth.set_progress_function ([this] (double percent)
         {
           load_progress = percent;
         });
-      if (synth.is_bank (load_filename))
+      if (synth.is_bank (filename))
         {
-          if (synth.load_bank (load_filename))
+          if (synth.load_bank (filename))
             {
               auto programs = synth.list_programs();
-              if (load_program >= programs.size())
+              if (program >= int (programs.size()))
                 {
-                  fprintf (stderr, "unsupported program file %s, program %d\n", load_filename.c_str(), load_program);
-                  load_program = 0;
+                  fprintf (stderr, "unsupported program file %s, program %d\n", filename.c_str(), program);
+                  program = 0;
                 }
-              else
-                synth.select_program (load_program);
+              synth.select_program (program);
             }
         }
       else
         {
-          synth.load (load_filename);
+          synth.load (filename);
         }
       load_progress = -1;
 
@@ -191,8 +190,6 @@ void
 LV2Plugin::work_response (uint32_t size, const void *data)
 {
   load_in_progress = false;
-  current_filename = load_filename;
-  current_program  = load_program;
   inform_ui        = true; // send notification to UI that current filename has changed
 }
 
@@ -267,12 +264,10 @@ LV2Plugin::run (uint32_t n_samples)
 
   if (rt_lock.try_lock())
     {
-      if (!load_in_progress && !queue_filename.empty())
+      if (!load_in_progress && file_or_program_changed)
         {
           load_in_progress = true;
-          load_filename    = queue_filename;
-          load_program     = queue_program;
-          queue_filename   = "";
+          file_or_program_changed = false;
 
           schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
         }
@@ -454,8 +449,9 @@ void
 LV2Plugin::load_threadsafe (const string& filename, uint program)
 {
   rt_lock.wait_for_lock();
-  queue_filename = filename;
-  queue_program = program;
+  current_filename = filename;
+  current_program = program;
+  file_or_program_changed = true;
   rt_lock.unlock();
 }
 

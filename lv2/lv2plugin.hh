@@ -82,16 +82,14 @@ private:
   const float             *freewheel = nullptr;
   LV2_Atom_Sequence       *notify_port = nullptr;
 
-  std::string              queue_filename;
   std::string              current_filename;
-  std::string              load_filename;
+  int                      current_program = 0;
+  std::vector<std::string> current_programs;
+  bool                     file_or_program_changed = false;
+
   bool                     load_in_progress = false;
   RTLock                   rt_lock;
   bool                     inform_ui = false;
-  uint                     queue_program = 0;
-  uint                     load_program = 0;
-  int                      current_program = 0;
-  std::vector<std::string> current_programs;
   static constexpr int     command_load = 0x10001234; // just some random number
   float                    old_level = 1000;          // outside range [-80:20]
   float                    old_freewheel = -1;        // outside boolean range [0:1]
