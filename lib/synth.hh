@@ -261,7 +261,36 @@ public:
         init_channels();
         return true;
       }
-    return false;
+    else
+      {
+        unload();
+        return false;
+      }
+  }
+  void
+  unload()
+  {
+    /* this needs to be kept in sync with load_internal() and should reset
+     * the Synth object to a state where nothing is loaded
+     */
+    regions_.clear();
+    control_ = Control();
+    cc_list_.clear();
+    key_list_.clear();
+    limits_ = Limits();
+    curve_table_ = CurveTable();
+    curves_.clear();
+
+    // old sample data can only be freed after assigning regions_
+    global_->sample_cache.cleanup_post_load();
+
+    is_key_switch_.fill (false);
+    is_supported_cc_.fill (false);
+
+    // we must reinit all voices
+    //  - ensure that there are no pointers to old regions (which are deleted)
+    set_max_voices (voices_.size());
+    init_channels();
   }
   bool
   is_bank (const std::string& filename)
@@ -284,6 +313,11 @@ public:
   bool
   load_bank (const std::string& filename)
   {
+    /* unload previous sfz / bank */
+    bank_programs_.clear();
+    bank_defines_.clear();
+    unload();
+
     pugi::xml_document doc;
     auto result = doc.load_file (filename.c_str());
     if (!result)
