@@ -56,6 +56,29 @@ debug (const char *format, ...)
 }
 #endif
 
+class RTMutexWaitLockGuard
+{
+  RTMutex& mutex_;
+public:
+  explicit RTMutexWaitLockGuard (RTMutex& m)
+    : mutex_ (m)
+  {
+    mutex_.wait_for_lock();
+  }
+  ~RTMutexWaitLockGuard()
+  {
+    mutex_.unlock();
+  }
+
+  // non-copyable
+  RTMutexWaitLockGuard (const RTMutexWaitLockGuard&) = delete;
+  RTMutexWaitLockGuard& operator= (const RTMutexWaitLockGuard&) = delete;
+
+  // non-movable (same as std::lock_guard)
+  RTMutexWaitLockGuard (RTMutexWaitLockGuard&&) = delete;
+  RTMutexWaitLockGuard& operator= (RTMutexWaitLockGuard&&) = delete;
+};
+
 /*
  * do not use a std::mutex here because it may not be hard RT safe to
  * try_lock() / unlock() it (depending on how the mutex is implemented)
@@ -149,26 +172,26 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
 
       auto set_status = [this] (const string& status)
         {
-          rt_mutex.wait_for_lock();
+          RTMutexWaitLockGuard lg (rt_mutex);
+
           current_status = status;
           ui_redraw_required = true;
-          rt_mutex.unlock();
         };
       auto update_programs = [this] ()
         {
-          rt_mutex.wait_for_lock();
+          RTMutexWaitLockGuard lg (rt_mutex);
+
           current_programs.clear();
           for (auto& program : synth.list_programs())
             current_programs.push_back (program.label());
           ui_redraw_required = true;
-          rt_mutex.unlock();
         };
       auto clear_programs = [this] ()
         {
-          rt_mutex.wait_for_lock();
+          RTMutexWaitLockGuard lg (rt_mutex);
+
           current_programs.clear();
           ui_redraw_required = true;
-          rt_mutex.unlock();
         };
       synth.set_progress_function ([this] (double percent)
         {
@@ -479,11 +502,11 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
 void
 LV2Plugin::load_threadsafe (const string& filename, uint program)
 {
-  rt_mutex.wait_for_lock();
+  RTMutexWaitLockGuard lg (rt_mutex);
+
   current_filename = filename;
   current_program = program;
   file_or_program_changed = true;
-  rt_mutex.unlock();
 }
 
 float
@@ -495,51 +518,43 @@ LV2Plugin::load_progress_threadsafe() const
 bool
 LV2Plugin::redraw_required()
 {
-  rt_mutex.wait_for_lock();
+  RTMutexWaitLockGuard lg (rt_mutex);
+
   auto result = ui_redraw_required;
   ui_redraw_required = false;
-  rt_mutex.unlock();
   return result;
 }
 
 vector<string>
 LV2Plugin::programs()
 {
-  rt_mutex.wait_for_lock();
-  auto programs = current_programs;
-  rt_mutex.unlock();
+  RTMutexWaitLockGuard lg (rt_mutex);
 
-  return programs;
+  return current_programs;
 }
 
 int
 LV2Plugin::program()
 {
-  rt_mutex.wait_for_lock();
-  auto program = current_program;
-  rt_mutex.unlock();
+  RTMutexWaitLockGuard lg (rt_mutex);
 
-  return program;
+  return current_program;
 }
 
 string
 LV2Plugin::filename()
 {
-  rt_mutex.wait_for_lock();
-  auto filename = current_filename;
-  rt_mutex.unlock();
+  RTMutexWaitLockGuard lg (rt_mutex);
 
-  return filename;
+  return current_filename;
 }
 
 string
 LV2Plugin::status()
 {
-  rt_mutex.wait_for_lock();
-  auto status = current_status;
-  rt_mutex.unlock();
+  RTMutexWaitLockGuard lg (rt_mutex);
 
-  return status;
+  return current_status;
 }
 
 static LV2_Handle
