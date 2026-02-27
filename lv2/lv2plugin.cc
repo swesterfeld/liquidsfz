@@ -174,11 +174,8 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
       current_programs.clear();
       for (auto& program : synth.list_programs())
         current_programs.push_back (program.label());
+      ui_redraw_required = true;
       rt_mutex.unlock();
-
-      /* FIXME: not thread safe */
-      if (load_notify)
-        load_notify();
 
       { // midnam string is accessed from other threads than the worker thread
         std::lock_guard lg (midnam_str_mutex);
@@ -411,7 +408,6 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
   uint32_t    valflags;
   const void *value;
 
-  /* FIXME: racy, can have old state if save is done while loading */
   int program = 0;
   value = retrieve (handle, uris.liquidsfz_program, &size, &type, &valflags);
   if (value && size == sizeof (int) && type == uris.atom_Int)
@@ -469,10 +465,14 @@ LV2Plugin::load_progress_threadsafe() const
   return load_progress.load();
 }
 
-void
-LV2Plugin::set_load_notify (std::function<void()> func)
+bool
+LV2Plugin::redraw_required()
 {
-  load_notify = func;
+  rt_mutex.wait_for_lock();
+  auto result = ui_redraw_required;
+  ui_redraw_required = false;
+  rt_mutex.unlock();
+  return result;
 }
 
 vector<string>

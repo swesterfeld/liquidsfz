@@ -88,6 +88,7 @@ private:
   bool                     file_or_program_changed = false;
 
   bool                     load_in_progress = false;
+  bool                     ui_redraw_required = false;
   RTMutex                  rt_mutex;
   bool                     inform_ui = false;
   static constexpr int     command_load = 0x10001234; // just some random number
@@ -125,4 +126,5 @@ public:
   std::vector<std::string> programs();
   int program();
   std::string filename();
+  bool redraw_required();
 };

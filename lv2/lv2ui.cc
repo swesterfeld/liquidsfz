@@ -182,14 +182,12 @@ struct LV2UI
   PuglStatus on_event (const PuglEvent *event);
   void port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer);
   void idle();
-  void load_notify();
   ImVec2 render_frame();
 };
 
 
 LV2UI::~LV2UI()
 {
-  plugin->set_load_notify (nullptr);
   ImGui::SetCurrentContext (imgui_ctx);
 
   puglEnterContext(view);
@@ -212,6 +210,8 @@ LV2UI::idle()
       /* unfortunately we cannot do "lazy redrawing" if any popup is open */
       puglObscureView (view);
     }
+  if (plugin->redraw_required())
+    puglObscureView (view);
 
   if (file_dialog)
     {
@@ -415,12 +415,6 @@ LV2UI::port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, c
     }
 }
 
-void
-LV2UI::load_notify()
-{
-  puglObscureView (view);
-}
-
 static LV2UI_Handle
 instantiate (const LV2UI_Descriptor*   descriptor,
              const char*               plugin_uri,
@@ -463,11 +457,6 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   ui->view = view;
   ui->write_function = write_function;
   ui->controller = controller;
-  plugin->set_load_notify ([ui] ()
-    {
-      ui->load_notify();
-    });
-
 
   // XXXpuglSetClassName(world, "ImGui Minimal Example");
   // XXXpuglSetWindowTitle(view, "ImGui Minimal Example");
