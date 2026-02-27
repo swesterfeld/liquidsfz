@@ -83,6 +83,7 @@ private:
   LV2_Atom_Sequence       *notify_port = nullptr;
 
   std::string              current_filename;
+  std::string              current_status;
   int                      current_program = 0;
   std::vector<std::string> current_programs;
   bool                     file_or_program_changed = false;
@@ -126,5 +127,6 @@ public:
   std::vector<std::string> programs();
   int program();
   std::string filename();
+  std::string status();
   bool redraw_required();
 };

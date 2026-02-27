@@ -345,6 +345,12 @@ LV2UI::render_frame()
     }
   if (ImGui::BeginTable ("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
     {
+      // Column 0: auto-sized to content
+      ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed);
+
+      // Column 1: stretch, takes remaining space
+      ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
       ImGui::TableNextRow();
       ImGui::TableSetColumnIndex (0);
       ImGui::AlignTextToFramePadding();
@@ -364,27 +370,26 @@ LV2UI::render_frame()
       ImGui::SetNextItemWidth (-FLT_MIN);
 
       vector<string> programs = plugin->programs();
-      vector<string> show_programs;
       string filename = plugin->filename();
       if (programs.size() == 0)
         {
           std::filesystem::path filepath = filename;
-          show_programs = { filepath.stem().string() };
+          programs = { filepath.stem().string() };
         }
-      else
-        show_programs = programs;
 
-      // FIXME: we should query state from the LV2Plugin and disable some of the
-      // UI elements while loading, and display progress
-      int program = plugin->program();
-      if (ImGui::BeginCombo ("##programs", show_programs[program].c_str()))
+      /* if program is invalid (> length of programs), display first item as
+       * selected, this will not change the invalid program until the user
+       * touches the combo box
+       */
+      int program = std::min<int> (plugin->program(), programs.size());
+      if (ImGui::BeginCombo ("##programs", programs[program].c_str()))
         {
-          for (int i = 0; i < (int) show_programs.size(); i++)
+          for (int i = 0; i < (int) programs.size(); i++)
             {
               ImGui::PushID (i);
 
               bool is_selected = (program == i);
-              if (ImGui::Selectable (show_programs[i].c_str(), is_selected))
+              if (ImGui::Selectable (programs[i].c_str(), is_selected))
                 {
                   /* load new program (same file) */
                   plugin->load_threadsafe (filename, i);
@@ -397,6 +402,13 @@ LV2UI::render_frame()
             }
           ImGui::EndCombo();
         }
+
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex (0);
+      ImGui::AlignTextToFramePadding();
+      ImGui::Text ("Status:");
+      ImGui::TableSetColumnIndex (1);
+      ImGui::TextUnformatted (plugin->status().c_str());
 
       ImGui::EndTable();
     }

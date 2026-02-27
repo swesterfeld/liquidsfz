@@ -6,6 +6,7 @@
 
 #include <string>
 #include <mutex>
+#include <filesystem>
 
 #include <math.h>
 
@@ -19,6 +20,8 @@ using namespace LiquidSFZ;
 
 using std::string;
 using std::vector;
+
+using LiquidSFZInternal::string_printf;
 
 #undef LIQUIDSFZ_LV2_DEBUG
 
@@ -141,10 +144,32 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
       rt_mutex.wait_for_lock();
       string filename = current_filename;
       int    program  = current_program;
+      std::filesystem::path fp = filename;
       rt_mutex.unlock();
 
-      debug ("loading file %s\n", filename.c_str());
-
+      auto set_status = [this] (const string& status)
+        {
+          rt_mutex.wait_for_lock();
+          current_status = status;
+          ui_redraw_required = true;
+          rt_mutex.unlock();
+        };
+      auto update_programs = [this] ()
+        {
+          rt_mutex.wait_for_lock();
+          current_programs.clear();
+          for (auto& program : synth.list_programs())
+            current_programs.push_back (program.label());
+          ui_redraw_required = true;
+          rt_mutex.unlock();
+        };
+      auto clear_programs = [this] ()
+        {
+          rt_mutex.wait_for_lock();
+          current_programs.clear();
+          ui_redraw_required = true;
+          rt_mutex.unlock();
+        };
       synth.set_progress_function ([this] (double percent)
         {
           load_progress = percent;
@@ -153,29 +178,31 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
         {
           if (synth.load_bank (filename))
             {
-              auto programs = synth.list_programs();
-              if (program >= int (programs.size()))
-                {
-                  fprintf (stderr, "unsupported program file %s, program %d\n", filename.c_str(), program);
-                  program = 0;
-                }
-              synth.select_program (program);
+              set_status (string_printf ("loading '%s', program %d...", fp.filename().c_str(), program + 1));
+              update_programs();
+
+              if (synth.select_program (program))
+                set_status ("OK");
+              else
+                set_status (string_printf ("ERROR loading '%s', program %d.", fp.filename().c_str(), program + 1));
+            }
+          else
+            {
+              set_status (string_printf ("ERROR loading bank '%s'.", fp.filename().c_str()));
+              clear_programs();
             }
         }
       else
         {
-          synth.load (filename);
+          set_status (string_printf ("loading '%s'...", fp.filename().c_str()));
+          clear_programs();
+
+          if (synth.load (filename))
+            set_status ("OK");
+          else
+            set_status (string_printf ("ERROR loading '%s'.", fp.filename().c_str()));
         }
       load_progress = -1;
-
-      /* FIXME: handle load errors and report to the UI */
-
-      rt_mutex.wait_for_lock();
-      current_programs.clear();
-      for (auto& program : synth.list_programs())
-        current_programs.push_back (program.label());
-      ui_redraw_required = true;
-      rt_mutex.unlock();
 
       { // midnam string is accessed from other threads than the worker thread
         std::lock_guard lg (midnam_str_mutex);
@@ -502,7 +529,17 @@ LV2Plugin::filename()
   auto filename = current_filename;
   rt_mutex.unlock();
 
-  return current_filename;
+  return filename;
+}
+
+string
+LV2Plugin::status()
+{
+  rt_mutex.wait_for_lock();
+  auto status = current_status;
+  rt_mutex.unlock();
+
+  return status;
 }
 
 static LV2_Handle
