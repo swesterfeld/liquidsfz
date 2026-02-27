@@ -174,9 +174,6 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
       for (auto& program : synth.list_programs())
         current_programs.push_back (program.label());
 
-      if (load_notify)
-        load_notify (load_filename, load_program, current_programs);
-
       { // midnam string is accessed from other threads than the worker thread
         std::lock_guard lg (midnam_str_mutex);
         midnam_str = LiquidSFZInternal::gen_midnam (synth, midnam_model);
@@ -465,11 +462,30 @@ LV2Plugin::load_progress_threadsafe() const
 }
 
 void
-LV2Plugin::set_load_notify (std::function<void(const string&, int, const vector<string>&)> func)
+LV2Plugin::set_load_notify (std::function<void()> func)
 {
   load_notify = func;
-  if (load_notify)
-    load_notify (current_filename, current_program, current_programs);
+}
+
+vector<string>
+LV2Plugin::programs() const
+{
+  // FIXME: not threadsafe
+  return current_programs;
+}
+
+int
+LV2Plugin::program() const
+{
+  // FIXME: not threadsafe
+  return current_program;
+}
+
+string
+LV2Plugin::filename() const
+{
+  // FIXME: not threadsafe
+  return current_filename;
 }
 
 static LV2_Handle

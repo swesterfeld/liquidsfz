@@ -170,23 +170,19 @@ struct LV2UI
   LV2UI_Controller     controller     = nullptr;
 
   std::unique_ptr<FileDialog> file_dialog;
-  std::string                 file_name;
-  std::string                 sfz_program_name;
 
   bool configured  = false;
   double last_time = 0;
 
   float plugin_control_level = 0;
-  int   plugin_program = 0;
   float progress = -1;
-  vector<string> programs;
 
   ~LV2UI();
 
   PuglStatus on_event (const PuglEvent *event);
   void port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer);
   void idle();
-  void load_notify (const string& filename, int program, const vector<string>& programs);
+  void load_notify();
   ImVec2 render_frame();
 };
 
@@ -219,11 +215,10 @@ LV2UI::idle()
 
   if (file_dialog)
     {
-      string s = file_dialog->get_filename();
-      if (s != "")
+      string filename = file_dialog->get_filename();
+      if (filename != "")
         {
-          file_name = s;
-          plugin->load_threadsafe (file_name, 0);
+          plugin->load_threadsafe (filename, 0);
           file_dialog.reset();
         }
       else if (!file_dialog->is_open()) // user closed dialog
@@ -368,28 +363,31 @@ LV2UI::render_frame()
       ImGui::TableSetColumnIndex (1);
       ImGui::SetNextItemWidth (-FLT_MIN);
 
+      vector<string> programs = plugin->programs();
       vector<string> show_programs;
+      string filename = plugin->filename();
       if (programs.size() == 0)
         {
-          show_programs = { sfz_program_name };
+          std::filesystem::path filepath = filename;
+          show_programs = { filepath.stem().string() };
         }
       else
         show_programs = programs;
 
       // FIXME: we should query state from the LV2Plugin and disable some of the
       // UI elements while loading, and display progress
-      if (ImGui::BeginCombo ("##programs", show_programs[plugin_program].c_str()))
+      int program = plugin->program();
+      if (ImGui::BeginCombo ("##programs", show_programs[program].c_str()))
         {
           for (int i = 0; i < (int) show_programs.size(); i++)
             {
               ImGui::PushID (i);
 
-              bool is_selected = (plugin_program == i);
+              bool is_selected = (program == i);
               if (ImGui::Selectable (show_programs[i].c_str(), is_selected))
                 {
-                  // FIXME: should we do it here already or in the load notification function
-                  plugin_program = i;
-                  plugin->load_threadsafe (file_name, plugin_program);
+                  /* load new program (same file) */
+                  plugin->load_threadsafe (filename, i);
                 }
 
               if (is_selected)
@@ -418,14 +416,8 @@ LV2UI::port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, c
 }
 
 void
-LV2UI::load_notify (const string& filename, int program, const vector<string>& current_programs)
+LV2UI::load_notify()
 {
-  programs = current_programs;
-  plugin_program = program;
-
-  std::filesystem::path filepath = filename;
-  sfz_program_name = filepath.stem().string();
-
   puglObscureView (view);
 }
 
@@ -471,9 +463,9 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   ui->view = view;
   ui->write_function = write_function;
   ui->controller = controller;
-  plugin->set_load_notify ([ui] (const string& filename, int program, vector<string> current_programs)
+  plugin->set_load_notify ([ui] ()
     {
-      ui->load_notify (filename, program, current_programs);
+      ui->load_notify();
     });
 
 
