@@ -174,6 +174,10 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
       for (auto& program : synth.list_programs())
         current_programs.push_back (program.label());
 
+      /* FIXME: not thread safe */
+      if (load_notify)
+        load_notify();
+
       { // midnam string is accessed from other threads than the worker thread
         std::lock_guard lg (midnam_str_mutex);
         midnam_str = LiquidSFZInternal::gen_midnam (synth, midnam_model);
