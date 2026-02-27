@@ -12,7 +12,6 @@
 #include "envelope.hh"
 #include "voice.hh"
 #include "liquidsfz.hh"
-#include "pugixml.hh"
 
 namespace LiquidSFZInternal
 {
@@ -292,77 +291,11 @@ public:
     set_max_voices (voices_.size());
     init_channels();
   }
-  bool
-  is_bank (const std::string& filename)
-  {
-    pugi::xml_document doc;
-    auto result = doc.load_file (filename.c_str());
-    if (!result)
-      return false;
 
-    auto bank = doc.child ("AriaBank");
-    if (!bank)
-      return false;
+  bool is_bank (const std::string& filename) const;
+  bool load_bank (const std::string& filename);
+  bool select_program (uint program);
 
-    auto program = bank.child ("AriaProgram");
-    if (!program)
-      return false;
-
-    return true;
-  }
-  bool
-  load_bank (const std::string& filename)
-  {
-    /* unload previous sfz / bank */
-    bank_programs_.clear();
-    bank_defines_.clear();
-    unload();
-
-    pugi::xml_document doc;
-    auto result = doc.load_file (filename.c_str());
-    if (!result)
-      return false;
-
-    auto bank = doc.child ("AriaBank");
-    if (!bank)
-      return false;
-
-    std::vector<ProgramInfo> programs;
-    int i = 0;
-    for (pugi::xml_node program : bank.children ("AriaProgram"))
-      {
-        std::string name = program.attribute("name").as_string();
-
-        auto elem = program.child ("AriaElement");
-        std::string p = elem.attribute ("path").as_string();
-
-        programs.push_back (ProgramInfo { i++, name, path_resolve_case_insensitive (path_absolute (path_join (path_dirname (filename), p))) });
-      }
-    std::vector<Control::Define> defines;
-    for (pugi::xml_node define : bank.children ("Define"))
-      {
-        std::string name = define.attribute ("name").as_string();
-        std::string value = define.attribute ("value").as_string();
-
-        Control::Define def;
-        def.variable = name;
-        def.value = value;
-        defines.push_back (def);
-      }
-    if (programs.size())
-      {
-        bank_programs_ = programs;
-        bank_defines_ = defines;
-        return true;
-      }
-
-    return false;
-  }
-  bool
-  select_program (uint program)
-  {
-    return load_internal (bank_programs_[program].sfz_filename);
-  }
   std::vector<ProgramInfo>
   list_programs()
   {

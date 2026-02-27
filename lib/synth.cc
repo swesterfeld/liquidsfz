@@ -2,12 +2,14 @@
 
 #include "synth.hh"
 #include "liquidsfz.hh"
+#include "pugixml.hh"
 
 #include <stdarg.h>
 
 using LiquidSFZ::Log;
 
 using std::string;
+using std::vector;
 using std::min;
 
 namespace LiquidSFZInternal {
@@ -218,6 +220,91 @@ Synth::debug (const char *format, ...) const
       va_end (ap);
     }
 }
+
+/* AriaBank handling */
+bool
+Synth::is_bank (const string& filename) const
+{
+  pugi::xml_document doc;
+  auto result = doc.load_file (filename.c_str());
+  if (!result)
+    return false;
+
+  auto bank = doc.child ("AriaBank");
+  if (!bank)
+    return false;
+
+  auto program = bank.child ("AriaProgram");
+  if (!program)
+    return false;
+
+  return true;
+}
+
+bool
+Synth::load_bank (const string& filename)
+{
+  /* unload previous sfz / bank */
+  bank_programs_.clear();
+  bank_defines_.clear();
+  unload();
+
+  pugi::xml_document doc;
+  auto result = doc.load_file (filename.c_str());
+  if (!result)
+    return false;
+
+  auto bank = doc.child ("AriaBank");
+  if (!bank)
+    return false;
+
+  vector<ProgramInfo> programs;
+  int i = 0;
+  for (pugi::xml_node program : bank.children ("AriaProgram"))
+    {
+      string name = program.attribute("name").as_string();
+
+      auto elem = program.child ("AriaElement");
+      string p = elem.attribute ("path").as_string();
+
+      programs.push_back (ProgramInfo { i++, name, path_resolve_case_insensitive (path_absolute (path_join (path_dirname (filename), p))) });
+    }
+  vector<Control::Define> defines;
+  for (pugi::xml_node define : bank.children ("Define"))
+    {
+      string name = define.attribute ("name").as_string();
+      string value = define.attribute ("value").as_string();
+
+      Control::Define def;
+      def.variable = name;
+      def.value = value;
+      defines.push_back (def);
+    }
+  if (programs.size())
+    {
+      bank_programs_ = programs;
+      bank_defines_ = defines;
+      return true;
+    }
+
+  return false;
+}
+
+bool
+Synth::select_program (uint program)
+{
+  if (program >= bank_programs_.size())
+    {
+      error ("invalid program %d", program);
+      unload();
+      return false;
+    }
+  else
+    {
+      return load_internal (bank_programs_[program].sfz_filename);
+    }
+}
+
 
 std::mutex            Global::mutex_;
 std::weak_ptr<Global> Global::global_;
