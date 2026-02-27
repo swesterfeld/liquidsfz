@@ -119,7 +119,19 @@ public:
   ProgramInfo (ProgramInfo&&) = default;
   ~ProgramInfo();
 
+  /**
+   * This function is just provided for convenience, the program index returned by this
+   * is guaranteed to be identical to the index of the ProgramInfo in the vector.
+   *
+   * @returns program index (starting at 0)
+   */
   int index() const;
+
+  /**
+   * In AriaBank .bank.xml files a label (for the end user) is provided for each program.
+   *
+   * @returns a label for the program
+   */
   std::string label() const;
 };
 
@@ -281,12 +293,43 @@ public:
    */
   bool load (const std::string& filename);
 
+  /**
+   * \brief Check if the file is in AriaBank format
+   *
+   * @param filename name of the .bank.xml file
+   *
+   * @returns true if the file is in AriaBank format and can be loaded by
+   * load_bank().
+   */
   bool is_bank (const std::string& filename);
 
+  /**
+   * \brief Load an AriaBank file
+   *
+   * @param filename name of the .bank.xml file
+   *
+   * @returns true if the .bank.xml file could be loaded sucessfully
+   *
+   * This only loads the program index, after loading it the programs can
+   * be listed by list_programs() and programs can be loaded by select_program().
+   */
   bool load_bank (const std::string& filename);
 
+  /**
+   * \brief List available programs defined in AriaBank file
+   *
+   * @returns a vector of ProgramInfo entries
+   *
+   * This is only valid if a bank has been loaded using load_bank(), if no bank
+   * has been loaded the vector will be empty.
+   */
   std::vector<ProgramInfo> list_programs() const;
 
+  /**
+   * \brief Select program from previously loaded AriaBank file
+   *
+   * @returns true if the corresponding .sfz file could be loaded successfully
+   */
   bool select_program (uint program);
 
   /**
