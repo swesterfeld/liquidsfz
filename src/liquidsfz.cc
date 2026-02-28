@@ -327,8 +327,10 @@ public:
         else
           {
             printf ("loading program %s...\n\n", programs[value].label().c_str());
-            synth.select_program (value);
+            bool ok = synth.select_program (value);
             printf ("%30s\r", ""); // overwrite progress message
+
+            post_load (ok);
           }
       }
     else if (cli_parser.command ("cc", ch, cc, value))
@@ -443,17 +445,23 @@ public:
       load_ok = synth.load (filename);
 
     printf ("%30s\r", ""); // overwrite progress message
-    if (!load_ok)
-      return false;
 
+    post_load (load_ok);
+    return load_ok;
+  }
+  void
+  post_load (bool load_ok)
+  {
     programs = synth.list_programs();
     keys = synth.list_keys();
     ccs = synth.list_ccs();
 
-    printf ("Preloaded %d samples, %.1f MB.\n\n", synth.cache_file_count(), synth.cache_size() / 1024. / 1024.);
-    show_programs();
-    show_ccs();
-    return true;
+    if (load_ok)
+      {
+        printf ("Preloaded %d samples, %.1f MB.\n\n", synth.cache_file_count(), synth.cache_size() / 1024. / 1024.);
+        show_programs();
+        show_ccs();
+      }
   }
   void
   show_programs()
