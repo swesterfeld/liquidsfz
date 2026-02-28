@@ -17,6 +17,7 @@
 #endif
 
 using std::vector;
+using std::string;
 using std::max;
 using LiquidSFZ::Synth;
 
@@ -612,6 +613,32 @@ test_simple()
       assert (fabs (f - 2) < 0.0001);
 #endif
     }
+
+  printf ("volume test:\n");
+  auto chk_vol = [&] (const string& s, double offset = 0, double expect = -100)
+    {
+      write_sfz (s + " sample=testsynth.wav lokey=20 hikey=100 loop_mode=loop_continuous loop_start=0 loop_end=440");
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.process (outputs, sample_rate);
+
+      double db_diff = db (peak (out_left)) - offset;
+      if (expect > -100)
+        {
+          printf (" - %s: expected db %.1f, got db %.1f\n", s.c_str(), expect, db_diff);
+          assert ((expect - db_diff) < 1e-5);
+        }
+      return db (peak (out_left));
+    };
+  double v0 = chk_vol ("<region>");
+  chk_vol ("<group>group_volume=10 <region>volume=0", v0, 10);
+  chk_vol ("<master>master_volume=6 <region>volume=0", v0, 6);
+  chk_vol ("<global>global_volume=4 <region>volume=-3", v0, 1);
+  chk_vol ("<global>global_volume=2 <master>master_volume=3 <group>group_volume=4 <region>volume=5", v0, 2 + 3 + 4 + 5);
 }
 
 int
