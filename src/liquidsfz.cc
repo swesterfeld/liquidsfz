@@ -322,7 +322,7 @@ public:
       {
         std::lock_guard lg (synth_mutex); // can't process() while loading
         value -= 1;
-        if (value < 0 || value >= programs.size())
+        if (value < 0 || value >= int (programs.size()))
           printf ("unsupported program\n");
         else
           {
