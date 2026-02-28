@@ -295,7 +295,7 @@ Synth::select_program (uint program)
 {
   if (program >= bank_programs_.size())
     {
-      error ("invalid program %d", program);
+      error ("invalid program %d\n", program);
       unload();
       return false;
     }
