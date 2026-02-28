@@ -104,8 +104,6 @@ private:
   std::string              midnam_model;
   std::string              midnam_str;
   std::mutex               midnam_str_mutex;
-
-  std::function<void()> load_notify;
 public:
   LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam);
 
@@ -123,7 +121,6 @@ public:
 
   void load_threadsafe (const std::string& filename, uint program);
   float load_progress_threadsafe() const;
-  void set_load_notify (const std::function<void()>);
   std::vector<std::string> programs();
   int program();
   std::string filename();
