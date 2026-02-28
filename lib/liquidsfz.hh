@@ -301,7 +301,7 @@ public:
    * @returns true if the file is in AriaBank format and can be loaded by
    * load_bank().
    */
-  bool is_bank (const std::string& filename);
+  bool is_bank (const std::string& filename) const;
 
   /**
    * \brief Load an AriaBank file

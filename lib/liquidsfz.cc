@@ -99,7 +99,7 @@ Synth::load (const std::string& filename)
 }
 
 bool
-Synth::is_bank (const std::string& filename)
+Synth::is_bank (const std::string& filename) const
 {
   return impl->synth.is_bank (filename);
 }
