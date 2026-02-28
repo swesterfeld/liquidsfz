@@ -171,6 +171,7 @@ struct LV2UI
 
   std::unique_ptr<FileDialog> file_dialog;
 
+  bool redraw_required = false;
   bool configured  = false;
   double last_time = 0;
 
@@ -183,6 +184,7 @@ struct LV2UI
   void port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer);
   void idle();
   ImVec2 render_frame();
+  void redraw();
 };
 
 
@@ -205,13 +207,11 @@ LV2UI::idle()
   puglUpdate (world, 0.0);
 
   ImGui::SetCurrentContext (imgui_ctx);
-  if (ImGui::IsPopupOpen (nullptr, ImGuiPopupFlags_AnyPopupId))
+  if (plugin->redraw_required() || redraw_required)
     {
-      /* unfortunately we cannot do "lazy redrawing" if any popup is open */
+      redraw_required = false;
       puglObscureView (view);
     }
-  if (plugin->redraw_required())
-    puglObscureView (view);
 
   if (file_dialog)
     {
@@ -224,12 +224,19 @@ LV2UI::idle()
       else if (!file_dialog->is_open()) // user closed dialog
         file_dialog.reset();
     }
+
   float new_progress = plugin->load_progress_threadsafe();
   if (new_progress != progress)
     {
       progress = new_progress;
-      puglObscureView (view);
+      redraw();
     }
+}
+
+void
+LV2UI::redraw()
+{
+  redraw_required = true;
 }
 
 PuglStatus
@@ -256,12 +263,12 @@ LV2UI::on_event (const PuglEvent *event)
       case PUGL_POINTER_IN:
       case PUGL_MOTION:
         io.AddMousePosEvent (event->motion.x, event->motion.y);
-        puglObscureView (view);
+        redraw();
         break;
 
       case PUGL_POINTER_OUT:
         io.AddMousePosEvent (-FLT_MAX, -FLT_MAX); // place mouse pointer "off-screen"
-        puglObscureView (view);
+        redraw();
         break;
 
       case PUGL_BUTTON_PRESS:
@@ -272,17 +279,19 @@ LV2UI::on_event (const PuglEvent *event)
           else if (event->button.button == 2) button = 2; // Middle
           else if (event->button.button == 3) button = 1; // Right
           io.AddMouseButtonEvent (button, event->type == PUGL_BUTTON_PRESS);
-          puglObscureView (view);
+          redraw();
           break;
         }
 
       case PUGL_SCROLL:
         io.AddMouseWheelEvent (event->scroll.dx, event->scroll.dy);
-        puglObscureView (view);
+        redraw();
         break;
 
       case PUGL_EXPOSE:
         {
+          bool old_popup_open = ImGui::IsPopupOpen (nullptr, ImGuiPopupFlags_AnyPopupId);
+
           ImGui_ImplOpenGL3_NewFrame();
           ImGui::NewFrame();
           ImGui::SetNextWindowSize (io.DisplaySize);
@@ -292,6 +301,10 @@ LV2UI::on_event (const PuglEvent *event)
           glClearColor (0.1f, 0.1f, 0.1f, 1.0f);
           glClear (GL_COLOR_BUFFER_BIT);
           ImGui_ImplOpenGL3_RenderDrawData (ImGui::GetDrawData());
+
+          bool popup_open = ImGui::IsPopupOpen (nullptr, ImGuiPopupFlags_AnyPopupId);
+          if (popup_open != old_popup_open)
+            redraw();
           break;
         }
       default:
@@ -423,7 +436,7 @@ LV2UI::port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, c
   if (port_index == LV2Plugin::LEVEL)
     {
       plugin_control_level = *(const float *) buffer;
-      puglObscureView (view);
+      redraw();
     }
 }
 
