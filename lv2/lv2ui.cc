@@ -171,7 +171,7 @@ struct LV2UI
 
   std::unique_ptr<FileDialog> file_dialog;
 
-  bool redraw_required = false;
+  int redraw_required_frames = 0;
   bool configured  = false;
   double last_time = 0;
 
@@ -207,9 +207,11 @@ LV2UI::idle()
   puglUpdate (world, 0.0);
 
   ImGui::SetCurrentContext (imgui_ctx);
-  if (plugin->redraw_required() || redraw_required)
+  if (plugin->redraw_required() || redraw_required_frames)
     {
-      redraw_required = false;
+      if (redraw_required_frames)
+        redraw_required_frames--;
+
       puglObscureView (view);
     }
 
@@ -236,7 +238,10 @@ LV2UI::idle()
 void
 LV2UI::redraw()
 {
-  redraw_required = true;
+  /* redraw multiple frames on redraw()
+   *   ->give ImGui some time to reach a stable state
+   */
+  redraw_required_frames = 5;
 }
 
 PuglStatus
