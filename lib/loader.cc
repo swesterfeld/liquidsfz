@@ -26,6 +26,14 @@ strip_spaces (const string& s)
   return regex_replace (r, lws_re, "");
 }
 
+static string
+to_lower (const string& s)
+{
+  string r = s;
+  transform (r.begin(), r.end(), r.begin(), [](unsigned char c) { return tolower(c); });
+  return r;
+}
+
 LoopMode
 Loader::convert_loop_mode (const string& l)
 {
@@ -1140,7 +1148,7 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
 
   static const regex space_re ("\\s+(.*)");
   static const regex tag_re ("<([^>]*)>(.*)");
-  static const regex key_val_re ("([a-z0-9_]+)\\s*=\\s*(\\S+)(.*)");
+  static const regex key_val_re ("([a-zA-Z0-9_]+)\\s*=\\s*(\\S+)(.*)");
   for (auto line_info : lines)
     {
       current_line_info = line_info; // for error location reporting
@@ -1167,23 +1175,23 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
                * - value is followed by <tag>
                * - value is followed by another opcode (foo=bar)
                */
-              static const regex key_val_space_re_eol ("([a-z0-9_]+)\\s*=([^=<]+)");
-              static const regex key_val_space_re_tag ("([a-z0-9_]+)\\s*=([^=<]+)(<.*)");
-              static const regex key_val_space_re_eq ("([a-z0-9_]+)\\s*=([^=<]+)(\\s[a-z0-9_]+\\s*=.*)");
+              static const regex key_val_space_re_eol ("([a-zA-Z0-9_]+)\\s*=([^=<]+)");
+              static const regex key_val_space_re_tag ("([a-zA-Z0-9_]+)\\s*=([^=<]+)(<.*)");
+              static const regex key_val_space_re_eq ("([a-zA-Z0-9_]+)\\s*=([^=<]+)(\\s[a-zA-Z0-9_]+\\s*=.*)");
 
               if (regex_match (l, sm, key_val_space_re_eol))
                 {
-                  set_key_value (sm[1].str(), strip_spaces (sm[2].str()));
+                  set_key_value (to_lower (sm[1].str()), strip_spaces (sm[2].str()));
                   l = "";
                 }
               else if (regex_match (l, sm, key_val_space_re_tag))
                 {
-                  set_key_value (sm[1].str(), strip_spaces (sm[2].str()));
+                  set_key_value (to_lower (sm[1].str()), strip_spaces (sm[2].str()));
                   l = sm[3]; // parse rest
                 }
               else if (regex_match (l, sm, key_val_space_re_eq))
                 {
-                  set_key_value (sm[1].str(), strip_spaces (sm[2].str()));
+                  set_key_value (to_lower (sm[1].str()), strip_spaces (sm[2].str()));
                   l = sm[3]; // parse rest
                 }
               else
