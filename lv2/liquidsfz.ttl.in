@@ -16,16 +16,10 @@
 @prefix work:   <http://lv2plug.in/ns/ext/worker#> .
 @prefix rsz:    <http://lv2plug.in/ns/ext/resize-port#> .
 @prefix state:  <http://lv2plug.in/ns/ext/state#> .
-@prefix patch:  <http://lv2plug.in/ns/ext/patch#> .
 @prefix midnam: <http://ardour.org/lv2/midnam#> .
 
 midnam:interface a lv2:ExtensionData .
 midnam:update a lv2:Feature .
-
-<http://spectmorph.org/plugins/liquidsfz#sfzfile>
-  a lv2:Parameter;
-  rdfs:label "SFZ File";
-  rdfs:range atom:Path .
 
 <http://spectmorph.org/plugins/liquidsfz>
   a lv2:Plugin,
@@ -53,14 +47,12 @@ midnam:update a lv2:Feature .
 
   ui:ui <http://spectmorph.org/plugins/liquidsfz#ui>;
 
-  patch:writable <http://spectmorph.org/plugins/liquidsfz#sfzfile>;
-
   lv2:port
     [
       a lv2:InputPort,
         atom:AtomPort;
       atom:bufferType atom:Sequence;
-      atom:supports patch:Message, midi:MidiEvent;
+      atom:supports midi:MidiEvent;
       lv2:designation lv2:control;
       lv2:index 0;
       lv2:symbol "midi_in";
@@ -106,7 +98,6 @@ midnam:update a lv2:Feature .
       a lv2:OutputPort ,
         atom:AtomPort;
       atom:bufferType atom:Sequence;
-      atom:supports patch:Message;
       lv2:designation lv2:control;
       lv2:index 5;
       lv2:symbol "notify";

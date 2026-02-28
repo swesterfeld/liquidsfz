@@ -61,6 +61,13 @@ public:
   }
 };
 
+struct ProgramInfo
+{
+  int         index = 0;
+  std::string name;
+  std::string sfz_filename;
+};
+
 class Synth
 {
 public:
@@ -79,6 +86,8 @@ private:
   bool                 idle_voices_changed_ = false;
   std::vector<Region>  regions_;
   Control control_;
+  std::vector<ProgramInfo> bank_programs_;
+  std::vector<Control::Define> bank_defines_;
   std::vector<CCInfo> cc_list_;
   std::vector<KeyInfo> key_list_;
   CurveTable curve_table_;
@@ -91,7 +100,6 @@ private:
   uint  preload_time_ = 500;
   std::array<bool, 128> is_key_switch_;
   std::array<bool, 128> is_supported_cc_;
-
 
   static constexpr int CC_SUSTAIN       = 64;
   static constexpr int CC_ALL_SOUND_OFF = 120;
@@ -211,8 +219,17 @@ public:
   bool
   load (const std::string& filename)
   {
+    /* plain SFZ load -> no programs, no defines */
+    bank_defines_.clear();
+    bank_programs_.clear();
+
+    return load_internal (filename);
+  }
+  bool
+  load_internal (const std::string& filename)
+  {
     Loader loader (this);
-    if (loader.parse (filename, global_->sample_cache))
+    if (loader.parse (filename, global_->sample_cache, bank_defines_))
       {
         regions_      = loader.regions;
         control_      = loader.control;
@@ -243,7 +260,46 @@ public:
         init_channels();
         return true;
       }
-    return false;
+    else
+      {
+        unload();
+        return false;
+      }
+  }
+  void
+  unload()
+  {
+    /* this needs to be kept in sync with load_internal() and should reset
+     * the Synth object to a state where nothing is loaded
+     */
+    regions_.clear();
+    control_ = Control();
+    cc_list_.clear();
+    key_list_.clear();
+    limits_ = Limits();
+    curve_table_ = CurveTable();
+    curves_.clear();
+
+    // old sample data can only be freed after assigning regions_
+    global_->sample_cache.cleanup_post_load();
+
+    is_key_switch_.fill (false);
+    is_supported_cc_.fill (false);
+
+    // we must reinit all voices
+    //  - ensure that there are no pointers to old regions (which are deleted)
+    set_max_voices (voices_.size());
+    init_channels();
+  }
+
+  bool is_bank (const std::string& filename) const;
+  bool load_bank (const std::string& filename);
+  bool select_program (uint program);
+
+  std::vector<ProgramInfo>
+  list_programs()
+  {
+    return bank_programs_;
   }
   std::vector<CCInfo>
   list_ccs()

@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <filesystem>
 
 #include "pugl/pugl.h"
 #include "pugl/gl.h"
@@ -20,6 +21,7 @@
 #define LIQUIDSFZ_UI_URI      "http://spectmorph.org/plugins/liquidsfz#ui"
 
 using std::string;
+using std::vector;
 
 class FileDialog
 {
@@ -169,11 +171,12 @@ struct LV2UI
 
   std::unique_ptr<FileDialog> file_dialog;
 
+  int redraw_required_frames = 0;
   bool configured  = false;
   double last_time = 0;
 
   float plugin_control_level = 0;
-  int test_item1 = 0;
+  float progress = -1;
 
   ~LV2UI();
 
@@ -181,6 +184,7 @@ struct LV2UI
   void port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer);
   void idle();
   ImVec2 render_frame();
+  void redraw();
 };
 
 
@@ -202,17 +206,42 @@ LV2UI::idle()
 {
   puglUpdate (world, 0.0);
 
+  ImGui::SetCurrentContext (imgui_ctx);
+  if (plugin->redraw_required() || redraw_required_frames)
+    {
+      if (redraw_required_frames)
+        redraw_required_frames--;
+
+      puglObscureView (view);
+    }
+
   if (file_dialog)
     {
-      string s = file_dialog->get_filename();
-      if (s != "")
+      string filename = file_dialog->get_filename();
+      if (filename != "")
         {
-          plugin->load_threadsafe (s);
+          plugin->load_threadsafe (filename, 0);
           file_dialog.reset();
         }
       else if (!file_dialog->is_open()) // user closed dialog
         file_dialog.reset();
     }
+
+  float new_progress = plugin->load_progress_threadsafe();
+  if (new_progress != progress)
+    {
+      progress = new_progress;
+      redraw();
+    }
+}
+
+void
+LV2UI::redraw()
+{
+  /* redraw multiple frames on redraw()
+   *   ->give ImGui some time to reach a stable state
+   */
+  redraw_required_frames = 5;
 }
 
 PuglStatus
@@ -236,14 +265,15 @@ LV2UI::on_event (const PuglEvent *event)
         //state->quit = true;
         break;
 
+      case PUGL_POINTER_IN:
       case PUGL_MOTION:
         io.AddMousePosEvent (event->motion.x, event->motion.y);
-        puglObscureView (view);
+        redraw();
         break;
 
       case PUGL_POINTER_OUT:
         io.AddMousePosEvent (-FLT_MAX, -FLT_MAX); // place mouse pointer "off-screen"
-        puglObscureView (view);
+        redraw();
         break;
 
       case PUGL_BUTTON_PRESS:
@@ -254,17 +284,19 @@ LV2UI::on_event (const PuglEvent *event)
           else if (event->button.button == 2) button = 2; // Middle
           else if (event->button.button == 3) button = 1; // Right
           io.AddMouseButtonEvent (button, event->type == PUGL_BUTTON_PRESS);
-          puglObscureView (view);
+          redraw();
           break;
         }
 
       case PUGL_SCROLL:
         io.AddMouseWheelEvent (event->scroll.dx, event->scroll.dy);
-        puglObscureView (view);
+        redraw();
         break;
 
       case PUGL_EXPOSE:
         {
+          bool old_popup_open = ImGui::IsPopupOpen (nullptr, ImGuiPopupFlags_AnyPopupId);
+
           ImGui_ImplOpenGL3_NewFrame();
           ImGui::NewFrame();
           ImGui::SetNextWindowSize (io.DisplaySize);
@@ -274,6 +306,10 @@ LV2UI::on_event (const PuglEvent *event)
           glClearColor (0.1f, 0.1f, 0.1f, 1.0f);
           glClear (GL_COLOR_BUFFER_BIT);
           ImGui_ImplOpenGL3_RenderDrawData (ImGui::GetDrawData());
+
+          bool popup_open = ImGui::IsPopupOpen (nullptr, ImGuiPopupFlags_AnyPopupId);
+          if (popup_open != old_popup_open)
+            redraw();
           break;
         }
       default:
@@ -304,21 +340,34 @@ LV2UI::render_frame()
 
   ImGui::Begin("MainUI", nullptr, flags);
 
-  ImGui::BeginDisabled (file_dialog != nullptr);
-  if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, 0)))
+  // Get the standard height for a widget in the current style
+  float widget_height = ImGui::GetFrameHeight();
+  if (progress >= 0)
     {
-      file_dialog = std::make_unique<FileDialog>();
-
-      if (!file_dialog->is_open())
-        {
-          /* something went wrong creating the filedialog */
-          file_dialog.reset();
-        }
+      ImGui::ProgressBar (progress / 100, ImVec2 (-FLT_MIN, widget_height));
     }
-  ImGui::EndDisabled();
+  else
+    {
+      ImGui::BeginDisabled (file_dialog != nullptr);
+      if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, widget_height)))
+        {
+          file_dialog = std::make_unique<FileDialog>();
+
+          if (!file_dialog->is_open())
+            {
+              /* something went wrong creating the filedialog */
+              file_dialog.reset();
+            }
+        }
+      ImGui::EndDisabled();
+    }
   if (ImGui::BeginTable ("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
     {
-      const char* items1[] = { "Option A", "Option B", "Option C" };
+      // Column 0: auto-sized to content
+      ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed);
+
+      // Column 1: stretch, takes remaining space
+      ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 
       ImGui::TableNextRow();
       ImGui::TableSetColumnIndex (0);
@@ -334,10 +383,50 @@ LV2UI::render_frame()
       ImGui::TableNextRow();
       ImGui::TableSetColumnIndex (0);
       ImGui::AlignTextToFramePadding();
-      ImGui::Text("Select Option:");
+      ImGui::Text ("Program:");
       ImGui::TableSetColumnIndex (1);
       ImGui::SetNextItemWidth (-FLT_MIN);
-      ImGui::Combo("##combo1", &test_item1, items1, IM_ARRAYSIZE(items1));
+
+      vector<string> programs = plugin->programs();
+      string filename = plugin->filename();
+      if (programs.size() == 0)
+        {
+          std::filesystem::path filepath = filename;
+          programs = { filepath.stem().string() };
+        }
+
+      /* if program is invalid (> length of programs), display first item as
+       * selected, this will not change the invalid program until the user
+       * touches the combo box
+       */
+      int program = std::min<int> (plugin->program(), programs.size());
+      if (ImGui::BeginCombo ("##programs", programs[program].c_str()))
+        {
+          for (int i = 0; i < (int) programs.size(); i++)
+            {
+              ImGui::PushID (i);
+
+              bool is_selected = (program == i);
+              if (ImGui::Selectable (programs[i].c_str(), is_selected))
+                {
+                  /* load new program (same file) */
+                  plugin->load_threadsafe (filename, i);
+                }
+
+              if (is_selected)
+                ImGui::SetItemDefaultFocus();
+
+              ImGui::PopID();
+            }
+          ImGui::EndCombo();
+        }
+
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex (0);
+      ImGui::AlignTextToFramePadding();
+      ImGui::Text ("Status:");
+      ImGui::TableSetColumnIndex (1);
+      ImGui::TextUnformatted (plugin->status().c_str());
 
       ImGui::EndTable();
     }
@@ -352,7 +441,7 @@ LV2UI::port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, c
   if (port_index == LV2Plugin::LEVEL)
     {
       plugin_control_level = *(const float *) buffer;
-      puglObscureView (view);
+      redraw();
     }
 }
 
@@ -434,7 +523,8 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   ImGuiContext* ctx = ImGui::CreateContext();
   ui->imgui_ctx = ctx;
   ImGui::SetCurrentContext (ctx);
-  ImGuiIO& io = ImGui::GetIO(); (void)io;
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = nullptr; // don't write imgui.ini
   ImGui::StyleColorsDark();
 
   // --- SCALING LOGIC ---

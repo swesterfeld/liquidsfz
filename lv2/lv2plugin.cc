@@ -5,8 +5,8 @@
 #include "lv2plugin.hh"
 
 #include <string>
-#include <atomic>
 #include <mutex>
+#include <filesystem>
 
 #include <math.h>
 
@@ -19,6 +19,9 @@
 using namespace LiquidSFZ;
 
 using std::string;
+using std::vector;
+
+using LiquidSFZInternal::string_printf;
 
 #undef LIQUIDSFZ_LV2_DEBUG
 
@@ -53,15 +56,62 @@ debug (const char *format, ...)
 }
 #endif
 
+class RTMutexWaitLockGuard
+{
+  RTMutex& mutex_;
+public:
+  explicit RTMutexWaitLockGuard (RTMutex& m)
+    : mutex_ (m)
+  {
+    mutex_.wait_for_lock();
+  }
+  ~RTMutexWaitLockGuard()
+  {
+    mutex_.unlock();
+  }
+
+  // non-copyable
+  RTMutexWaitLockGuard (const RTMutexWaitLockGuard&) = delete;
+  RTMutexWaitLockGuard& operator= (const RTMutexWaitLockGuard&) = delete;
+
+  // non-movable (same as std::lock_guard)
+  RTMutexWaitLockGuard (RTMutexWaitLockGuard&&) = delete;
+  RTMutexWaitLockGuard& operator= (RTMutexWaitLockGuard&&) = delete;
+};
+
+/*
+ * do not use a std::mutex here because it may not be hard RT safe to
+ * try_lock() / unlock() it (depending on how the mutex is implemented)
+ */
+bool
+RTMutex::try_lock()
+{
+  return !locked_flag.test_and_set();
+}
+
+void
+RTMutex::wait_for_lock()
+{
+  while (!try_lock())
+    {
+      // this doesn't happen very often and we are in a non-RT thread, so we
+      // can block it for some time
+      //  => wait for less than one frame drawing time until trying again
+      float fps = 240;
+      usleep (1000 * 1000 / fps);
+    }
+}
+
+void
+RTMutex::unlock()
+{
+  locked_flag.clear();
+}
+
 LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam) :
   schedule (schedule),
   midnam (midnam)
 {
-  /* avoid allocations in RT thread */
-  load_filename.reserve (1024);
-  queue_filename.reserve (1024);
-  current_filename.reserve (1024);
-
   synth.set_sample_rate (rate);
 
   midnam_model = LiquidSFZInternal::string_printf ("LiquidSFZ-%p\n", this);
@@ -73,6 +123,7 @@ LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule
   uris.atom_Object        = map->map (map->handle, LV2_ATOM__Object);
   uris.atom_URID          = map->map (map->handle, LV2_ATOM__URID);
   uris.atom_Path          = map->map (map->handle, LV2_ATOM__Path);
+  uris.atom_Int           = map->map (map->handle, LV2_ATOM__Int);
   uris.patch_Get          = map->map (map->handle, LV2_PATCH__Get);
   uris.patch_Set          = map->map (map->handle, LV2_PATCH__Set);
   uris.patch_property     = map->map (map->handle, LV2_PATCH__property);
@@ -80,43 +131,7 @@ LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule
   uris.state_StateChanged = map->map (map->handle, LV2_STATE__StateChanged);
 
   uris.liquidsfz_sfzfile  = map->map (map->handle, LIQUIDSFZ_URI "#sfzfile");
-}
-
-const char *
-LV2Plugin::read_set_filename (const LV2_Atom_Object *obj)
-{
-  if (obj->body.otype != uris.patch_Set)
-    return nullptr;
-
-  const LV2_Atom *property = nullptr;
-  lv2_atom_object_get (obj, uris.patch_property, &property, 0);
-  if (!property || property->type != uris.atom_URID)
-    return nullptr;
-
-  if (((const LV2_Atom_URID *)property)->body != uris.liquidsfz_sfzfile)
-    return nullptr;
-
-  const LV2_Atom *file_path = nullptr;
-  lv2_atom_object_get (obj, uris.patch_value, &file_path, 0);
-  if (!file_path || file_path->type != uris.atom_Path)
-    return nullptr;
-
-  const char *filename = (const char *) (file_path + 1);
-  return filename;
-}
-
-void
-LV2Plugin::write_set_filename()
-{
-  LV2_Atom_Forge_Frame frame;
-
-  lv2_atom_forge_frame_time (&forge, 0);
-  lv2_atom_forge_object (&forge, &frame, 0, uris.patch_Set);
-  lv2_atom_forge_property_head (&forge, uris.patch_property, 0);
-  lv2_atom_forge_urid (&forge, uris.liquidsfz_sfzfile);
-  lv2_atom_forge_property_head (&forge, uris.patch_value, 0);
-  lv2_atom_forge_path (&forge, current_filename.c_str(), current_filename.length());
-  lv2_atom_forge_pop (&forge, &frame);
+  uris.liquidsfz_program  = map->map (map->handle, LIQUIDSFZ_URI "#program");
 }
 
 void
@@ -149,9 +164,68 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
 {
   if (size == sizeof (int) && *(int *) data == command_load)
     {
-      debug ("loading file %s\n", load_filename.c_str());
+      rt_mutex.wait_for_lock();
+      string filename = current_filename;
+      int    program  = current_program;
+      std::filesystem::path fp = filename;
+      rt_mutex.unlock();
 
-      synth.load (load_filename);
+      auto set_status = [this] (const string& status)
+        {
+          RTMutexWaitLockGuard lg (rt_mutex);
+
+          current_status = status;
+          ui_redraw_required = true;
+        };
+      auto update_programs = [this] ()
+        {
+          RTMutexWaitLockGuard lg (rt_mutex);
+
+          current_programs.clear();
+          for (auto& program : synth.list_programs())
+            current_programs.push_back (program.label());
+          ui_redraw_required = true;
+        };
+      auto clear_programs = [this] ()
+        {
+          RTMutexWaitLockGuard lg (rt_mutex);
+
+          current_programs.clear();
+          ui_redraw_required = true;
+        };
+      synth.set_progress_function ([this] (double percent)
+        {
+          load_progress = percent;
+        });
+      if (synth.is_bank (filename))
+        {
+          if (synth.load_bank (filename))
+            {
+              set_status (string_printf ("loading '%s', program %d...", fp.filename().c_str(), program + 1));
+              update_programs();
+
+              if (synth.select_program (program))
+                set_status ("OK");
+              else
+                set_status (string_printf ("ERROR loading '%s', program %d.", fp.filename().c_str(), program + 1));
+            }
+          else
+            {
+              set_status (string_printf ("ERROR loading bank '%s'.", fp.filename().c_str()));
+              clear_programs();
+            }
+        }
+      else
+        {
+          set_status (string_printf ("loading '%s'...", fp.filename().c_str()));
+          clear_programs();
+
+          if (synth.load (filename))
+            set_status ("OK");
+          else
+            set_status (string_printf ("ERROR loading '%s'.", fp.filename().c_str()));
+        }
+      load_progress = -1;
 
       { // midnam string is accessed from other threads than the worker thread
         std::lock_guard lg (midnam_str_mutex);
@@ -166,7 +240,6 @@ void
 LV2Plugin::work_response (uint32_t size, const void *data)
 {
   load_in_progress = false;
-  current_filename = load_filename;
   inform_ui        = true; // send notification to UI that current filename has changed
 }
 
@@ -208,29 +281,7 @@ LV2Plugin::run (uint32_t n_samples)
 
   LV2_ATOM_SEQUENCE_FOREACH (midi_in, ev)
     {
-      if (ev->body.type == uris.atom_Blank || ev->body.type == uris.atom_Object)
-        {
-          const LV2_Atom_Object* obj = (LV2_Atom_Object*)&ev->body;
-
-          if (obj->body.otype == uris.patch_Get)
-            {
-              debug ("got patch get message\n");
-
-              write_set_filename();
-            }
-          else if (obj->body.otype == uris.patch_Set && !load_in_progress)
-            {
-              if (const char *filename = read_set_filename (obj))
-                {
-                  size_t len = strlen (filename);
-                  if (len < queue_filename.capacity()) // avoid allocations in RT context
-                    {
-                      queue_filename = filename;
-                    }
-                }
-            }
-        }
-      else if (ev->body.type == uris.midi_MidiEvent && !load_in_progress)
+      if (ev->body.type == uris.midi_MidiEvent && !load_in_progress)
         {
           const uint8_t *msg = (const uint8_t*)(ev + 1);
 
@@ -261,20 +312,22 @@ LV2Plugin::run (uint32_t n_samples)
         left_out[i] = right_out[i] = 0;
     }
 
-  if (!load_in_progress && !queue_filename.empty())
+  if (rt_mutex.try_lock())
     {
-      load_in_progress = true;
-      load_filename    = queue_filename;
-      queue_filename   = "";
+      if (!load_in_progress && file_or_program_changed)
+        {
+          load_in_progress = true;
+          file_or_program_changed = false;
 
-      schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
+          schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
+        }
+      rt_mutex.unlock();
     }
   if (inform_ui)
     {
       inform_ui = false;
 
       write_state_changed();
-      write_set_filename();
 
       if (midnam)
         midnam->update (midnam->handle);
@@ -309,7 +362,12 @@ LV2Plugin::save (LV2_State_Store_Function store,
                  LV2_State_Handle         handle,
                  const LV2_Feature* const* features)
 {
-  if (current_filename.empty())
+  rt_mutex.wait_for_lock();
+  int    program  = current_program;
+  string filename = current_filename;
+  rt_mutex.unlock();
+
+  if (filename.empty())
     {
       debug ("save: error: current filename is empty\n");
       return LV2_STATE_ERR_NO_PROPERTY;
@@ -333,7 +391,7 @@ LV2Plugin::save (LV2_State_Store_Function store,
 #endif
     }
 
-  string path = current_filename;
+  string path = filename;
   if (map_path)
     {
       char *abstract_path = map_path->abstract_path (map_path->handle, path.c_str());
@@ -359,6 +417,12 @@ LV2Plugin::save (LV2_State_Store_Function store,
   store (handle, uris.liquidsfz_sfzfile,
          path.c_str(), path.size() + 1,
          uris.atom_Path,
+         LV2_STATE_IS_POD);
+
+  store (handle, uris.liquidsfz_program,
+         &program,
+         sizeof (int32_t),
+         uris.atom_Int,
          LV2_STATE_IS_POD);
 
   return LV2_STATE_SUCCESS;
@@ -392,7 +456,14 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
   size_t      size;
   uint32_t    type;
   uint32_t    valflags;
-  const void *value = retrieve (handle, uris.liquidsfz_sfzfile, &size, &type, &valflags);
+  const void *value;
+
+  int program = 0;
+  value = retrieve (handle, uris.liquidsfz_program, &size, &type, &valflags);
+  if (value && size == sizeof (int) && type == uris.atom_Int)
+    program = *(int *) value;
+
+  value = retrieve (handle, uris.liquidsfz_sfzfile, &size, &type, &valflags);
   if (value)
     {
       char *absolute_path = map_path->absolute_path (map_path->handle, (const char *)value);
@@ -410,7 +481,7 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
 #endif
       if (real_path)
         {
-          queue_filename = real_path;
+          load_threadsafe (real_path, program);
           free (real_path);
         }
 #ifdef LV2_STATE__freePath
@@ -429,10 +500,61 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
 }
 
 void
-LV2Plugin::load_threadsafe (const string& filename)
+LV2Plugin::load_threadsafe (const string& filename, uint program)
 {
-  // FIXME: not threadsafe
-  queue_filename = filename;
+  RTMutexWaitLockGuard lg (rt_mutex);
+
+  current_filename = filename;
+  current_program = program;
+  file_or_program_changed = true;
+}
+
+float
+LV2Plugin::load_progress_threadsafe() const
+{
+  return load_progress.load();
+}
+
+bool
+LV2Plugin::redraw_required()
+{
+  RTMutexWaitLockGuard lg (rt_mutex);
+
+  auto result = ui_redraw_required;
+  ui_redraw_required = false;
+  return result;
+}
+
+vector<string>
+LV2Plugin::programs()
+{
+  RTMutexWaitLockGuard lg (rt_mutex);
+
+  return current_programs;
+}
+
+int
+LV2Plugin::program()
+{
+  RTMutexWaitLockGuard lg (rt_mutex);
+
+  return current_program;
+}
+
+string
+LV2Plugin::filename()
+{
+  RTMutexWaitLockGuard lg (rt_mutex);
+
+  return current_filename;
+}
+
+string
+LV2Plugin::status()
+{
+  RTMutexWaitLockGuard lg (rt_mutex);
+
+  return current_status;
 }
 
 static LV2_Handle

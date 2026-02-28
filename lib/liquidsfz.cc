@@ -98,6 +98,24 @@ Synth::load (const std::string& filename)
   return impl->synth.load (filename);
 }
 
+bool
+Synth::is_bank (const std::string& filename) const
+{
+  return impl->synth.is_bank (filename);
+}
+
+bool
+Synth::load_bank (const std::string& filename)
+{
+  return impl->synth.load_bank (filename);
+}
+
+bool
+Synth::select_program (uint program)
+{
+  return impl->synth.select_program (program);
+}
+
 void
 Synth::add_event_note_on (uint time_frames, int channel, int key, int velocity)
 {
@@ -180,6 +198,45 @@ size_t
 Synth::max_cache_size() const
 {
   return impl->synth.max_cache_size();
+}
+
+/*----------------- ProgramInfo --------------*/
+
+struct ProgramInfo::Impl {
+  LiquidSFZInternal::ProgramInfo program_info;
+};
+
+ProgramInfo::ProgramInfo() : impl (new ProgramInfo::Impl())
+{
+}
+
+ProgramInfo::~ProgramInfo()
+{
+}
+
+int
+ProgramInfo::index() const
+{
+  return impl->program_info.index;
+}
+
+string
+ProgramInfo::label() const
+{
+  return impl->program_info.name;
+}
+
+vector<ProgramInfo>
+Synth::list_programs() const
+{
+  vector<ProgramInfo> result;
+
+  for (const auto& program_info : impl->synth.list_programs())
+    {
+      auto& program_result = result.emplace_back();
+      program_result.impl->program_info = program_info;
+    }
+  return result;
 }
 
 /*----------------- CCInfo --------------*/

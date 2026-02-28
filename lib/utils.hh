@@ -81,6 +81,7 @@ bool path_is_absolute (const std::string& filename);
 std::string path_absolute (const std::string& filename);
 std::string path_dirname (const std::string& filename);
 std::string path_join (const std::string& path1, const std::string& path2);
+std::string path_resolve_case_insensitive (const std::string& path);
 
 class LinearSmooth
 {
