@@ -536,6 +536,24 @@ Loader::set_key_value (const string& key, const string& value)
     region.amp_velcurve.set (sub_key, convert_float (value));
   else if (key == "volume")
     region.volume = convert_float (value);
+  else if (key == "group_volume")
+    {
+      if (region_type != RegionType::GROUP)
+        synth_->warning ("%s group_volume not in <group>, will be used anyway\n", location().c_str());
+      region.group_volume = convert_float (value);
+    }
+  else if (key == "master_volume")
+    {
+      if (region_type != RegionType::MASTER)
+        synth_->warning ("%s master_volume not in <master>, will be used anyway\n", location().c_str());
+      region.master_volume = convert_float (value);
+    }
+  else if (key == "global_volume")
+    {
+      if (region_type != RegionType::GLOBAL)
+        synth_->warning ("%s global_volume not in <global>, will be used anyway\n", location().c_str());
+      region.global_volume = convert_float (value);
+    }
   else if (key == "amplitude")
     region.amplitude = convert_float (value);
   else if (key == "amp_veltrack")

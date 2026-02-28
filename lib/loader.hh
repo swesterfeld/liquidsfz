@@ -261,6 +261,9 @@ struct Region
   EGParam fileg_sustain  { 100 };
   EGParam fileg_release  { 0 };
 
+  float global_volume = 0;
+  float master_volume = 0;
+  float group_volume = 0;
   float volume = 0;
   float amplitude = 100;
   float amp_veltrack = 100;

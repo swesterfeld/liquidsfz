@@ -255,7 +255,7 @@ Voice::xfout_gain (int value, int lo, int hi, XFCurve curve)
 void
 Voice::update_volume_gain()
 {
-  float volume = region_->volume;
+  float volume = region_->volume + region_->group_volume + region_->master_volume + region_->global_volume;
   volume += synth_->get_cc_vec_value (channel_, region_->gain_cc);
 
   volume_gain_ = db_to_factor (volume);
