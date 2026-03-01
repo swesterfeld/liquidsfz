@@ -562,6 +562,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.amp_random = convert_float (value);
   else if (key == "pan")
     region.pan = convert_float (value);
+  else if (key == "width")
+    region.width = convert_float (value);
   else if (key == "rt_decay")
     region.rt_decay = convert_float (value);
   else if (key == "group")
@@ -628,6 +630,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.fil2.veltrack = convert_int (value);
   else if (parse_cc (key, value, region.pan_cc,
                      "pan_*")
+       ||  parse_cc (key, value, region.width_cc,
+                     "width_*")
        ||  parse_cc (key, value, region.gain_cc,
                      "gain_cc", // acts as alias
                      "volume_*")
