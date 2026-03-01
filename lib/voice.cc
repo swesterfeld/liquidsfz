@@ -74,6 +74,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   left_gain_.reset (sample_rate, 0.020);
   right_gain_.reset (sample_rate, 0.020);
   replay_speed_.reset (sample_rate, 0.020);
+  width_factor_.reset (sample_rate, 0.020);
 
   amp_random_gain_ = db_to_factor (region.amp_random * synth_->normalized_random_value());
   pitch_random_cent_ = region.pitch_random * synth_->normalized_random_value();
@@ -115,6 +116,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   update_pan_gain();
   update_cc7_cc10_gain();
   update_lr_gain (true);
+  update_width_factor (true);
 
   set_pitch_bend (synth_->get_pitch_bend (channel));
   update_replay_speed (true);
@@ -219,6 +221,13 @@ Voice::update_lr_gain (bool now)
   synth_->debug (" - gain l=%.2f r=%.2f\n", 32768 * pan_left_gain_ * global_gain, 32768 * pan_right_gain_ * global_gain);
   left_gain_.set (cc7_cc10_left_gain_ * pan_left_gain_ * global_gain, now);
   right_gain_.set (cc7_cc10_right_gain_* pan_right_gain_ * global_gain, now);
+}
+
+void
+Voice::update_width_factor (bool now)
+{
+  float width = region_->width + synth_->get_cc_vec_value (channel_, region_->width_cc);
+  width_factor_.set ((width + 100.f) * 0.01f * 0.5f, now);
 }
 
 float
@@ -363,6 +372,8 @@ Voice::update_cc (int controller)
 
   if (region_->tune_cc.contains (controller))
     update_replay_speed (false);
+  if (region_->width_cc.contains (controller))
+    update_width_factor (false);
 
   auto update_filter = [controller, this] (FImpl& fi)
     {
@@ -572,12 +583,11 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 
   if (CHANNELS == 2)
     {
-      float width = region_->width + synth_->get_cc_vec_value (channel_, region_->width_cc);
       for (uint i = 0; i < n_frames; i++)
         {
           const float left = out_l[i];
           const float right = out_r[i];
-          const float a = (width + 100.f) * 0.01f * 0.5f;   // factor for same channel
+          const float a = width_factor_.get_next();
           const float b = 1.f - a;                          // factor for other channel
           out_l[i] = a * left + b * right;
           out_r[i] = b * left + a * right;

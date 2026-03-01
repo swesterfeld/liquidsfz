@@ -63,6 +63,7 @@ class Voice
 {
   LinearSmooth left_gain_;
   LinearSmooth right_gain_;
+  LinearSmooth width_factor_;
 
   struct FImpl {
     Filter              filter;
@@ -96,6 +97,7 @@ class Voice
   void update_pan_gain();
   void update_cc7_cc10_gain();
   void update_lr_gain (bool now);
+  void update_width_factor (bool now);
 
   float amp_value (float vnorm, const EGParam& amp_param);
 
