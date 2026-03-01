@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cassert>
+#include <cstring>
 #include <unistd.h>
 
 #include <sndfile.h>
@@ -10,6 +11,7 @@
 #include <algorithm>
 
 #include "liquidsfz.hh"
+#include "log.hh"
 #include "config.h"
 
 #if HAVE_FFTW
@@ -20,6 +22,7 @@ using std::vector;
 using std::string;
 using std::max;
 using LiquidSFZ::Synth;
+using LiquidSFZInternal::string_printf;
 
 struct SineDetectPartial
 {
@@ -632,6 +635,7 @@ test_simple()
           printf (" - %s: expected db %.1f, got db %.1f\n", s.c_str(), expect, db_diff);
           assert ((expect - db_diff) < 1e-5);
         }
+
       return db (peak (out_left));
     };
   double v0 = chk_vol ("<region>");
@@ -641,13 +645,85 @@ test_simple()
   chk_vol ("<global>global_volume=2 <master>master_volume=3 <group>group_volume=4 <region>volume=5", v0, 2 + 3 + 4 + 5);
 }
 
+void
+test_width()
+{
+  int sample_rate = 44100;
+  vector<float> samples;
+
+  for (int i = 0; i < sample_rate; i++)
+    {
+      samples.push_back (sin (i * 2 * M_PI * 440 / sample_rate));
+      samples.push_back (sin (i * 2 * M_PI * 1000 / sample_rate));
+    }
+
+  write_sample (samples, sample_rate, 2);
+  write_sfz ("<region>sample=testsynth.wav lokey=20 hikey=100");
+
+  Synth synth;
+  synth.set_sample_rate (sample_rate);
+  synth.set_live_mode (false);
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+
+  vector<float> out_left (sample_rate), out_right (sample_rate);
+  float *outputs[2] = { out_left.data(), out_right.data() };
+  synth.add_event_note_on (0, 0, 60, 127);
+  synth.process (outputs, sample_rate);
+  auto get_partial = [&] (vector<float> samples, double f)
+    {
+      auto partials = sine_detect (sample_rate, samples);
+
+      for (auto p : partials)
+        if (fabs (p.freq - f) < 10)
+          return p.mag;
+      return 0.0;
+    };
+  double lnorm = get_partial (out_left, 440);
+  double rnorm = get_partial (out_right, 1000);
+  struct Sines {
+    double l440;
+    double r440;
+    double l1000;
+    double r1000;
+  };
+  printf ("width test:\n");
+  auto width_test = [&] (double width, double xl440, double xr440, double xl1000, double xr1000)
+    {
+      write_sfz (string_printf ("<region>width=%f sample=testsynth.wav lokey=20 hikey=100", width));
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.process (outputs, sample_rate);
+      Sines s;
+      s.l440 = get_partial (out_left, 440) / lnorm;
+      s.r440 = get_partial (out_right, 440) / rnorm;
+      s.l1000 = get_partial (out_left, 1000) / lnorm;
+      s.r1000 = get_partial (out_right, 1000) / rnorm;
+      printf (" - width %4.0f l440=%.2f r440=%.2f l1000=%.2f r1000=%.2f\n", width, s.l440, s.r440, s.l1000, s.r1000);
+      assert (fabs (s.l440 - xl440) < 0.01);
+    };
+  width_test (200,  1.5,  0,    0,    0);
+  width_test (100,  1,    0,    0,    1);
+  width_test (50,   0.75, 0.25, 0.25, 0.75);
+  width_test (0,    0.5,  0.5,  0.5,  0.5);
+  width_test (-100, 0,    1,    1,    0);
+}
+
 int
-main()
+main (int argc, char **argv)
 {
   test_simple();
   test_interp_time_align();
   test_tiny_loop();
   test_pitch();
+  test_width();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");

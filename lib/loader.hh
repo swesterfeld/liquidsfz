@@ -269,6 +269,7 @@ struct Region
   float amp_veltrack = 100;
   float amp_random = 0;
   float pan = 0;
+  float width = 100;
   float rt_decay = 0;
   uint group = 0;
   uint off_by = 0;
@@ -314,6 +315,7 @@ struct Region
   SimpleLFO amplfo, pitchlfo, fillfo;
 
   CCParamVec pan_cc;
+  CCParamVec width_cc;
   CCParamVec gain_cc;
   CCParamVec amplitude_cc;
   CCParamVec tune_cc;
