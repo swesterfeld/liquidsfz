@@ -572,6 +572,17 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 
   if (CHANNELS == 2)
     {
+      float width = region_->width + synth_->get_cc_vec_value (channel_, region_->width_cc);
+      for (uint i = 0; i < n_frames; i++)
+        {
+          const float left = out_l[i];
+          const float right = out_r[i];
+          const float a = (width + 100.f) * 0.01f * 0.5f;   // factor for same channel
+          const float b = 1.f - a;                          // factor for other channel
+          out_l[i] = a * left + b * right;
+          out_r[i] = b * left + a * right;
+        }
+
       if (const_gain)
         {
           const float gain_left = left_gain_.get_next();
