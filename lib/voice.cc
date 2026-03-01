@@ -575,6 +575,10 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
   if (fimpl2_.params->type != Filter::Type::NONE)
     process_filter (fimpl2_, false, out_l, out_r, n_frames, nullptr);
 
+  /* process width */
+  if (CHANNELS == 2)
+    process_width (out_l, out_r, n_frames);
+
   /* add samples to output buffer */
   const float *lfo_volume = lfo_gen_.get (LFOGen::VOLUME);
   const bool   const_gain = (!lfo_volume && left_gain_.is_constant() && right_gain_.is_constant());
@@ -583,16 +587,6 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 
   if (CHANNELS == 2)
     {
-      for (uint i = 0; i < n_frames; i++)
-        {
-          const float left = out_l[i];
-          const float right = out_r[i];
-          const float a = width_factor_.get_next();
-          const float b = 1.f - a;                          // factor for other channel
-          out_l[i] = a * left + b * right;
-          out_r[i] = b * left + a * right;
-        }
-
       if (const_gain)
         {
           const float gain_left = left_gain_.get_next();
@@ -715,6 +709,38 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
               return Filter::CR (cutoff, mod_resonance[i]);
             });
         }
+    }
+}
+
+void
+Voice::process_width (float *out_l, float *out_r, uint n_frames)
+{
+  auto apply_width = [&] (uint i, const float width_factor)
+    {
+      const float left = out_l[i];
+      const float right = out_r[i];
+      const float a = width_factor;    // factor for same channel
+      const float b = 1.f - a;         // factor for other channel
+      out_l[i] = a * left + b * right;
+      out_r[i] = b * left + a * right;
+    };
+
+  if (width_factor_.is_constant())
+    {
+      const float width_factor = width_factor_.get_next();
+
+      // if width factor is 1, width is 100% and no processing is needed
+      if (fabs (width_factor - 1) > 1e-6)
+        {
+          // compiler should auto-vectorize this loop
+          for (uint i = 0; i < n_frames; i++)
+            apply_width (i, width_factor);
+        }
+    }
+  else
+    {
+      for (uint i = 0; i < n_frames; i++)
+        apply_width (i, width_factor_.get_next());
     }
 }
 
