@@ -716,6 +716,60 @@ test_width()
   width_test (-100, 0,    1,    1,    0);
 }
 
+void
+test_end()
+{
+  int sample_rate = 44100;
+  vector<float> samples;
+  for (int i = 0; i < 1000; i++)
+    samples.push_back (1);
+
+  write_sample (samples, sample_rate);
+
+  vector<float> out_left (sample_rate), out_right (sample_rate);
+  float *outputs[2] = { out_left.data(), out_right.data() };
+
+  Synth synth;
+  synth.set_sample_rate (sample_rate);
+  synth.set_live_mode (false);
+  printf ("test end opcode:\n");
+  for (int sample_quality = 1; sample_quality <= 3; sample_quality++)
+    {
+      for (int try_offset : { 0, 500 })
+        {
+          for (int try_end : { -1, 0, 100 })
+            {
+              write_sfz (string_printf ("<region>sample=testsynth.wav lokey=20 hikey=100 offset=%d end=%d", try_offset, try_offset + try_end));
+              if (!synth.load ("testsynth.sfz"))
+                {
+                  fprintf (stderr, "parse error: exiting\n");
+                  exit (1);
+                }
+              synth.set_sample_quality (sample_quality);
+              synth.add_event_note_on (0, 0, 60, 127);
+              synth.process (outputs, sample_rate);
+
+              int end_l = -1;
+              int end_r = -1;
+              for (size_t i = 0; i < out_left.size(); i++)
+                {
+                  // at quality 3, the interpolation will produce ripple after the end
+                  float threshold = (sample_quality == 3) ? 0.05 : 0;
+
+                  if (out_left[i] > threshold)
+                    end_l = i;
+                  if (out_right[i] > threshold)
+                    end_r = i;
+                }
+              printf (" - quality %d - got end %d, %d expect %d\n", sample_quality, end_l, end_r, try_end);
+              assert (end_l == try_end);
+              assert (end_r == try_end);
+            }
+        }
+    }
+}
+
+
 int
 main (int argc, char **argv)
 {
@@ -724,6 +778,7 @@ main (int argc, char **argv)
   test_tiny_loop();
   test_pitch();
   test_width();
+  test_end();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");

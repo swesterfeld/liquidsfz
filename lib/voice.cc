@@ -133,7 +133,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   state_ = ACTIVE;
 
   play_handle_.start_playback (region.cached_sample.get(), synth_->live_mode());
-  sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample);
+  sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample, region.end);
   if (loop_enabled_)
     sample_reader_.set_loop (region.loop_start, region.loop_end);
 
@@ -767,16 +767,27 @@ SampleReader::skip (int delta)
   static_assert (UPSAMPLE == 1 || UPSAMPLE == 2);
   static_assert (INTERP_POINTS % 2 == 0);
 
-  auto close_to_loop_point = [&] (int n)
+  auto close_to_loop_point_or_region_end = [&] (int n)
     {
-      return in_loop && ((relative_pos_ / UPSAMPLE - loop_start_ < n) || (loop_end_ - relative_pos_ / UPSAMPLE < n));
+      if (in_loop && ((relative_pos_ / UPSAMPLE - loop_start_ < n) || (loop_end_ - relative_pos_ / UPSAMPLE < n)))
+        return true;
+      if (region_end_ - relative_pos_ / UPSAMPLE < n)
+        return true;
+      return false;
+    };
+  auto play_handle_get = [&] (int pos)
+    {
+      if (pos / CHANNELS > region_end_)
+        return 0.f;
+      else
+        return play_handle_->get (pos);
     };
   if constexpr (UPSAMPLE == 1)
     {
       const int start_x = relative_pos_ - (INTERP_POINTS - 2) / 2;
       const float *samples = nullptr;
 
-      if (!close_to_loop_point (INTERP_POINTS))
+      if (!close_to_loop_point_or_region_end (INTERP_POINTS))
         samples = play_handle_->get_n (start_x * CHANNELS, INTERP_POINTS * CHANNELS);
 
       if (samples)
@@ -797,7 +808,7 @@ SampleReader::skip (int delta)
                 }
               for (int c = 0; c < CHANNELS; c++)
                 {
-                  samples_[i * CHANNELS + c] = play_handle_->get (x * CHANNELS + c);
+                  samples_[i * CHANNELS + c] = play_handle_get (x * CHANNELS + c);
                 }
             }
 
@@ -811,7 +822,7 @@ SampleReader::skip (int delta)
       const int N = 24;
       const float *input = nullptr;
 
-      if (!close_to_loop_point (N))
+      if (!close_to_loop_point_or_region_end (N))
         {
           const int start_x = (relative_pos_ / 2 * CHANNELS) - N * CHANNELS;
           input = play_handle_->get_n (start_x, N * 2 * CHANNELS);
@@ -833,7 +844,7 @@ SampleReader::skip (int delta)
                 }
               for (int c = 0; c < CHANNELS; c++)
                 {
-                  input_stack[n * CHANNELS + c] = play_handle_->get (x * CHANNELS + c);
+                  input_stack[n * CHANNELS + c] = play_handle_get (x * CHANNELS + c);
                 }
             }
           input = input_stack;
