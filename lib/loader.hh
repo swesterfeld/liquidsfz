@@ -278,6 +278,7 @@ struct Region
   float delay = 0;
   uint  offset = 0;
   uint  offset_random = 0;
+  int   end = 2147483647; // sfz allows end >= 2**31, but in real .sfz files this will probably not happen
 
   int sw_lokey = -1;
   int sw_hikey = -1;
