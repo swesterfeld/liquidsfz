@@ -18,17 +18,19 @@ class SampleReader
   int channels_ = 0;
   int loop_start_ = -1;
   int loop_end_ = -1;
+  int region_end_ = 0;
   int upsample_buffer_size_ = 0;
   static constexpr int MAX_UPSAMPLE_BUFFER_SIZE = 10;
   std::array<float, MAX_UPSAMPLE_BUFFER_SIZE * 4> samples_; // max: 2x upsampling, stereo
   int last_index_ = -1000;
 public:
   void
-  restart (Sample::PlayHandle *play_handle, const Sample *cached_sample, int upsample)
+  restart (Sample::PlayHandle *play_handle, const Sample *cached_sample, int upsample, int region_end)
   {
     channels_ = cached_sample->channels();
     relative_pos_ = 0;
-    end_pos_ = (cached_sample->n_samples() / channels_ + 32) * upsample;
+    end_pos_ = (std::min<sample_count_t> (cached_sample->n_samples() / channels_, region_end) + 32) * upsample;
+    region_end_ = region_end;
     play_handle_ = play_handle;
     cached_sample_ = cached_sample;
     loop_start_ = loop_end_ = -1;
