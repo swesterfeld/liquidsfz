@@ -154,18 +154,19 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   start_filter (fimpl_, &region.fil);
   start_filter (fimpl2_, &region.fil2);
 
-  for (size_t i = 0; i < region.eq_params.size() && i < MAX_EQ_BANDS; i++)
+  for (size_t i = 0; i < MAX_EQ_BANDS; i++)
     {
-      const auto& p = region.eq_params[i];
-      if (!p.used) continue;
-
       auto& b = eq_bands_[i];
-      b.params = &p;
+
+      if (i < region.eq_params.size() && region.eq_params[i].used)
+        b.params = &region.eq_params[i];
+      else
+        b.params = nullptr;
 
       b.eq.reset (Filter::Type::PEQ, sample_rate_);
 
       // Initialize EQ parameters with current CC values
-      update_eq_band (i);
+      update_eq_band (b);
     }
 
 
@@ -334,16 +335,11 @@ Voice::update_resonance (FImpl& fi, bool now)
 }
 
 void
-Voice::update_eq_band (uint band_index)
+Voice::update_eq_band (EQBand& b)
 {
-  if (band_index >= region_->eq_params.size() || band_index >= MAX_EQ_BANDS)
-    return;
+  if (!b.params) return; // band not used
 
-  const auto& p = region_->eq_params[band_index];
-  if (!p.used) return;
-
-  auto& b = eq_bands_[band_index];
-  if (!b.params) return;
+  const auto& p = *b.params;
 
   // Update EQ parameters with CC values
   float freq_cc_value = synth_->get_cc_vec_value (channel_, p.freq_cc);
@@ -431,15 +427,18 @@ Voice::update_cc (int controller)
   update_filter (fimpl2_);
 
   // Check if any EQ parameters use this controller - update only affected bands
-  for (uint i = 0; i < region_->eq_params.size() && i < MAX_EQ_BANDS; i++)
+  for (auto& b : eq_bands_)
     {
-      const auto& p = region_->eq_params[i];
-      if (p.used && (p.freq_cc.contains (controller) ||
-                     p.gain_cc.contains (controller) ||
-                     p.bw_cc.contains (controller) ||
-                     p.vel2gain_cc.contains (controller)))
+      if (!b.params) // band not used
+        continue;
+
+      const auto& p = *b.params;
+      if (p.freq_cc.contains (controller) ||
+          p.gain_cc.contains (controller) ||
+          p.bw_cc.contains (controller) ||
+          p.vel2gain_cc.contains (controller))
         {
-          update_eq_band (i); // Only update the specific band that uses this CC
+          update_eq_band (b); // Only update the specific band that uses this CC
         }
     }
 
@@ -636,7 +635,7 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
   /* process EQ bands */
   for (auto& band : eq_bands_)
   {
-    if (!band.params || band.params->used == false)
+    if (!band.params) // band not used
       continue;
 
     if (CHANNELS == 2)

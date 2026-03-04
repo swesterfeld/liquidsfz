@@ -118,7 +118,7 @@ class Voice
   void  start_filter (FImpl& fi, const FilterParams *params);
   void  update_cutoff (FImpl& fi, bool now);
   void  update_resonance (FImpl& fi, bool now);
-  void  update_eq_band (uint band_index);
+  void  update_eq_band (EQBand& band);
 
   LinearSmooth replay_speed_;
   float        pitch_bend_value_ = 0; // [-1:1]
