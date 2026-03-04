@@ -304,14 +304,17 @@ private:
       {
         /* parameter smoothing */
         const float freq_smooth = 1.2;
-        const float Q_smooth = 3;
+        const float Q_smooth = 1.2;
         const float gain_smooth = 0.5;
 
         const float high = freq_smooth;
         const float low = 1. / high;
 
+        const float highQ = Q_smooth;
+        const float lowQ = 1. / highQ;
+
         freq = std::clamp (freq, last_peq_freq * low, last_peq_freq * high);
-        Q = std::clamp (Q, last_peq_Q - Q_smooth, last_peq_Q + Q_smooth);
+        Q = std::clamp (Q, last_peq_Q * lowQ, last_peq_Q * highQ);
         gain_db = std::clamp (gain_db, last_peq_gain - gain_smooth, last_peq_gain + gain_smooth);
       }
     last_peq_freq = freq;
