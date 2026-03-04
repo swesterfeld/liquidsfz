@@ -643,6 +643,23 @@ test_simple()
   chk_vol ("<master>master_volume=6 <region>volume=0", v0, 6);
   chk_vol ("<global>global_volume=4 <region>volume=-3", v0, 1);
   chk_vol ("<global>global_volume=2 <master>master_volume=3 <group>group_volume=4 <region>volume=5", v0, 2 + 3 + 4 + 5);
+
+  printf ("phase test:\n");
+  write_sfz ("<group>sample=testsynth.wav lokey=20 hikey=100 loop_mode=loop_continuous loop_start=0 loop_end=440"
+             " volume_cc7=0 pan_cc10=0<region>volume=1<region>phase=invert");
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  synth.set_gain (sqrt (2));
+  synth.add_event_note_on (0, 0, 60, 127);
+  synth.process (outputs, sample_rate);
+
+  double phase_peak = peak (out_left);
+  double expect_phase_peak = db_to_factor (1) - 1;
+  printf (" - peak=%f expect=%f\n", phase_peak, expect_phase_peak);
+  assert (fabs (phase_peak - expect_phase_peak) < 1e-6);
 }
 
 void
