@@ -232,7 +232,8 @@ Voice::update_cc7_cc10_gain()
 void
 Voice::update_lr_gain (bool now)
 {
-  const float global_gain = synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_ * amplitude_gain_;
+  const float phase_invert = region_->phase == Phase::INVERT ? -1 : 1;
+  const float global_gain = synth_->gain() * volume_gain_ * velocity_gain_ * rt_decay_gain_ * amplitude_gain_ * phase_invert;
 
   synth_->debug (" - gain l=%.2f r=%.2f\n", 32768 * pan_left_gain_ * global_gain, 32768 * pan_right_gain_ * global_gain);
   left_gain_.set (cc7_cc10_left_gain_ * pan_left_gain_ * global_gain, now);
