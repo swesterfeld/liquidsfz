@@ -280,6 +280,47 @@ main (int argc, char **argv)
       for (size_t i = 0; i < out.size(); i++)
         printf ("%f\n", out[i]);
     }
+  else if (argc == 3 && (cmd == "jump-eqf" || cmd == "jump-eqb" || cmd == "jump-eqg"))
+    {
+      int sample_rate = 48000;
+      Filter filter;
+      filter.reset (Filter::Type::PEQ, sample_rate);
+
+      bool up = false;
+      for (int i = 0; i < sample_rate * 10; i++)
+        {
+          float x;
+          if (string (argv[2]) == "saw")
+            x = ((i % 137) / 137.) * 2 - 1;
+          else if (string (argv[2]) == "imp")
+            x = ((i % 137) == 0) ? 1 : 0;
+          else if (string (argv[2]) == "rect")
+            x = ((i % 137) < 68) ? 1 : -1;
+          else
+            {
+              assert (false);
+            }
+
+          if ((rand() % 500) == 0)
+            up = !up;
+
+          float freq = 440;
+          float bw = 1;
+          float gain = 6;
+
+          if (cmd == "jump-eqf")
+            if (up)
+              freq = 12000;
+          if (cmd == "jump-eqb")
+            bw = up ? 5 : 0.1;
+          if (cmd == "jump-eqg")
+            gain = up ? 12 : -6;
+
+          float Q = Filter::convert_bw_to_Q_freq_dependent (bw, freq, sample_rate);
+          filter.process_peq_mono (&x, freq, Q, gain, 1);
+          printf ("%f\n", x);
+        }
+    }
   else
     {
       printf ("error parsing command line args\n");
