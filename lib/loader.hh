@@ -152,6 +152,21 @@ struct FilterParams
   int          veltrack = 0;
 };
 
+struct EQBandParams
+{
+  float freq = 0.0f;
+  float gain = 0.0f;
+  float bw = 0.0f;
+  float vel2gain = 0.f;
+  bool used = false;
+
+  // MIDI CC vectors for parametric EQ control
+  CCParamVec freq_cc;
+  CCParamVec gain_cc;
+  CCParamVec bw_cc;
+  CCParamVec vel2gain_cc;
+};
+
 struct LFOParams
 {
   int   id = -1;
@@ -310,6 +325,8 @@ struct Region
   XFCurve xf_cccurve = XFCurve::POWER;
 
   FilterParams fil, fil2;
+
+  std::vector<EQBandParams> eq_params;
 
   std::vector<LFOParams> lfos;
 

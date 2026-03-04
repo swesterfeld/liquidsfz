@@ -709,6 +709,68 @@ Loader::set_key_value (const string& key, const string& value)
     {
       // actual value conversion is performed by parse_simple_lfo_param
     }
+  else if (starts_with (key, "eq"))
+	{
+		int i = 2;
+		string num_str;
+		while (i < key.size() && isdigit(key[i]))
+			num_str += key[i++];
+		int band_num = atoi(num_str.c_str()) - 1;
+
+		if (band_num >= 0 && band_num < MAX_EQ_BANDS)
+		{
+			// make sure the vector is large enough
+			if (region.eq_params.size() <= static_cast<size_t>(band_num))
+				region.eq_params.resize (band_num + 1);
+
+			string suffix = key.substr (i);
+			EQBandParams &band = region.eq_params[band_num];
+
+			// Check for CC assignments first (eq1_freq_oncc20, eq1_gain_oncc21, etc.)
+			if (parse_cc (key, value, band.freq_cc, "eq" + num_str + "_freq_*")
+			||  parse_cc (key, value, band.gain_cc, "eq" + num_str + "_gain_*")
+			||  parse_cc (key, value, band.bw_cc, "eq" + num_str + "_bw_*")
+			||  parse_cc (key, value, band.vel2gain_cc, "eq" + num_str + "_vel2gain_*"))
+			{
+				//SynthLog::warning ("%s EQ band %d: CC assignment %s = %s\n", location().c_str(), band_num + 1, key.c_str(), value.c_str());
+				band.used = true;
+			}
+			// Handle direct parameter assignments (eq1_freq, eq1_gain, etc.)
+			else if (suffix == "_freq")
+			{
+				band.freq = convert_float (value);
+				//SynthLog::warning ("%s EQ band %d: freq = %f Hz\n", location().c_str(), band_num + 1, band.freq);
+				band.used = true;
+			}
+			else if (suffix == "_bw")
+			{
+				band.bw = convert_float (value);
+				//SynthLog::warning ("%s EQ band %d: bandwidth = %f\n", location().c_str(), band_num + 1, band.bw);
+				band.used = true;
+			}
+			else if (suffix == "_gain")
+			{
+				band.gain = convert_float (value);
+				//SynthLog::warning ("%s EQ band %d: gain = %f dB\n", location().c_str(), band_num + 1, band.gain);
+				band.used = true;
+			}
+			else if (suffix == "_vel2gain")
+			{
+				band.vel2gain = convert_float (value);
+				//SynthLog::warning ("%s EQ band %d: vel2gain = %f dB\n", location().c_str(), band_num + 1, band.vel2gain);
+				band.used = true;
+			}
+			else
+			{
+				synth_->warning ("%s unknown EQ parameter: %s\n", location().c_str(), key.c_str());
+			}
+		}
+		else
+		{
+			synth_->warning ("%s EQ band number %d out of range (max %d bands)\n", location().c_str(), band_num + 1, MAX_EQ_BANDS);
+		}
+	}
+
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
 }
