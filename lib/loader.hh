@@ -26,6 +26,11 @@ enum class LoopMode {
   SUSTAIN, /* loop_sustain */
 };
 
+enum class Phase {
+  NORMAL,
+  INVERT
+};
+
 enum class OffMode {
   FAST,
   NORMAL,
@@ -285,6 +290,7 @@ struct Region
   float amp_random = 0;
   float pan = 0;
   float width = 100;
+  Phase phase = Phase::NORMAL;
   float rt_decay = 0;
   uint group = 0;
   uint off_by = 0;
@@ -500,6 +506,7 @@ public:
     return Trigger::ATTACK;
   }
   LoopMode convert_loop_mode (const std::string& l);
+  Phase convert_phase (const std::string& p);
   OffMode convert_off_mode (const std::string& s);
   XFCurve convert_xfcurve (const std::string& c);
   Filter::Type convert_filter_type (const std::string& f);

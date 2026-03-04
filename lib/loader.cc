@@ -49,6 +49,17 @@ Loader::convert_loop_mode (const string& l)
   return LoopMode::NONE;
 }
 
+Phase
+Loader::convert_phase (const string& p)
+{
+  if (p == "normal")
+    return Phase::NORMAL;
+  else if (p == "invert")
+    return Phase::INVERT;
+  synth_->warning ("%s unknown phase: %s\n", location().c_str(), p.c_str());
+  return Phase::NORMAL;
+}
+
 OffMode
 Loader::convert_off_mode (const string& m)
 {
@@ -617,6 +628,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.pan = convert_float (value);
   else if (key == "width")
     region.width = convert_float (value);
+  else if (key == "phase")
+    region.phase = convert_phase (value);
   else if (key == "rt_decay")
     region.rt_decay = convert_float (value);
   else if (key == "group")
