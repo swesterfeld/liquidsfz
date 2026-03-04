@@ -62,6 +62,29 @@ main (int argc, char **argv)
 
       return 0;
     }
+  else if (argc == 5 && cmd == "sweep-eq")
+    {
+      int sample_rate = 48000;
+
+      float eq_freq = atof (argv[2]);
+      float eq_bw = atof (argv[3]);
+      float eq_Q = Filter::convert_bw_to_Q_freq_dependent (eq_bw, eq_freq, sample_rate);
+      float gain_db = atof (argv[4]);
+
+      vector<float> left;
+      vector<float> right;
+      vector<float> freq;
+      gen_sweep (left, right, freq);
+
+      Filter filter;
+      filter.reset (Filter::Type::PEQ, 48000);
+      filter.process_peq (&left[0], &right[0], eq_freq, eq_Q, gain_db, left.size());
+
+      for (size_t i = 0; i < left.size(); i++)
+        printf ("%f %.17g\n", freq[i], sqrt (left[i] * left[i] + right[i] * right[i]));
+
+      return 0;
+    }
   else if (argc == 2 && cmd == "gen-sweep")
     {
       vector<float> left;
