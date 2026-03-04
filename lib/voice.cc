@@ -154,6 +154,22 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   start_filter (fimpl_, &region.fil);
   start_filter (fimpl2_, &region.fil2);
 
+  for (size_t i = 0; i < MAX_EQ_BANDS; i++)
+    {
+      auto& b = eq_bands_[i];
+
+      if (i < region.eq_params.size() && region.eq_params[i].used)
+        b.params = &region.eq_params[i];
+      else
+        b.params = nullptr;
+
+      b.eq.reset (Filter::Type::PEQ, sample_rate_);
+
+      // Initialize EQ parameters with current CC values
+      update_eq_band (b);
+    }
+
+
   lfo_gen_.start (region, channel_, sample_rate_);
 }
 
@@ -319,6 +335,30 @@ Voice::update_resonance (FImpl& fi, bool now)
 }
 
 void
+Voice::update_eq_band (EQBand& b)
+{
+  if (!b.params) return; // band not used
+
+  const auto& p = *b.params;
+
+  // Update EQ parameters with CC values
+  float freq_cc_value = synth_->get_cc_vec_value (channel_, p.freq_cc);
+  float gain_cc_value = synth_->get_cc_vec_value (channel_, p.gain_cc);
+  float bw_cc_value = synth_->get_cc_vec_value (channel_, p.bw_cc);
+
+  float freq = p.freq + freq_cc_value;
+  float gain = p.gain + gain_cc_value;
+  float bw   = p.bw + bw_cc_value;
+
+  // Apply velocity gain to the total gain
+  gain += p.vel2gain * velocity_gain_;
+
+  b.freq = freq;
+  b.gain = gain;
+  b.Q = Filter::convert_bw_to_Q_freq_dependent (bw, freq, sample_rate_);
+}
+
+void
 Voice::stop (OffMode off_mode)
 {
   state_ = Voice::RELEASED;
@@ -385,6 +425,23 @@ Voice::update_cc (int controller)
     };
   update_filter (fimpl_);
   update_filter (fimpl2_);
+
+  // Check if any EQ parameters use this controller - update only affected bands
+  for (auto& b : eq_bands_)
+    {
+      if (!b.params) // band not used
+        continue;
+
+      const auto& p = *b.params;
+      if (p.freq_cc.contains (controller) ||
+          p.gain_cc.contains (controller) ||
+          p.bw_cc.contains (controller) ||
+          p.vel2gain_cc.contains (controller))
+        {
+          update_eq_band (b); // Only update the specific band that uses this CC
+        }
+    }
+
   lfo_gen_.update_ccs();
 }
 
@@ -574,6 +631,22 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 
   if (fimpl2_.params->type != Filter::Type::NONE)
     process_filter (fimpl2_, false, out_l, out_r, n_frames, nullptr);
+
+  /* process EQ bands */
+  for (auto& band : eq_bands_)
+  {
+    if (!band.params) // band not used
+      continue;
+
+    if (CHANNELS == 2)
+      {
+        band.eq.process_peq (out_l, out_r, band.freq, band.Q, band.gain, n_frames);
+      }
+    else
+      {
+        band.eq.process_peq_mono (out_l, band.freq, band.Q, band.gain, n_frames);
+      }
+  }
 
   /* process width */
   if (CHANNELS == 2)

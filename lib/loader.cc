@@ -365,6 +365,59 @@ Loader::parse_simple_lfo_param (Region& region, const string& type, SimpleLFO& l
 }
 
 bool
+Loader::parse_eq_param (Region& region, const std::string& key, const std::string& value)
+{
+  if (!starts_with (key, "eq"))
+    return false;
+
+  uint i = 2;
+  string num_str;
+  while (i < key.size() && isdigit (key[i]))
+    num_str += key[i++];
+
+  if (num_str.empty())
+    return false;
+
+  int band_num = atoi (num_str.c_str()) - 1;
+  if (band_num < 0 && band_num >= MAX_EQ_BANDS)
+    {
+      synth_->warning ("%s EQ band number %d out of range (max %d bands)\n", location().c_str(), band_num + 1, MAX_EQ_BANDS);
+      return false;
+    }
+
+  // make sure the vector is large enough
+  if (region.eq_params.size() <= static_cast<size_t> (band_num))
+    region.eq_params.resize (band_num + 1);
+
+  string suffix = key.substr (i);
+  EQBandParams &band = region.eq_params[band_num];
+
+  // Check for CC assignments first (eq1_freq_oncc20, eq1_gain_oncc21, etc.)
+  if (parse_cc (key, value, band.freq_cc, "eq" + num_str + "_freq_*")
+  ||  parse_cc (key, value, band.gain_cc, "eq" + num_str + "_gain_*")
+  ||  parse_cc (key, value, band.bw_cc, "eq" + num_str + "_bw_*")
+  ||  parse_cc (key, value, band.vel2gain_cc, "eq" + num_str + "_vel2gain_*"))
+    {
+    }
+  // Handle direct parameter assignments (eq1_freq, eq1_gain, etc.)
+  else if (suffix == "_freq")
+    band.freq = convert_float (value);
+  else if (suffix == "_bw")
+    band.bw = convert_float (value);
+  else if (suffix == "_gain")
+    band.gain = convert_float (value);
+  else if (suffix == "_vel2gain")
+    band.vel2gain = convert_float (value);
+  else
+    {
+      synth_->warning ("%s unknown EQ parameter: %s\n", location().c_str(), key.c_str());
+      return false;
+    }
+  band.used = true;
+  return true;
+}
+
+bool
 Loader::parse_cc (const std::string& key, const std::string& value, CCParamVec& ccvec, const std::vector<std::string>& opcodes)
 {
   for (auto opcode : opcodes)
@@ -708,6 +761,10 @@ Loader::set_key_value (const string& key, const string& value)
        ||  parse_simple_lfo_param (region, "fillfo_",   region.fillfo,   key, value))
     {
       // actual value conversion is performed by parse_simple_lfo_param
+    }
+  else if (parse_eq_param (region, key, value))
+    {
+      // actual value conversion is performed by parse_eq_param
     }
   else
     synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());

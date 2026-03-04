@@ -61,6 +61,8 @@ public:
   }
 };
 
+#define MAX_EQ_BANDS 3
+
 class Voice
 {
   LinearSmooth left_gain_;
@@ -73,6 +75,16 @@ class Voice
     LinearSmooth        resonance_smooth;
     const FilterParams *params;
   } fimpl_, fimpl2_;
+
+  struct EQBand {
+    Filter eq;
+    float  freq = 0;
+    float  gain = 0;
+    float  Q = 0;
+    const EQBandParams* params = nullptr;
+  };
+
+  std::array<EQBand, MAX_EQ_BANDS> eq_bands_;
 
   Sample::PlayHandle play_handle_;
 
@@ -106,6 +118,7 @@ class Voice
   void  start_filter (FImpl& fi, const FilterParams *params);
   void  update_cutoff (FImpl& fi, bool now);
   void  update_resonance (FImpl& fi, bool now);
+  void  update_eq_band (EQBand& band);
 
   LinearSmooth replay_speed_;
   float        pitch_bend_value_ = 0; // [-1:1]

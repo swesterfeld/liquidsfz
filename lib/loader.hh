@@ -152,6 +152,21 @@ struct FilterParams
   int          veltrack = 0;
 };
 
+struct EQBandParams
+{
+  float freq = 0.0f;
+  float gain = 0.0f;
+  float bw = 0.0f;
+  float vel2gain = 0.f;
+  bool used = false;
+
+  // MIDI CC vectors for parametric EQ control
+  CCParamVec freq_cc;
+  CCParamVec gain_cc;
+  CCParamVec bw_cc;
+  CCParamVec vel2gain_cc;
+};
+
 struct LFOParams
 {
   int   id = -1;
@@ -311,6 +326,8 @@ struct Region
 
   FilterParams fil, fil2;
 
+  std::vector<EQBandParams> eq_params;
+
   std::vector<LFOParams> lfos;
 
   SimpleLFO amplfo, pitchlfo, fillfo;
@@ -392,6 +409,7 @@ class Loader
   bool parse_freq_cc_lfo (Region& region, int lfo_index, const std::string& lfo_key, const std::string& value);
   bool parse_lfo_param (Region& region, const std::string& key, const std::string& value);
   bool parse_simple_lfo_param (Region& region, const std::string& type, SimpleLFO& lfo, const std::string& key, const std::string& value);
+  bool parse_eq_param (Region& region, const std::string& key, const std::string& value);
   void convert_lfo (Region& region, SimpleLFO& simple_lfo, SimpleLFO::Type type);
   float get_cc_vec_max (const CCParamVec& cc_param_vec);
   float get_cc_curve_max (const CCParamVec::Entry& entry);

@@ -769,6 +769,83 @@ test_end()
     }
 }
 
+void
+test_filter()
+{
+  printf ("test eq opcode:\n");
+
+  int sample_rate = 48000;
+  vector<float> freq, samples;
+
+  /* sincos sweep */
+  double phase = 0;
+  double l = sample_rate * 5;
+  double factor = pow (sample_rate / 2 / 20., (1./l));
+  double vol = 0;
+  for (double f = 20; f < sample_rate / 2; f *= factor)
+    {
+      freq.push_back (f);
+      samples.push_back (sin (phase) * vol);
+      samples.push_back (cos (phase) * vol);
+      phase += f / sample_rate * 2 * M_PI;
+      vol += 1. / 500; /* avoid click at start */
+      if (vol > 1)
+        vol = 1;
+    }
+
+  write_sample (samples, sample_rate, 2);
+  auto chk_eq = [&] (float eq_freq, float eq_bw, float eq_gain)
+    {
+      write_sfz (string_printf("<region>sample=testsynth.wav lokey=20 hikey=100 eq1_freq=%f eq1_bw=%f eq1_gain=%f volume_cc7=0 pan_cc10=0",
+                               eq_freq, eq_bw, eq_gain));
+
+      Synth synth;
+      synth.set_sample_rate (sample_rate);
+      synth.set_live_mode (false);
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+
+      vector<float> out_left (l), out_right (l);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+      synth.set_gain (sqrt (2));
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.process (outputs, l);
+
+      float peak_freq = 0, peak_mag_db = 0, lfreq = 0, hfreq = 0, lmag_db = 0, hmag_db = 0;
+      for (size_t i = 0; i < out_left.size(); i++)
+        {
+          float mag_db = db (sqrt (out_left[i] * out_left[i] + out_right[i] * out_right[i]));
+          if (mag_db > peak_mag_db)
+            {
+              peak_freq = freq[i];
+              peak_mag_db = mag_db;
+            }
+          if (freq[i] < eq_freq && fabs (mag_db - eq_gain / 2) < fabs (lmag_db - eq_gain / 2))
+            {
+              lfreq = freq[i];
+              lmag_db = mag_db;
+            }
+          if (freq[i] > eq_freq && fabs (mag_db - eq_gain / 2) < fabs (hmag_db - eq_gain / 2))
+            {
+              hfreq = freq[i];
+              hmag_db = mag_db;
+            }
+        }
+      double bw = log2 (hfreq / lfreq);
+      printf (" - peak_freq=%.1f (expect %.1f), peak_mag=%.2f (expect %.1f), bw=%.2f (expect %.1f)\n",
+              peak_freq, eq_freq,
+              peak_mag_db, eq_gain,
+              bw, eq_bw);
+      assert (fabs (peak_freq - eq_freq) < 2);
+      assert (fabs (peak_mag_db - eq_gain) < 0.01);
+      assert (fabs (bw - eq_bw) < 0.02);
+    };
+  chk_eq (440, 1, 6);
+  chk_eq (1000, 2, 4);
+}
 
 int
 main (int argc, char **argv)
@@ -779,6 +856,7 @@ main (int argc, char **argv)
   test_pitch();
   test_width();
   test_end();
+  test_filter();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");

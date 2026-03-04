@@ -62,6 +62,29 @@ main (int argc, char **argv)
 
       return 0;
     }
+  else if (argc == 5 && cmd == "sweep-eq")
+    {
+      int sample_rate = 48000;
+
+      float eq_freq = atof (argv[2]);
+      float eq_bw = atof (argv[3]);
+      float eq_Q = Filter::convert_bw_to_Q_freq_dependent (eq_bw, eq_freq, sample_rate);
+      float gain_db = atof (argv[4]);
+
+      vector<float> left;
+      vector<float> right;
+      vector<float> freq;
+      gen_sweep (left, right, freq);
+
+      Filter filter;
+      filter.reset (Filter::Type::PEQ, 48000);
+      filter.process_peq (&left[0], &right[0], eq_freq, eq_Q, gain_db, left.size());
+
+      for (size_t i = 0; i < left.size(); i++)
+        printf ("%f %.17g\n", freq[i], sqrt (left[i] * left[i] + right[i] * right[i]));
+
+      return 0;
+    }
   else if (argc == 2 && cmd == "gen-sweep")
     {
       vector<float> left;
@@ -256,6 +279,47 @@ main (int argc, char **argv)
 
       for (size_t i = 0; i < out.size(); i++)
         printf ("%f\n", out[i]);
+    }
+  else if (argc == 3 && (cmd == "jump-eqf" || cmd == "jump-eqb" || cmd == "jump-eqg"))
+    {
+      int sample_rate = 48000;
+      Filter filter;
+      filter.reset (Filter::Type::PEQ, sample_rate);
+
+      bool up = false;
+      for (int i = 0; i < sample_rate * 10; i++)
+        {
+          float x;
+          if (string (argv[2]) == "saw")
+            x = ((i % 137) / 137.) * 2 - 1;
+          else if (string (argv[2]) == "imp")
+            x = ((i % 137) == 0) ? 1 : 0;
+          else if (string (argv[2]) == "rect")
+            x = ((i % 137) < 68) ? 1 : -1;
+          else
+            {
+              assert (false);
+            }
+
+          if ((rand() % 500) == 0)
+            up = !up;
+
+          float freq = 440;
+          float bw = 1;
+          float gain = 6;
+
+          if (cmd == "jump-eqf")
+            if (up)
+              freq = 12000;
+          if (cmd == "jump-eqb")
+            bw = up ? 5 : 0.1;
+          if (cmd == "jump-eqg")
+            gain = up ? 12 : -6;
+
+          float Q = Filter::convert_bw_to_Q_freq_dependent (bw, freq, sample_rate);
+          filter.process_peq_mono (&x, freq, Q, gain, 1);
+          printf ("%f\n", x);
+        }
     }
   else
     {

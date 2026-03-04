@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cmath>
+#include <cassert>
 #include <string>
 #include <algorithm>
 #include <array>
@@ -26,7 +27,8 @@ public:
     LPF_4P,
     HPF_4P,
     LPF_6P,
-    HPF_6P
+    HPF_6P,
+    PEQ
   };
   static Type
   type_from_string (const std::string& s)
@@ -61,6 +63,9 @@ public:
     if (s == "hpf_6p")
       return Type::HPF_6P;
 
+    if (s == "peq")
+      return Type::PEQ;
+
     return Type::NONE;
   }
   static constexpr int
@@ -77,6 +82,7 @@ public:
       case Type::HPF_2P:
       case Type::BPF_2P:
       case Type::BRF_2P:
+      case Type::PEQ:
         return 2;
       case Type::LPF_4P:
       case Type::HPF_4P:
@@ -97,10 +103,33 @@ public:
     {
     }
   };
+  // Helper functions for bandwidth to Q conversion
+  static float
+  convert_bw_to_Q (float bandwidth_octaves)
+  {
+    // Simple analog approximation: Q = 1 / (2 * sinh(ln(2)/2 * bw))
+    const float ln2_half = 0.34657359027997f; // ln(2)/2 ≈ 0.346573
+    return 1.0f / (2.0f * sinhf (ln2_half * bandwidth_octaves));
+  }
+  static float
+  convert_bw_to_Q_freq_dependent (float bandwidth_octaves, float freq_hz, float sample_rate)
+  {
+    // Frequency-dependent Audio EQ Cookbook formula with BLT conversion
+    // Q = 0.5 / sinh(ln(2)/2 * bandwidth * ω₀/sin(ω₀))
+    const float w = 2.0f * M_PI * std::min (freq_hz / sample_rate, 0.49f);
+    const float sin_w = sinf (w);
+    const float ln2_half = 0.34657359027997f; // ln(2)/2 ≈ 0.346573
+    const float sinh_arg = ln2_half * bandwidth_octaves * w / sin_w;
+    const float sinh_val = sinhf (sinh_arg);
+    return std::max (0.001f, 0.5f / sinh_val);
+  }
 private:
   bool first = false;
   float last_cutoff = 0;
   float last_resonance = 0;
+  float last_peq_freq = 0;
+  float last_peq_Q = 0;
+  float last_peq_gain = 0;
   uint config_count_down = 0;
 
   /* biquad */
@@ -256,6 +285,71 @@ private:
           }
       }
   }
+  void
+  update_config_peq (float freq, float Q, float gain_db)
+  {
+    /* smoothing wouldn't work properly if freq is (close to) zero */
+    freq = std::max (freq, 10.f);
+
+    if (first)
+      {
+        first = false;
+      }
+    else if (freq == last_peq_freq && Q == last_peq_Q && gain_db == last_peq_gain)
+      {
+        /* fast case: no need to redesign if parameters didn't change */
+        return;
+      }
+    else
+      {
+        /* parameter smoothing */
+        const float freq_smooth = 1.2;
+        const float Q_smooth = 1.2;
+        const float gain_smooth = 0.5;
+
+        const float high = freq_smooth;
+        const float low = 1. / high;
+
+        const float highQ = Q_smooth;
+        const float lowQ = 1. / highQ;
+
+        freq = std::clamp (freq, last_peq_freq * low, last_peq_freq * high);
+        Q = std::clamp (Q, last_peq_Q * lowQ, last_peq_Q * highQ);
+        gain_db = std::clamp (gain_db, last_peq_gain - gain_smooth, last_peq_gain + gain_smooth);
+      }
+    last_peq_freq = freq;
+    last_peq_Q = Q;
+    last_peq_gain = gain_db;
+
+    float norm_freq = std::min (freq / sample_rate_, 0.49f);
+
+    // Peaking EQ design from "Audio EQ Cookbook" by Robert Bristow-Johnson
+    const float w = 2.0f * M_PI * norm_freq;
+    const float cos_w = cosf (w);
+    const float sin_w = sinf (w);
+    const float A = fast_db_to_factor (gain_db / 2.0f); // sqrt of linear gain
+
+    // Use Q directly - no conversion needed since loader converts BW to Q
+    const float Q_clamped = std::max (Q, 0.001f); // Prevent division by zero
+    const float alpha = sin_w / (2.0f * Q_clamped);
+
+    // Audio EQ Cookbook peaking EQ coefficients (equation 27)
+    const float b0_norm = 1.0f + alpha * A;
+    const float b1_norm = -2.0f * cos_w;
+    const float b2_norm = 1.0f - alpha * A;
+    const float a0_norm = 1.0f + alpha / A;
+    const float a1_norm = -2.0f * cos_w;
+    const float a2_norm = 1.0f - alpha / A;
+
+    const float inv_a0 = 1.0f / a0_norm;
+
+    b0 = b0_norm * inv_a0;
+    b1 = b1_norm * inv_a0;
+    b2 = b2_norm * inv_a0;
+    a1 = a1_norm * inv_a0;
+    a2 = a2_norm * inv_a0;
+  }
+
   template<Type T, int S, int C>
   void
   process_biquad (float *left, float *right, uint n_frames)
@@ -321,6 +415,29 @@ private:
         config_count_down -= todo;
       }
   }
+  template<int C>
+  void
+  process_peq (float *left, float *right, float freq, float Q, float gain_db, uint n_frames)
+  {
+    static_assert (C == 1 || C == 2);
+    uint i = 0;
+
+    while (i < n_frames)
+      {
+        if (config_count_down == 0)
+          {
+            update_config_peq (freq, Q, gain_db);
+
+            config_count_down = 16;
+          }
+        uint todo = std::min (config_count_down, n_frames - i);
+
+        process_biquad<Type::PEQ, 0, C> (left + i, right + i, todo);
+
+        i += todo;
+        config_count_down -= todo;
+      }
+  }
   template<int C, class CRFunc> void
   process_type (float *left, float *right, const CRFunc& cr_func, uint n_frames)
   {
@@ -347,6 +464,7 @@ private:
       case Type::HPF_6P:  process_internal<Type::HPF_6P, CRFunc, C> (left, right, cr_func, n_frames);
                           break;
       case Type::NONE:    ;
+      case Type::PEQ:     assert (false);
     }
   }
 public:
@@ -400,6 +518,16 @@ public:
   process_mod_mono (float *left, const CRFunc& cr_func, uint n_frames)
   {
     process_type<1> (left, nullptr, cr_func, n_frames);
+  }
+  void
+  process_peq (float *left, float *right, float freq, float Q, float gain_db, uint n_frames)
+  {
+    process_peq<2> (left, right, freq, Q, gain_db, n_frames);
+  }
+  void
+  process_peq_mono (float *left, float freq, float Q, float gain_db, uint n_frames)
+  {
+    process_peq<1> (left, nullptr, freq, Q, gain_db, n_frames);
   }
 };
 
