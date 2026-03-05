@@ -112,7 +112,8 @@ midnam:update a lv2:Feature .
   lv2:extensionData   ui:idleInterface ;
   lv2:requiredFeature ui:idleInterface ;
 
-  lv2:optionalFeature ui:noUserResize ;
+  lv2:optionalFeature ui:noUserResize,
+                      ui:resize ;
 
   lv2:requiredFeature <http://lv2plug.in/ns/ext/instance-access>;
   lv2:requiredFeature urid:map;

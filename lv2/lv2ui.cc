@@ -457,6 +457,7 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   LV2Plugin *plugin = nullptr;
   PuglNativeView parent_win_id = 0;
   LV2_URID_Map* map = nullptr;
+  LV2UI_Resize *ui_resize = nullptr;
 
   for (int i = 0; features[i]; i++)
     {
@@ -467,6 +468,10 @@ instantiate (const LV2UI_Descriptor*   descriptor,
       else if (!strcmp (features[i]->URI, LV2_UI__parent))
         {
           parent_win_id = (PuglNativeView)features[i]->data;
+        }
+      else if (!strcmp (features[i]->URI, LV2_UI__resize))
+        {
+          ui_resize = (LV2UI_Resize *) features[i]->data;
         }
       else if (!strcmp (features[i]->URI, LV2_INSTANCE_ACCESS_URI))
         {
@@ -566,6 +571,9 @@ instantiate (const LV2UI_Descriptor*   descriptor,
       usleep (50000);
       ui->idle();
     }
+
+  if (ui_resize)
+    ui_resize->ui_resize (ui_resize->handle, required_size.x, required_size.y);
 
   *widget = (void *) puglGetNativeView (view);
   return ui;
