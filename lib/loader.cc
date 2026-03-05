@@ -507,6 +507,9 @@ Loader::set_key_value (const string& key, const string& value)
   synth_->debug ("+++ '%s' = '%s'\n", key.c_str(), value.c_str());
   if (key == "sample")
     {
+      if (starts_with (value, "*"))
+        synth_->warning ("%s unsupported generator %s\n", location().c_str(), value.c_str());
+
       // on unix, convert \-seperated filename to /-separated filename
       string native_filename = value;
       std::replace (native_filename.begin(), native_filename.end(), '\\', PATH_SEPARATOR);
@@ -1348,6 +1351,8 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
         volume_cc7 = false;
       if (cc_info.cc == 10)
         pan_cc10 = false;
+      if (cc_info.cc > 127)
+        synth_->warning ("unsupported custom cc %d\n", cc_info.cc);
     }
   if (volume_cc7)
     {
