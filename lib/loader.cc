@@ -546,6 +546,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.pitch_keycenter = convert_key (value);
   else if (key == "pitch_keytrack")
     region.pitch_keytrack = convert_int (value);
+  else if (key == "pitch_veltrack")
+    region.pitch_veltrack = convert_int (value);
   else if (key == "lorand")
     region.lorand = convert_float (value);
   else if (key == "hirand")

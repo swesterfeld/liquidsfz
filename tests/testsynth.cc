@@ -418,6 +418,30 @@ test_pitch()
       synth.process (outputs, sample_rate);
       cmp (200 - 700);
     }
+  write_sfz ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0 loop_mode=loop_continuous loop_start=0 loop_end=99 pitch_veltrack=1200 amp_veltrack=0");
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  printf ("pitch_veltrack:\n");
+  auto pitch_veltrack_check = [&] (int velocity)
+    {
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+
+      synth.set_sample_quality (3);
+      synth.all_sound_off();
+      synth.add_event_note_on (0, 0, 60, 1);
+      synth.process (outputs, sample_rate);
+      auto partial = max_partial (out_left, sample_rate);
+      double expect = 480 *  exp2 (velocity / 127.);
+      printf (" - velocity %d -> got %f (expect %f)\n", velocity, partial.freq, expect);
+      assert (partial.freq - expect < 1e-5);
+    };
+  pitch_veltrack_check (1);
+  pitch_veltrack_check (100);
+  pitch_veltrack_check (127);
 #endif
 }
 
