@@ -436,8 +436,7 @@ Voice::update_cc (int controller)
       const auto& p = *b.params;
       if (p.freq_cc.contains (controller) ||
           p.gain_cc.contains (controller) ||
-          p.bw_cc.contains (controller) ||
-          p.vel2gain_cc.contains (controller))
+          p.bw_cc.contains (controller))
         {
           update_eq_band (b); // Only update the specific band that uses this CC
         }
