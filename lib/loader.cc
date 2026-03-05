@@ -403,29 +403,43 @@ Loader::parse_eq_param (Region& region, const std::string& key, const std::strin
   string suffix = key.substr (i);
   EQBandParams &band = region.eq_params[band_num];
 
-  // Check for CC assignments first (eq1_freq_oncc20, eq1_gain_oncc21, etc.)
-  if (parse_cc (key, value, band.freq_cc, "eq" + num_str + "_freq_*")
-  ||  parse_cc (key, value, band.gain_cc, "eq" + num_str + "_gain_*")
-  ||  parse_cc (key, value, band.bw_cc, "eq" + num_str + "_bw_*")
-  ||  parse_cc (key, value, band.vel2gain_cc, "eq" + num_str + "_vel2gain_*"))
+  auto parse_param = [&] (float& val, CCParamVec& cc_vec, const string& opcode)
     {
-    }
-  // Handle direct parameter assignments (eq1_freq, eq1_gain, etc.)
-  else if (suffix == "_freq")
-    band.freq = convert_float (value);
-  else if (suffix == "_bw")
-    band.bw = convert_float (value);
-  else if (suffix == "_gain")
-    band.gain = convert_float (value);
-  else if (suffix == "_vel2gain")
-    band.vel2gain = convert_float (value);
-  else
-    {
-      synth_->warning ("%s unknown EQ parameter: %s\n", location().c_str(), key.c_str());
+      int sub_key;
+      if (key == opcode) // *eq1_gain,...
+        {
+          val = convert_float (value);
+          return true;
+        }
+      else if (split_sub_key (key, opcode + "cc", sub_key))        // *eq1_gainccN,...
+        {
+          cc_vec.set (sub_key, convert_float (value));
+          update_cc_info (sub_key);
+          return true;
+        }
+      else if (parse_cc (key, value, cc_vec, opcode + "_oncc",     // *eq1_gain_onccN,...
+                                             opcode + "_curvecc")) // *eq1_gain_curveccN,...
+        {
+          return true;
+        }
       return false;
+    };
+
+  if (parse_param (band.freq, band.freq_cc, "eq" + num_str + "_freq")
+  ||  parse_param (band.gain, band.gain_cc, "eq" + num_str + "_gain")
+  ||  parse_param (band.bw,   band.bw_cc,   "eq" + num_str + "_bw"))
+    {
+      band.used = true;
+      return true;
     }
-  band.used = true;
-  return true;
+  else if (suffix == "_vel2gain")
+    {
+      band.used = true;
+      band.vel2gain = convert_float (value);
+      return true;
+    }
+  synth_->warning ("%s unknown EQ parameter: %s\n", location().c_str(), key.c_str());
+  return false;
 }
 
 bool

@@ -169,7 +169,6 @@ struct EQBandParams
   CCParamVec freq_cc;
   CCParamVec gain_cc;
   CCParamVec bw_cc;
-  CCParamVec vel2gain_cc;
 };
 
 struct LFOParams
