@@ -29,7 +29,7 @@ Voice::velocity_track_factor (const Region& r, int midi_velocity)
   else
     curve = r.amp_velcurve.get (midi_velocity);
 
-  double veltrack_factor = r.amp_veltrack * 0.01;
+  double veltrack_factor = (r.amp_veltrack + synth_->get_cc_vec_value (channel_, region_->amp_veltrack_cc)) * 0.01;
 
   double offset = (veltrack_factor >= 0) ? 1 : 0;
   double v = (offset - veltrack_factor) + veltrack_factor * curve;

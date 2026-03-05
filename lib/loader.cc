@@ -636,6 +636,16 @@ Loader::set_key_value (const string& key, const string& value)
     region.amplitude = convert_float (value);
   else if (key == "amp_veltrack")
     region.amp_veltrack = convert_float (value);
+  else if (split_sub_key (key, "amp_veltrack_oncc", sub_key)) // "amp_veltrack_onccN"
+    {
+      region.amp_veltrack_cc.set (sub_key, convert_float (value));
+      update_cc_info (sub_key);
+    }
+  else if (split_sub_key (key, "amp_veltrackcc", sub_key))    // "amp_veltrackccN" (without underscore)
+    {
+      region.amp_veltrack_cc.set (sub_key, convert_float (value));
+      update_cc_info (sub_key);
+    }
   else if (key == "amp_random")
     region.amp_random = convert_float (value);
   else if (key == "pan")
