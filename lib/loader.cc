@@ -656,6 +656,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.off_time = convert_float (value);
   else if (key == "delay")
     region.delay = convert_float (value);
+  else if (key == "delay_random")
+    region.delay_random = convert_float (value);
   else if (key == "offset")
     region.offset = convert_uint (value);
   else if (key == "offset_random")

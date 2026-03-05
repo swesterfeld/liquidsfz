@@ -296,6 +296,7 @@ struct Region
   OffMode off_mode = OffMode::FAST;
   float off_time = 0;
   float delay = 0;
+  float delay_random = 0;
   uint  offset = 0;
   uint  offset_random = 0;
   int   end = 2147483647; // sfz allows end >= 2**31, but in real .sfz files this will probably not happen
