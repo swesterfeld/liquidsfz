@@ -80,6 +80,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   pitch_random_cent_ = region.pitch_random * synth_->normalized_random_value();
 
   velocity_gain_ = velocity_track_factor (region, velocity);
+  midi_velocity_factor_ = velocity * (1 / 127.f);
   rt_decay_gain_ = 1.0;
   if (region.trigger == Trigger::RELEASE)
     {
@@ -353,7 +354,7 @@ Voice::update_eq_band (EQBand& b)
   float bw   = p.bw + bw_cc_value;
 
   // Apply velocity gain to the total gain
-  gain += p.vel2gain * velocity_gain_;
+  gain += p.vel2gain * midi_velocity_factor_;
 
   b.freq = freq;
   b.gain = gain;

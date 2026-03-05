@@ -96,6 +96,7 @@ class Voice
   float volume_gain_ = 0;
   float amplitude_gain_ = 0;
   float velocity_gain_ = 0;
+  float midi_velocity_factor_ = 0;
   float rt_decay_gain_ = 0;
   float pan_left_gain_ = 0;
   float pan_right_gain_ = 0;
