@@ -41,6 +41,7 @@ void
 Voice::update_replay_speed (bool now)
 {
   double semi_tones = (key_ - region_->pitch_keycenter) * (region_->pitch_keytrack * 0.01);
+  semi_tones += region_->pitch_veltrack * midi_velocity_factor_ * 0.01;
   semi_tones += (region_->tune + pitch_random_cent_) * 0.01;
   semi_tones += region_->transpose;
 
