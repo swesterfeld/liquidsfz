@@ -6,17 +6,18 @@
 using namespace LiquidSFZInternal;
 
 LFOGen::LFOGen (Synth *synth,
+                const Voice *voice,
                 const Limits& limits) :
-  synth_ (synth)
+  synth_ (synth),
+  voice_ (voice)
 {
   lfos.reserve (limits.max_lfos);
   mod_links.reserve (limits.max_lfos * outputs.size() + limits.max_lfo_mods);
 }
 
 void
-LFOGen::start (const Region& region, int channel, int sample_rate)
+LFOGen::start (const Region& region, int sample_rate)
 {
-  channel_     = channel;
   sample_rate_ = sample_rate;
   first        = true;
 
@@ -39,15 +40,15 @@ LFOGen::start (const Region& region, int channel, int sample_rate)
       lfos[i].wave = get_wave (region.lfos[i].wave);
 
       double phase = region.lfos[i].phase;
-      phase += synth_->get_cc_vec_value (channel_, region.lfos[i].phase_cc);
+      phase += synth_->get_cc_vec_value (voice_, region.lfos[i].phase_cc);
       lfos[i].phase = std::clamp (phase, 0.0, 1.0);
 
       double delay = region.lfos[i].delay;
-      delay += synth_->get_cc_vec_value (channel_, region.lfos[i].delay_cc);
+      delay += synth_->get_cc_vec_value (voice_, region.lfos[i].delay_cc);
       lfos[i].delay_len = std::max (delay * sample_rate, 0.0);
 
       double fade = region.lfos[i].fade;
-      fade += synth_->get_cc_vec_value (channel_, region.lfos[i].fade_cc);
+      fade += synth_->get_cc_vec_value (voice_, region.lfos[i].fade_cc);
       lfos[i].fade_len = std::max (fade * sample_rate, 0.0);
       lfos[i].fade_pos = 0;
 
@@ -214,10 +215,10 @@ LFOGen::update_ccs()
   mod_links.clear();
   for (auto& lfo : lfos)
     {
-      lfo.to_pitch  = (synth_->get_cc_vec_value (channel_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
-      lfo.to_volume = (synth_->get_cc_vec_value (channel_, lfo.params->volume_cc) + lfo.params->volume);
-      lfo.to_cutoff = (synth_->get_cc_vec_value (channel_, lfo.params->cutoff_cc) + lfo.params->cutoff) / 1200.;
-      lfo.freq      = (synth_->get_cc_vec_value (channel_, lfo.params->freq_cc)   + lfo.params->freq);
+      lfo.to_pitch  = (synth_->get_cc_vec_value (voice_, lfo.params->pitch_cc)  + lfo.params->pitch) / 1200.;
+      lfo.to_volume = (synth_->get_cc_vec_value (voice_, lfo.params->volume_cc) + lfo.params->volume);
+      lfo.to_cutoff = (synth_->get_cc_vec_value (voice_, lfo.params->cutoff_cc) + lfo.params->cutoff) / 1200.;
+      lfo.freq      = (synth_->get_cc_vec_value (voice_, lfo.params->freq_cc)   + lfo.params->freq);
 
       if (lfo.to_pitch)
         mod_links.push_back ({ &lfo.value, lfo.to_pitch,  &outputs[PITCH].value });
@@ -228,7 +229,7 @@ LFOGen::update_ccs()
 
       for (auto lm : lfo.params->lfo_mods)
         {
-          float to_lfo_freq = (synth_->get_cc_vec_value (channel_, lm.lfo_freq_cc) + lm.lfo_freq);
+          float to_lfo_freq = (synth_->get_cc_vec_value (voice_, lm.lfo_freq_cc) + lm.lfo_freq);
           if (to_lfo_freq)
             mod_links.push_back ({ &lfo.value, to_lfo_freq, &lfos[lm.to_index].next_freq_mod });
         }

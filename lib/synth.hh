@@ -409,6 +409,11 @@ public:
     // - random must be <  1.0  (and never 1.0)
     return random_gen() / double (random_gen.max() + 1);
   }
+  uint32_t
+  raw_random_value()
+  {
+    return random_gen();
+  }
   void
   trigger_regions (Trigger trigger, int chan, int key, int vel, double time_since_note_on)
   {
@@ -593,11 +598,21 @@ public:
     return get_cc (channel, entry.cc) * (1 / 127.f);
   }
   float
-  get_cc_vec_value (int channel, const CCParamVec& cc_param_vec) const
+  get_cc_vec_value (const Voice *voice, const CCParamVec& cc_param_vec) const
   {
     float value = 0.0;
     for (const auto& entry : cc_param_vec)
-      value += get_cc_curve (channel, entry) * entry.value;
+      {
+        if (entry.cc == 135)
+          {
+            float f = voice->random_helper (cc_param_vec.id()) * (1 / 4294967296.0f); // 2^32
+            value += f * entry.value;
+          }
+        else
+          {
+            value += get_cc_curve (voice->channel_, entry) * entry.value;
+          }
+      }
     return value;
   }
   void

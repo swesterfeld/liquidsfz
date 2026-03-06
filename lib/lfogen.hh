@@ -7,6 +7,8 @@
 namespace LiquidSFZInternal
 {
 
+class Voice;
+
 class LFOGen
 {
 public:
@@ -19,7 +21,7 @@ public:
 
 private:
   Synth *synth_ = nullptr;
-  int channel_ = 0;
+  const Voice *voice_ = nullptr;
   int sample_rate_ = 0;
   float smoothing_factor_ = 0;
 
@@ -80,9 +82,9 @@ private:
   void
   write_output (uint start, uint n_values);
 public:
-  LFOGen (Synth *synth, const Limits& limits);
+  LFOGen (Synth *synth, const Voice *voice, const Limits& limits);
 
-  void start (const Region& region, int channel, int sample_rate);
+  void start (const Region& region, int sample_rate);
   void process (float *buffer, uint n_values);
   void update_ccs();
 

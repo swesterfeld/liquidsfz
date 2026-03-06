@@ -106,6 +106,7 @@ class Voice
   float amp_random_gain_ = 0;
   float pitch_random_cent_ = 0;
   uint  delay_samples_ = 0;
+  uint  random_seed_ = 0;
 
   void update_volume_gain();
   void update_amplitude_gain();
@@ -155,7 +156,7 @@ public:
 
   Voice (Synth *synth,
          const Limits& limits) :
-    lfo_gen_ (synth, limits),
+    lfo_gen_ (synth, this, limits),
     synth_ (synth)
   {
   }
@@ -175,6 +176,7 @@ public:
   void update_gain();
 
   void update_pitch_bend (int bend);
+  uint random_helper (uint cc_vec_id) const;
 
   float xfin_gain (int value, int lo, int hi, XFCurve curve);
   float xfout_gain (int value, int lo, int hi, XFCurve curve);
