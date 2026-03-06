@@ -106,6 +106,7 @@ private:
   static constexpr int CC_ALL_NOTES_OFF = 123;
 
   static constexpr int EXT_CC_NOTE_ON_VELOCITY = 131;
+  static constexpr int EXT_CC_NOTE_KEY         = 133;
   static constexpr int EXT_CC_RANDOM_UNIPOLAR  = 135;
   static constexpr int EXT_CC_RANDOM_BIPOLAR   = 136;
 
@@ -610,6 +611,11 @@ public:
         if (entry.cc <= 127)
           {
             value += get_cc_curve (voice->channel_, entry) * entry.value;
+          }
+        else if (entry.cc == EXT_CC_NOTE_KEY)
+          {
+            float f = voice->key_ * (1 / 127.f);
+            value += f * entry.value;
           }
         else if (entry.cc == EXT_CC_NOTE_ON_VELOCITY)
           {
