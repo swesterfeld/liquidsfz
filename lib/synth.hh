@@ -105,8 +105,9 @@ private:
   static constexpr int CC_ALL_SOUND_OFF = 120;
   static constexpr int CC_ALL_NOTES_OFF = 123;
 
-  static constexpr int EXT_CC_RANDOM_UNIPOLAR = 135;
-  static constexpr int EXT_CC_RANDOM_BIPOLAR  = 136;
+  static constexpr int EXT_CC_NOTE_ON_VELOCITY = 131;
+  static constexpr int EXT_CC_RANDOM_UNIPOLAR  = 135;
+  static constexpr int EXT_CC_RANDOM_BIPOLAR   = 136;
 
   std::array<float, MAX_BLOCK_SIZE> const_block_0_, const_block_1_;
 
@@ -609,6 +610,11 @@ public:
         if (entry.cc <= 127)
           {
             value += get_cc_curve (voice->channel_, entry) * entry.value;
+          }
+        else if (entry.cc == EXT_CC_NOTE_ON_VELOCITY)
+          {
+            float f = voice->velocity_ * (1 / 127.f);
+            value += f * entry.value;
           }
         else if (entry.cc == EXT_CC_RANDOM_UNIPOLAR)
           {
