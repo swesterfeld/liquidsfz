@@ -596,6 +596,8 @@ Loader::set_key_value (const string& key, const string& value)
     region.seq_length = convert_int (value);
   else if (key == "seq_position")
     region.seq_position = convert_int (value);
+  else if (key == "sustain_cc")
+    region.sustain_cc = convert_int (value);
   else if (parse_ampeg_param (region.ampeg_delay, key, value, "delay") ||
            parse_ampeg_param (region.ampeg_attack, key, value, "attack") ||
            parse_ampeg_param (region.ampeg_hold, key, value, "hold") ||

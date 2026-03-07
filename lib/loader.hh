@@ -276,6 +276,7 @@ struct Region
   int seq_position = 1;
   std::vector<int> locc = std::vector<int> (128, 0);
   std::vector<int> hicc = std::vector<int> (128, 127);
+  int sustain_cc = 64; /* sustain pedal CC */
 
   /* amp envelope generator */
   EGParam ampeg_delay    { 0 };

@@ -101,7 +101,6 @@ private:
   std::array<bool, 128> is_key_switch_;
   std::array<bool, 128> is_supported_cc_;
 
-  static constexpr int CC_SUSTAIN       = 64;
   static constexpr int CC_ALL_SOUND_OFF = 120;
   static constexpr int CC_ALL_NOTES_OFF = 123;
 
@@ -494,15 +493,13 @@ public:
   void
   note_off (int chan, int key)
   {
-    const bool sustain_pedal = get_cc (chan, CC_SUSTAIN) >= 0x40;
-
     for (Voice *voice : active_voices_)
       {
         if (voice->state_ == Voice::ACTIVE &&
             voice->trigger_ == Trigger::ATTACK &&
             voice->channel_ == chan && voice->key_ == key && voice->region_->loop_mode != LoopMode::ONE_SHOT)
           {
-            if (sustain_pedal)
+            if (get_cc (chan, voice->region_->sustain_cc) >= 0x40)
               {
                 voice->state_ = Voice::SUSTAIN;
               }
@@ -551,17 +548,11 @@ public:
     for (Voice *voice : active_voices_)
       {
         if (voice->channel_ == channel)
-          voice->update_cc (controller);
-      }
-    if (controller == CC_SUSTAIN)
-      {
-        if (value < 0x40)
           {
-            for (Voice *voice : active_voices_)
-              {
-                if (voice->state_ == Voice::SUSTAIN)
-                  release (*voice);
-              }
+            voice->update_cc (controller);
+
+            if (voice->state_ == Voice::SUSTAIN && controller == voice->region_->sustain_cc && value < 0x40)
+              release (*voice);
           }
       }
   }
