@@ -105,6 +105,11 @@ private:
   static constexpr int CC_ALL_SOUND_OFF = 120;
   static constexpr int CC_ALL_NOTES_OFF = 123;
 
+  static constexpr int EXT_CC_NOTE_ON_VELOCITY = 131;
+  static constexpr int EXT_CC_NOTE_KEY         = 133;
+  static constexpr int EXT_CC_RANDOM_UNIPOLAR  = 135;
+  static constexpr int EXT_CC_RANDOM_BIPOLAR   = 136;
+
   std::array<float, MAX_BLOCK_SIZE> const_block_0_, const_block_1_;
 
   void
@@ -409,6 +414,11 @@ public:
     // - random must be <  1.0  (and never 1.0)
     return random_gen() / double (random_gen.max() + 1);
   }
+  uint32_t
+  raw_random_value()
+  {
+    return random_gen();
+  }
   void
   trigger_regions (Trigger trigger, int chan, int key, int vel, double time_since_note_on)
   {
@@ -593,12 +603,62 @@ public:
     return get_cc (channel, entry.cc) * (1 / 127.f);
   }
   float
-  get_cc_vec_value (int channel, const CCParamVec& cc_param_vec) const
+  ext_cc_curve (const CCParamVec::Entry& entry, float value) const
+  {
+    int curvecc = entry.curvecc;
+    if (curvecc >= 0 && curvecc < int (curves_.size()))
+      {
+        if (!curves_[curvecc].empty())
+          {
+            int value_127 = lrint (value * 127); // no need to clamp the value, curves check range on get()
+            return curves_[entry.curvecc].get (value_127);
+          }
+      }
+    return value;
+  }
+  float
+  get_cc_vec_value (const Voice *voice, const CCParamVec& cc_param_vec) const
   {
     float value = 0.0;
     for (const auto& entry : cc_param_vec)
-      value += get_cc_curve (channel, entry) * entry.value;
+      {
+        if (entry.cc <= 127)
+          {
+            value += get_cc_curve (voice->channel_, entry) * entry.value;
+          }
+        else if (entry.cc == EXT_CC_NOTE_KEY)
+          {
+            float f = voice->key_ * (1 / 127.f);
+            value += ext_cc_curve (entry, f) * entry.value;
+          }
+        else if (entry.cc == EXT_CC_NOTE_ON_VELOCITY)
+          {
+            float f = voice->velocity_ * (1 / 127.f);
+            value += ext_cc_curve (entry, f) * entry.value;
+          }
+        else if (entry.cc == EXT_CC_RANDOM_UNIPOLAR)
+          {
+            float f = voice->random_helper (cc_param_vec.id()) * (1 / 4294967296.0f); // 2^32, range [0:1]
+            value += ext_cc_curve (entry, f) * entry.value;
+          }
+        else if (entry.cc == EXT_CC_RANDOM_BIPOLAR)
+          {
+            float f = voice->random_helper (cc_param_vec.id()) * (1 / 2147483648.0f); // 2^31, range [0:2]
+            /* we don't support curves for random bipolar because it is not
+             * clear how to deal with a signed value
+             */
+            value += (f - 1) * entry.value;
+          }
+      }
     return value;
+  }
+  static bool
+  is_supported_ext_cc (int cc)
+  {
+    return cc == EXT_CC_NOTE_KEY ||
+           cc == EXT_CC_NOTE_ON_VELOCITY ||
+           cc == EXT_CC_RANDOM_UNIPOLAR ||
+           cc == EXT_CC_RANDOM_BIPOLAR;
   }
   void
   update_pitch_bend (int channel, int value)

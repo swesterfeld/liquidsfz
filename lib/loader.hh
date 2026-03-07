@@ -51,6 +51,18 @@ public:
     int cc = -1;
     float value = 0;
   };
+  CCParamVec()
+  {
+    /* assign each modulatable parameter a unique id, this is used to produce
+     * unique random values for extended cc modulation (cc135, cc136)
+     */
+    id_ = instance_counter.fetch_add (1);
+  }
+  int
+  id() const
+  {
+    return id_;
+  }
   const std::vector<Entry>::const_iterator
   begin() const
   {
@@ -108,8 +120,10 @@ public:
         return true;
     return false;
   }
-private:
-  std::vector<Entry> entries_;
+public:
+  std::vector<Entry>              entries_;
+  uint                            id_;
+  static inline std::atomic<uint> instance_counter;
 };
 
 struct EGParam

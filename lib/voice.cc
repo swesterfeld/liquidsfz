@@ -29,7 +29,7 @@ Voice::velocity_track_factor (const Region& r, int midi_velocity)
   else
     curve = r.amp_velcurve.get (midi_velocity);
 
-  double veltrack_factor = (r.amp_veltrack + synth_->get_cc_vec_value (channel_, region_->amp_veltrack_cc)) * 0.01;
+  double veltrack_factor = (r.amp_veltrack + synth_->get_cc_vec_value (this, region_->amp_veltrack_cc)) * 0.01;
 
   double offset = (veltrack_factor >= 0) ? 1 : 0;
   double v = (offset - veltrack_factor) + veltrack_factor * curve;
@@ -51,7 +51,7 @@ Voice::update_replay_speed (bool now)
   else
     semi_tones += pitch_bend_value_ * (region_->bend_down * -0.01);
 
-  semi_tones += synth_->get_cc_vec_value (channel_, region_->tune_cc) * 0.01; // tune_oncc
+  semi_tones += synth_->get_cc_vec_value (this, region_->tune_cc) * 0.01; // tune_oncc
 
   replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate() / sample_rate_, now);
 }
@@ -76,6 +76,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   right_gain_.reset (sample_rate, 0.020);
   replay_speed_.reset (sample_rate, 0.020);
   width_factor_.reset (sample_rate, 0.020);
+  random_seed_ = synth_->raw_random_value();
 
   amp_random_gain_ = db_to_factor (region.amp_random * synth_->normalized_random_value());
   pitch_random_cent_ = region.pitch_random * synth_->normalized_random_value();
@@ -91,7 +92,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 
   double delay = region.delay;
   delay += region.delay_random * synth_->normalized_random_value();
-  delay += synth_->get_cc_vec_value (channel_, region_->delay_cc); // delay_oncc
+  delay += synth_->get_cc_vec_value (this, region_->delay_cc); // delay_oncc
   delay_samples_ = std::max (delay * sample_rate, 0.0);
 
   /* loop? */
@@ -108,7 +109,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   /* play start position */
   uint offset = region.offset;
   offset += lrint (region.offset_random * synth_->normalized_random_value());
-  offset += lrint (synth_->get_cc_vec_value (channel_, region.offset_cc));
+  offset += lrint (synth_->get_cc_vec_value (this, region.offset_cc));
   ppos_ = offset * upsample;
   if (ppos_ > region.loop_end * upsample)
     loop_enabled_ = false;
@@ -173,7 +174,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
     }
 
 
-  lfo_gen_.start (region, channel_, sample_rate_);
+  lfo_gen_.start (region, sample_rate_);
 }
 
 void
@@ -190,11 +191,23 @@ Voice::start_filter (FImpl& fi, const FilterParams *params)
   update_resonance (fi, true);
 }
 
+uint
+Voice::random_helper (uint cc_vec_id) const
+{
+  uint32_t seed = random_seed_ + cc_vec_id;
+
+  // Fast deterministic PRNG: SplitMix32
+  uint32_t z = (seed + 0x9e3779b9);
+  z = (z ^ (z >> 16)) * 0x85ebca6b;
+  z = (z ^ (z >> 13)) * 0xc2b2ae35;
+  return z ^ (z >> 16);
+}
+
 float
 Voice::amp_value (float vnorm, const EGParam& amp_param)
 {
   float value = amp_param.base + amp_param.vel2 * vnorm;
-  value += synth_->get_cc_vec_value (channel_, amp_param.cc_vec);
+  value += synth_->get_cc_vec_value (this, amp_param.cc_vec);
 
   return value;
 }
@@ -203,7 +216,7 @@ void
 Voice::update_pan_gain()
 {
   float pan = region_->pan;
-  pan += synth_->get_cc_vec_value (channel_, region_->pan_cc);
+  pan += synth_->get_cc_vec_value (this, region_->pan_cc);
   pan = clamp (pan, -100.f, 100.f);
 
   pan_left_gain_ = pan_stereo_factor (pan, 0);
@@ -246,7 +259,7 @@ Voice::update_lr_gain (bool now)
 void
 Voice::update_width_factor (bool now)
 {
-  float width = region_->width + synth_->get_cc_vec_value (channel_, region_->width_cc);
+  float width = region_->width + synth_->get_cc_vec_value (this, region_->width_cc);
   width_factor_.set ((width + 100.f) * 0.01f * 0.5f, now);
 }
 
@@ -285,7 +298,7 @@ void
 Voice::update_volume_gain()
 {
   float volume = region_->volume + region_->group_volume + region_->master_volume + region_->global_volume;
-  volume += synth_->get_cc_vec_value (channel_, region_->gain_cc);
+  volume += synth_->get_cc_vec_value (this, region_->gain_cc);
 
   volume_gain_ = db_to_factor (volume);
 
@@ -320,7 +333,7 @@ Voice::update_amplitude_gain()
 void
 Voice::update_cutoff (FImpl& fi, bool now)
 {
-  float delta_cent = synth_->get_cc_vec_value (channel_, fi.params->cutoff_cc);
+  float delta_cent = synth_->get_cc_vec_value (this, fi.params->cutoff_cc);
 
   // key tracking
   delta_cent += (key_ - fi.params->keycenter) * fi.params->keytrack;
@@ -335,7 +348,7 @@ Voice::update_cutoff (FImpl& fi, bool now)
 void
 Voice::update_resonance (FImpl& fi, bool now)
 {
-  fi.resonance_smooth.set (fi.params->resonance + synth_->get_cc_vec_value (channel_, fi.params->resonance_cc), now);
+  fi.resonance_smooth.set (fi.params->resonance + synth_->get_cc_vec_value (this, fi.params->resonance_cc), now);
 }
 
 void
@@ -346,9 +359,9 @@ Voice::update_eq_band (EQBand& b)
   const auto& p = *b.params;
 
   // Update EQ parameters with CC values
-  float freq_cc_value = synth_->get_cc_vec_value (channel_, p.freq_cc);
-  float gain_cc_value = synth_->get_cc_vec_value (channel_, p.gain_cc);
-  float bw_cc_value = synth_->get_cc_vec_value (channel_, p.bw_cc);
+  float freq_cc_value = synth_->get_cc_vec_value (this, p.freq_cc);
+  float gain_cc_value = synth_->get_cc_vec_value (this, p.gain_cc);
+  float bw_cc_value = synth_->get_cc_vec_value (this, p.bw_cc);
 
   float freq = p.freq + freq_cc_value;
   float gain = p.gain + gain_cc_value;
