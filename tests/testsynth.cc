@@ -442,6 +442,32 @@ test_pitch()
   pitch_veltrack_check (1);
   pitch_veltrack_check (100);
   pitch_veltrack_check (127);
+  printf ("octave_offest:\n");
+  auto octave_offset_check = [&] (int octave_offset, int note, float expect_freq)
+    {
+      write_sfz (string_printf ("<control>octave_offset=%d <region>sample=testsynth.wav "
+                                "volume_cc7=0 pan_cc10=0 loop_mode=loop_continuous loop_start=0 loop_end=99", octave_offset));
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+
+      synth.set_sample_quality (3);
+      synth.all_sound_off();
+      synth.add_event_note_on (0, 0, note, 100);
+      synth.process (outputs, sample_rate);
+      auto partial = max_partial (out_left, sample_rate);
+      printf (" - octave_offset %d, note %d, freq %f\n", octave_offset, note, partial.freq);
+      assert (fabs (partial.freq - expect_freq) < 1e-4);
+    };
+  octave_offset_check (0, 60, 480);
+  octave_offset_check (0, 72, 960);
+  /* shift one octave down */
+  octave_offset_check (1, 60, 240);
+  octave_offset_check (1, 72, 480);
 #endif
 }
 
