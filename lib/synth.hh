@@ -603,6 +603,20 @@ public:
     return get_cc (channel, entry.cc) * (1 / 127.f);
   }
   float
+  ext_cc_curve (const CCParamVec::Entry& entry, float value) const
+  {
+    int curvecc = entry.curvecc;
+    if (curvecc >= 0 && curvecc < int (curves_.size()))
+      {
+        if (!curves_[curvecc].empty())
+          {
+            int value_127 = lrint (value * 127); // no need to clamp the value, curves check range on get()
+            return curves_[entry.curvecc].get (value_127);
+          }
+      }
+    return value;
+  }
+  float
   get_cc_vec_value (const Voice *voice, const CCParamVec& cc_param_vec) const
   {
     float value = 0.0;
@@ -615,21 +629,27 @@ public:
         else if (entry.cc == EXT_CC_NOTE_KEY)
           {
             float f = voice->key_ * (1 / 127.f);
+            f = ext_cc_curve (entry, f);
             value += f * entry.value;
           }
         else if (entry.cc == EXT_CC_NOTE_ON_VELOCITY)
           {
             float f = voice->velocity_ * (1 / 127.f);
+            f = ext_cc_curve (entry, f);
             value += f * entry.value;
           }
         else if (entry.cc == EXT_CC_RANDOM_UNIPOLAR)
           {
             float f = voice->random_helper (cc_param_vec.id()) * (1 / 4294967296.0f); // 2^32, range [0:1]
+            f = ext_cc_curve (entry, f);
             value += f * entry.value;
           }
         else if (entry.cc == EXT_CC_RANDOM_BIPOLAR)
           {
             float f = voice->random_helper (cc_param_vec.id()) * (1 / 2147483648.0f); // 2^31, range [0:2]
+            /* we don't support curves for random bipolar because it is not
+             * clear how to deal with a signed value
+             */
             value += (f - 1) * entry.value;
           }
       }
