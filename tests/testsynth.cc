@@ -432,12 +432,12 @@ test_pitch()
 
       synth.set_sample_quality (3);
       synth.all_sound_off();
-      synth.add_event_note_on (0, 0, 60, 1);
+      synth.add_event_note_on (0, 0, 60, velocity);
       synth.process (outputs, sample_rate);
       auto partial = max_partial (out_left, sample_rate);
       double expect = 480 *  exp2 (velocity / 127.);
       printf (" - velocity %d -> got %f (expect %f)\n", velocity, partial.freq, expect);
-      assert (partial.freq - expect < 1e-5);
+      assert (fabs (partial.freq - expect) < 1e-4);
     };
   pitch_veltrack_check (1);
   pitch_veltrack_check (100);
@@ -657,7 +657,7 @@ test_simple()
 
       double db_diff = db (peak (out_left));
       printf (" - %s: expected db %.1f, got db %.1f\n", s.c_str(), expect, db_diff);
-      assert ((expect - db_diff) < 1e-5);
+      assert (fabs (expect - db_diff) < 1e-4);
     };
   chk_vol ("<group>group_volume=10 <region>volume=0", 10);
   chk_vol ("<master>master_volume=6 <region>volume=0", 6);
