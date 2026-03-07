@@ -2,6 +2,12 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 set -Eeuo pipefail
 
+display_testsuite_log()
+{
+  find . -name test-suite.log -exec cat {} \;
+  exit 1
+}
+
 build()
 {
   if [ -f "./configure" ]; then
@@ -17,7 +23,7 @@ build()
   echo "###############################################################################"
   ./autogen.sh "$@"
   make -j `nproc` V=1
-  make -j `nproc` check
+  make -j `nproc` check || display_testsuite_log
   make install
 }
 
@@ -28,7 +34,7 @@ build --enable-asan --enable-debug-cxx --with-fftw
 
 build --enable-debug-cxx --with-fftw
 lv2lint http://spectmorph.org/plugins/liquidsfz
-make -j `nproc` distcheck
+make -j `nproc` distcheck || display_testsuite_log
 
 # Tests clang
 export CC=clang CXX=clang++
