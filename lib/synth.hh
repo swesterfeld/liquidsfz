@@ -629,20 +629,17 @@ public:
         else if (entry.cc == EXT_CC_NOTE_KEY)
           {
             float f = voice->key_ * (1 / 127.f);
-            f = ext_cc_curve (entry, f);
-            value += f * entry.value;
+            value += ext_cc_curve (entry, f) * entry.value;
           }
         else if (entry.cc == EXT_CC_NOTE_ON_VELOCITY)
           {
             float f = voice->velocity_ * (1 / 127.f);
-            f = ext_cc_curve (entry, f);
-            value += f * entry.value;
+            value += ext_cc_curve (entry, f) * entry.value;
           }
         else if (entry.cc == EXT_CC_RANDOM_UNIPOLAR)
           {
             float f = voice->random_helper (cc_param_vec.id()) * (1 / 4294967296.0f); // 2^32, range [0:1]
-            f = ext_cc_curve (entry, f);
-            value += f * entry.value;
+            value += ext_cc_curve (entry, f) * entry.value;
           }
         else if (entry.cc == EXT_CC_RANDOM_BIPOLAR)
           {
@@ -654,6 +651,14 @@ public:
           }
       }
     return value;
+  }
+  static bool
+  is_supported_ext_cc (int cc)
+  {
+    return cc == EXT_CC_NOTE_KEY ||
+           cc == EXT_CC_NOTE_ON_VELOCITY ||
+           cc == EXT_CC_RANDOM_UNIPOLAR ||
+           cc == EXT_CC_RANDOM_BIPOLAR;
   }
   void
   update_pitch_bend (int channel, int value)

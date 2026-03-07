@@ -1342,6 +1342,15 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
   for (auto& c : curves)
     curve_table.expand_curve (c);
 
+  // filter extended CCs from cc_list
+  vector<CCInfo> filtered_cc_list;
+  std::copy_if (cc_list.begin(), cc_list.end(),
+                std::back_inserter (filtered_cc_list),
+                [] (auto& cc_info) {
+                  return !Synth::is_supported_ext_cc (cc_info.cc);
+                });
+  cc_list = filtered_cc_list;
+
   // do we have default behaviour for cc7 / cc10 or user defined behaviour?
   bool volume_cc7 = true;
   bool pan_cc10 = true;
