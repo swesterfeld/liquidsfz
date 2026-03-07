@@ -1,4 +1,4 @@
-// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0N
 
 #include <cmath>
 #include <cstdio>
@@ -680,6 +680,49 @@ test_simple()
   double expect_phase_peak = db_to_factor (1) - 1;
   printf (" - peak=%f expect=%f\n", phase_peak, expect_phase_peak);
   assert (fabs (phase_peak - expect_phase_peak) < 1e-6);
+
+  printf ("ext cc test:\n");
+  auto chk_xcc = [&] (const string& s, int note, int vel, double expect, bool cmp = true)
+    {
+      write_sfz ("<group>sample=testsynth.wav lokey=20 hikey=100 loop_mode=loop_continuous loop_start=0 loop_end=440"
+                 " volume_cc7=0 pan_cc10=0 amp_veltrack=0<region>" + s);
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      synth.set_gain (sqrt (2));
+      synth.add_event_note_on (0, 0, note, vel);
+      synth.process (outputs, sample_rate);
+
+      double db_diff = db (peak (out_left));
+      if (cmp)
+        {
+          printf (" - %s: expected db %.1f, got db %.1f\n", s.c_str(), expect, db_diff);
+          assert ((expect - db_diff) < 1e-5);
+        }
+      return db_diff;
+    };
+  chk_xcc ("volume_oncc131=6", 60, 127, 6);
+  chk_xcc ("volume_oncc131=6", 60, 64, 3);
+  chk_xcc ("volume_oncc133=6", 64, 127, 3);
+  chk_xcc ("volume_oncc133=6", 32, 127, 1.5);
+  double v135_min = 10, v135_max = -10, v136_min = 10, v136_max = -10;
+  for (int i = 0; i < 100; i++)
+    {
+      double v135 = chk_xcc ("volume_oncc135=6", 60, 127, 0, false);
+      v135_min = std::min (v135, v135_min);
+      v135_max = std::max (v135, v135_max);
+      double v136 = chk_xcc ("volume_oncc136=6", 60, 127, 0, false);
+      v136_min = std::min (v136, v136_min);
+      v136_max = std::max (v136, v136_max);
+    }
+  printf (" - random unipolar %f..%f\n", v135_min, v135_max);
+  assert (v135_min > -0.01 && v135_min < 1);
+  assert (v135_max > 5.5 && v135_max < 6.01);
+  printf (" - random bipolar %f..%f\n", v136_min, v136_max);
+  assert (v136_min > -6.01 && v136_min < -5.5);
+  assert (v136_max > 5.5 && v136_max < 6.01);
 }
 
 void
