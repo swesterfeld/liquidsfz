@@ -717,9 +717,11 @@ public:
         debug ("add_event_note_on: bad channel %d\n", channel);
         return;
       }
+    // Apply octave offset transpose (control.octave_offset octaves = N*12 semitones)
+    key -= control_.octave_offset * 12;
     if (key < 0 || key > 127)
       {
-        debug ("add_event_note_on: bad key %d\n", key);
+        debug ("add_event_note_on: bad key %d (after octave_offset)\n", key);
         return;
       }
     if (velocity < 0 || velocity > 127)
@@ -748,9 +750,11 @@ public:
         debug ("add_event_note_off: bad channel %d\n", channel);
         return;
       }
+    // Apply octave offset transpose (must match note-on transpose)
+    key -= control_.octave_offset * 12;
     if (key < 0 || key > 127)
       {
-        debug ("add_event_note_off: bad key %d\n", key);
+        debug ("add_event_note_off: bad key %d (after octave_offset)\n", key);
         return;
       }
     Event event;
