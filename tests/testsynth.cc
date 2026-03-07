@@ -754,6 +754,7 @@ test_simple()
 void
 test_width()
 {
+#if HAVE_FFTW
   int sample_rate = 44100;
   vector<float> samples;
 
@@ -820,6 +821,7 @@ test_width()
   width_test (50,   0.75, 0.25, 0.25, 0.75);
   width_test (0,    0.5,  0.5,  0.5,  0.5);
   width_test (-100, 0,    1,    1,    0);
+#endif
 }
 
 void
