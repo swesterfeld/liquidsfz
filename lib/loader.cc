@@ -826,6 +826,10 @@ Loader::set_key_value_control (const string& key, const string& value)
 
       control.default_path = native_path;
     }
+  else if (key == "octave_offset")
+    {
+      control.octave_offset = convert_int (value);
+    }
   else if (split_sub_key (key, "set_cc", sub_key))
     {
       SetCC& set_cc = update_set_cc (sub_key, convert_int (value));
@@ -1462,7 +1466,12 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
     }
   // generate final key_list
   for (const auto& [key, key_info] : key_map)
-    key_list.push_back (key_info);
+    {
+      KeyInfo shifted_key_info = key_info;
+      shifted_key_info.key += control.octave_offset * 12;
+      if (shifted_key_info.key >= 0 && shifted_key_info.key < 128)
+        key_list.push_back (shifted_key_info);
+    }
 
   // generate final cc_list
   std::sort (cc_list.begin(), cc_list.end(),

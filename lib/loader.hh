@@ -383,6 +383,7 @@ struct SetCC
 struct Control
 {
   std::string default_path;
+  int octave_offset = 0;  // MIDI octave transpose (shifts all MIDI notes by N octaves)
   struct Define
   {
     std::string variable;
