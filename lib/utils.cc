@@ -97,7 +97,7 @@ path_resolve_case_insensitive (const string& path)
 
   // resolve quickly if case matches exactly
   if (fs::exists (input_path))
-      return fs::canonical (input_path);
+    return fs::canonical (input_path).string();
 
   fs::path current;
 
@@ -126,7 +126,7 @@ path_resolve_case_insensitive (const string& path)
 
       current /= *match;
     }
-  return current;
+  return current.string();
 }
 
 /*
