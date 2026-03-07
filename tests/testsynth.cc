@@ -765,21 +765,13 @@ test_width()
     }
 
   write_sample (samples, sample_rate, 2);
-  write_sfz ("<region>sample=testsynth.wav lokey=20 hikey=100");
 
   Synth synth;
   synth.set_sample_rate (sample_rate);
   synth.set_live_mode (false);
-  if (!synth.load ("testsynth.sfz"))
-    {
-      fprintf (stderr, "parse error: exiting\n");
-      exit (1);
-    }
 
   vector<float> out_left (sample_rate), out_right (sample_rate);
   float *outputs[2] = { out_left.data(), out_right.data() };
-  synth.add_event_note_on (0, 0, 60, 127);
-  synth.process (outputs, sample_rate);
   auto get_partial = [&] (vector<float> samples, double f)
     {
       auto partials = sine_detect (sample_rate, samples);
@@ -789,34 +781,29 @@ test_width()
           return p.mag;
       return 0.0;
     };
-  double lnorm = get_partial (out_left, 440);
-  double rnorm = get_partial (out_right, 1000);
-  struct Sines {
-    double l440;
-    double r440;
-    double l1000;
-    double r1000;
-  };
   printf ("width test:\n");
   auto width_test = [&] (double width, double xl440, double xr440, double xl1000, double xr1000)
     {
-      write_sfz (string_printf ("<region>width=%f sample=testsynth.wav lokey=20 hikey=100", width));
+      write_sfz (string_printf ("<region>width=%f sample=testsynth.wav lokey=20 hikey=100 volume_cc7=0 pan_cc10=0", width));
       if (!synth.load ("testsynth.sfz"))
         {
           fprintf (stderr, "parse error: exiting\n");
           exit (1);
         }
+      synth.set_gain (sqrt (2));
       synth.add_event_note_on (0, 0, 60, 127);
       synth.process (outputs, sample_rate);
-      Sines s;
-      s.l440 = get_partial (out_left, 440) / lnorm;
-      s.r440 = get_partial (out_right, 440) / rnorm;
-      s.l1000 = get_partial (out_left, 1000) / lnorm;
-      s.r1000 = get_partial (out_right, 1000) / rnorm;
-      printf (" - width %4.0f l440=%.2f r440=%.2f l1000=%.2f r1000=%.2f\n", width, s.l440, s.r440, s.l1000, s.r1000);
-      assert (fabs (s.l440 - xl440) < 0.01);
+      double l440 = get_partial (out_left, 440);
+      double r440 = get_partial (out_right, 440);
+      double l1000 = get_partial (out_left, 1000);
+      double r1000 = get_partial (out_right, 1000);
+      printf (" - width %4.0f l440=%.2f r440=%.2f l1000=%.2f r1000=%.2f\n", width, l440, r440, l1000, r1000);
+      assert (fabs (l440 - xl440) < 0.01);
+      assert (fabs (r440 - xr440) < 0.01);
+      assert (fabs (l1000 - xl1000) < 0.01);
+      assert (fabs (l1000 - xl1000) < 0.01);
     };
-  width_test (200,  1.5,  0,    0,    0);
+  width_test (200,  1.5,  0.5,  0.5,  1.5);
   width_test (100,  1,    0,    0,    1);
   width_test (50,   0.75, 0.25, 0.25, 0.75);
   width_test (0,    0.5,  0.5,  0.5,  0.5);
