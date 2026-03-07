@@ -20,6 +20,7 @@ main (int argc, char **argv)
   int quality = -1;
   ap.parse_opt ("--rate", sample_rate);
   ap.parse_opt ("--quality", quality);
+  bool load_only = ap.parse_opt ("--load-only");
 
   vector<string> args;
   if (!ap.parse_args (1, args))
@@ -37,6 +38,8 @@ main (int argc, char **argv)
       fprintf (stderr, "parse error: exiting\n");
       return 1;
     }
+  if (load_only)
+    return 0;
 
   std::vector<float> out_left (1024), out_right (1024);
 
