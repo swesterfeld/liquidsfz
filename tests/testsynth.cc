@@ -698,15 +698,15 @@ test_simple()
       double db_diff = db (peak (out_left));
       if (cmp)
         {
-          printf (" - %s: expected db %.1f, got db %.1f\n", s.c_str(), expect, db_diff);
-          assert ((expect - db_diff) < 1e-5);
+          printf (" - %s: expected db %.2f, got db %.2f\n", s.c_str(), expect, db_diff);
+          assert (fabs (expect - db_diff) < 1e-3);
         }
       return db_diff;
     };
   chk_xcc ("volume_oncc131=6", 60, 127, 6);
-  chk_xcc ("volume_oncc131=6", 60, 64, 3);
-  chk_xcc ("volume_oncc133=6", 64, 127, 3);
-  chk_xcc ("volume_oncc133=6", 32, 127, 1.5);
+  chk_xcc ("volume_oncc131=6", 60, 64, 6.0 * 64 / 127);
+  chk_xcc ("volume_oncc133=6", 64, 127, 6.0 * 64 / 127);
+  chk_xcc ("volume_oncc133=6", 32, 127, 6.0 * 32 / 127);
   double v135_min = 10, v135_max = -10, v136_min = 10, v136_max = -10;
   for (int i = 0; i < 100; i++)
     {
