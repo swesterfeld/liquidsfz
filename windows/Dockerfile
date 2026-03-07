@@ -16,7 +16,7 @@ RUN mkdir -p /usr/local/liquidsfz-win
 RUN cd windows; ./build-deps.sh
 ENV LV2_CFLAGS=-I/liquidsfz/windows/prefix/include
 ENV LV2_LIBS=-L/liquidsfz/windows/prefix/lib
-RUN ./autogen.sh --prefix=/usr/local/liquidsfz-win --host=x86_64-w64-mingw32.static --without-jack
+RUN ./autogen.sh --prefix=/usr/local/liquidsfz-win --host=x86_64-w64-mingw32.static --without-jack --without-lv2
 RUN make clean
 RUN make -j$(nproc)
-RUN make -Clv2 install
+#RUN make -Clv2 install
