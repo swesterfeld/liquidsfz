@@ -475,11 +475,13 @@ public:
                                   }
                               }
                           }
-
-                        /* start new voice */
-                        auto voice = alloc_voice();
-                        if (voice)
-                          voice->start (region, chan, key, vel, time_since_note_on, global_frame_count, sample_rate_);
+                        if (region.end > 0)
+                          {
+                            /* start new voice */
+                            auto voice = alloc_voice();
+                            if (voice)
+                              voice->start (region, chan, key, vel, time_since_note_on, global_frame_count, sample_rate_);
+                          }
                       }
                   }
               }
