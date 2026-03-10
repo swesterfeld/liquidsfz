@@ -42,6 +42,11 @@ enum class XFCurve {
   GAIN
 };
 
+enum class Generator {
+  NONE,
+  NOISE
+};
+
 class CCParamVec
 {
 public:
@@ -250,6 +255,7 @@ struct Region
 {
   std::string sample;
   std::string location;
+  Generator   generator = Generator::NONE;
 
   SampleP              cached_sample;
   Sample::PreloadInfoP preload_info;
@@ -368,7 +374,7 @@ struct Region
 
   bool empty()
   {
-    return sample == "";
+    return sample == "" && generator == Generator::NONE;
   }
 
   /* playback state */
