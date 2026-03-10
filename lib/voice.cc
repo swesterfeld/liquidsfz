@@ -55,8 +55,15 @@ Voice::update_replay_speed (bool now)
 
   if (region_->generator == Generator::NOISE || region_->generator == Generator::SILENCE)
     return;
-
-  replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate() / sample_rate_, now);
+  else if (region_->generator == Generator::SINE)
+    {
+      semi_tones += region_->pitch_keycenter - 69;
+      replay_speed_.set (exp2f (semi_tones / 12) * 440 * 2 * M_PI / sample_rate_, now);
+    }
+  else
+    {
+      replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate() / sample_rate_, now);
+    }
 }
 
 uint
@@ -503,6 +510,10 @@ Voice::process (float **outputs, uint n_frames)
     {
       process_impl<1, 1, Generator::NOISE> (outputs, n_frames);
     }
+  else if (region_->generator == Generator::SINE)
+    {
+      process_impl<1, 1, Generator::SINE> (outputs, n_frames);
+    }
   else if (quality_ == 1)
     {
       if (channels_ == 1)
@@ -594,11 +605,15 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
       for (uint i = 0; i < n_frames; i++)
         {
           const float amp_gain = envelope_.get_next();
-          //ppos_ += replay_speed_.get_next() * lfo_pitch[i] * UPSAMPLE;
           if constexpr (GENERATOR == Generator::SILENCE)
             out_l[i] = 0;
           if constexpr (GENERATOR == Generator::NOISE)
             out_l[i] = (synth_->raw_random_value() * float (1.0 / uint (1 << 31)) - 1) * amp_gain;
+          if constexpr (GENERATOR == Generator::SINE)
+            {
+              out_l[i] = sin (ppos_) * amp_gain;
+              ppos_ += replay_speed_.get_next() * lfo_pitch[i];
+            }
         }
       if (envelope_.done())
         kill();
