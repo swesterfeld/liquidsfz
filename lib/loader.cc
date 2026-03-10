@@ -509,7 +509,9 @@ Loader::set_key_value (const string& key, const string& value)
     {
       if (starts_with (value, "*"))
         {
-          if (value == "*noise")
+          if (value == "*silence")
+            region.generator = Generator::SILENCE;
+          else if (value == "*noise")
             region.generator = Generator::NOISE;
           else
             {
