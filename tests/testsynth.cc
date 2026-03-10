@@ -832,7 +832,7 @@ test_end()
     {
       for (int try_offset : { 0, 500 })
         {
-          for (int try_end : { -1, 0, 100 })
+          for (int try_end : { -1, 0, 1, 5, 100 })
             {
               write_sfz (string_printf ("<region>sample=testsynth.wav lokey=20 hikey=100 offset=%d end=%d", try_offset, try_offset + try_end));
               if (!synth.load ("testsynth.sfz"))
@@ -856,9 +856,11 @@ test_end()
                   if (out_right[i] > threshold)
                     end_r = i;
                 }
-              printf (" - quality %d - got end %d, %d expect %d\n", sample_quality, end_l, end_r, try_end);
-              assert (end_l == try_end);
-              assert (end_r == try_end);
+              /* we skip regions with end == 0 or end == -1 completely on playback */
+              int expect = (try_offset == 0 && try_end == 0) ? -1 : try_end;
+              printf (" - quality %d - got end %d, %d expect %d\n", sample_quality, end_l, end_r, expect);
+              assert (end_l == expect);
+              assert (end_r == expect);
             }
         }
     }
