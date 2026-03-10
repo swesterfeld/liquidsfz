@@ -45,7 +45,8 @@ enum class XFCurve {
 enum class Generator {
   NONE,
   SILENCE,
-  NOISE
+  NOISE,
+  SINE
 };
 
 class CCParamVec

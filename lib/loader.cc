@@ -513,6 +513,8 @@ Loader::set_key_value (const string& key, const string& value)
             region.generator = Generator::SILENCE;
           else if (value == "*noise")
             region.generator = Generator::NOISE;
+          else if (value == "*sine")
+            region.generator = Generator::SINE;
           else
             {
               synth_->warning ("%s unsupported generator %s\n", location().c_str(), value.c_str());
