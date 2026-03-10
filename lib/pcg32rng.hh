@@ -60,7 +60,6 @@ public:
     std::random_device random_dev;
     auto a = random_dev();
     auto b = random_dev();
-    printf ("random seed %d %d\n", a, b);
     seed (a, b);
   }
   /// Seed by seeking to position @a offset within stream @a sequence.
