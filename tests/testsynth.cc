@@ -749,6 +749,38 @@ test_simple()
   printf (" - random bipolar %f..%f\n", v136_min, v136_max);
   assert (v136_min > -6.01 && v136_min < -5.5);
   assert (v136_max > 5.5 && v136_max < 6.01);
+  printf ("silence trigger release test:\n");
+  for (int sample_quality = 1; sample_quality <= 3; sample_quality++)
+    {
+      write_sfz ("<region>trigger=attack sample=*silence"
+                 "<region>trigger=release sample=testsynth.wav");
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      synth.set_sample_quality (sample_quality);
+      synth.set_gain (sqrt (2));
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.add_event_note_off (1000, 0, 60);
+      synth.process (outputs, sample_rate);
+      int min_pos = out_left.size(), max_pos = -1;
+      for (int i = 0; i < int (out_left.size()); i++)
+        {
+          float eps;
+          if (sample_quality == 3)
+            eps = 0.005;
+          else
+            eps = 0;
+          if (fabs (out_left[i]) > eps)
+            {
+              min_pos = std::min (i, min_pos);
+              max_pos = std::max (i, max_pos);
+            }
+        }
+      printf (" - quality %d min_pos=%d (expect 1001) max_pos=%d (expect 1440)\n", sample_quality, min_pos, max_pos);
+      assert (min_pos == 1001 && max_pos == 1440);
+    }
 }
 
 void
