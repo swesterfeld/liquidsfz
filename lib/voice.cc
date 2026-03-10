@@ -53,7 +53,7 @@ Voice::update_replay_speed (bool now)
 
   semi_tones += synth_->get_cc_vec_value (this, region_->tune_cc) * 0.01; // tune_oncc
 
-  if (region_->generator == Generator::NOISE)
+  if (region_->generator == Generator::NOISE || region_->generator == Generator::SILENCE)
     return;
 
   replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate() / sample_rate_, now);
@@ -495,7 +495,11 @@ Voice::update_pitch_bend (int bend)
 void
 Voice::process (float **outputs, uint n_frames)
 {
-  if (region_->generator == Generator::NOISE)
+  if (region_->generator == Generator::SILENCE)
+    {
+      process_impl<1, 1, Generator::SILENCE> (outputs, n_frames);
+    }
+  else if (region_->generator == Generator::NOISE)
     {
       process_impl<1, 1, Generator::NOISE> (outputs, n_frames);
     }
@@ -591,6 +595,8 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
         {
           const float amp_gain = envelope_.get_next();
           //ppos_ += replay_speed_.get_next() * lfo_pitch[i] * UPSAMPLE;
+          if constexpr (GENERATOR == Generator::SILENCE)
+            out_l[i] = 0;
           if constexpr (GENERATOR == Generator::NOISE)
             out_l[i] = (synth_->raw_random_value() * float (1.0 / uint (1 << 31)) - 1) * amp_gain;
         }
