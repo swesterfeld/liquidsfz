@@ -5,6 +5,7 @@
 #include "envelope.hh"
 #include "filter.hh"
 #include "lfogen.hh"
+#include "pcg32rng.hh"
 
 namespace LiquidSFZInternal
 {
@@ -87,6 +88,7 @@ class Voice
   std::array<EQBand, MAX_EQ_BANDS> eq_bands_;
 
   Sample::PlayHandle play_handle_;
+  int                channels_ = 0; /* 1 mono, 2 stereo */
 
   Envelope filter_envelope_;
   float    filter_envelope_depth_ = 0;
@@ -167,7 +169,7 @@ public:
   void stop (OffMode off_mode);
   void kill();
   void process (float **outputs, uint n_frames);
-  template<int QUALITY, int CHANNELS>
+  template<int QUALITY, int CHANNELS, Generator GENERATOR>
   void process_impl (float **outputs, uint n_frames);
   void process_filter (FImpl& fi, bool envelope, float *left, float *right, uint n_frames, const float *lfo_cutoff_factor);
   void process_width (float *out_l, float *out_r, uint n_frames);
