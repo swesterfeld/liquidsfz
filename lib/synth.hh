@@ -408,7 +408,7 @@ public:
   {
     // - random must be >= 0.0
     // - random must be <  1.0  (and never 1.0)
-    return random_gen_.random() / (1.0 / (1LL << 32));
+    return random_gen_.random() * (1.0 / (1LL << 32));
   }
   uint32_t
   raw_random_value()
