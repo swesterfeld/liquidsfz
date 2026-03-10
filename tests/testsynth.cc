@@ -468,6 +468,36 @@ test_pitch()
   /* shift one octave down */
   octave_offset_check (1, 60, 240);
   octave_offset_check (1, 72, 480);
+  printf ("sine generator (sine*) pitch:\n");
+  auto sine_gen_pitch_check = [&] (const string& s, int note, float expect_freq)
+    {
+      write_sfz ("<region>sample=*sine " + s);
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+
+      synth.all_sound_off();
+      synth.add_event_note_on (0, 0, note, 100);
+      synth.process (outputs, sample_rate);
+      auto partial = max_partial (out_left, sample_rate);
+      printf (" - %-44s--> note %d, freq %.4f (expect %.4f)\n", s.c_str(), note, partial.freq, expect_freq);
+      double delta = 0.0005 * expect_freq; // ~= cent resolution
+      assert (fabs (partial.freq - expect_freq) < delta);
+    };
+  double c_60_freq = 261.625565300599;
+  sine_gen_pitch_check ("", 69, 440);
+  sine_gen_pitch_check ("", 57, 220);
+  sine_gen_pitch_check ("", 60, c_60_freq);
+  sine_gen_pitch_check ("pitch_keytrack=50", 60 + 24, 2 * c_60_freq);
+  sine_gen_pitch_check ("pitch_keytrack=0", 80, c_60_freq);
+  sine_gen_pitch_check ("pitch_keycenter=83 pitch_keytrack=0 tune=21", 69, 1000);
+  sine_gen_pitch_check ("pitch_keycenter=83 pitch_keytrack=0 tune=21", 60, 1000);
+  sine_gen_pitch_check ("pitch_keycenter=83 tune=21", 83, 1000);
+  sine_gen_pitch_check ("pitch_keycenter=83 tune=21", 95, 2000);
 #endif
 }
 
