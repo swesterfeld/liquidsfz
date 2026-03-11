@@ -54,14 +54,14 @@ class FileDialog
     return ".";
   }
 public:
-  FileDialog (const string& title, const string& filter, const string& filter_exts);
+  FileDialog (const string& title, const string& filter, const string& filter_exts, const string& zenity_filename);
   ~FileDialog();
 
   bool is_open ();
   string get_filename();
 };
 
-FileDialog::FileDialog (const string& title, const string& filter, const string& filter_exts)
+FileDialog::FileDialog (const string& title, const string& filter, const string& filter_exts, const string& zenity_filename)
 {
   constexpr auto KDIALOG = "/usr/bin/kdialog";
   constexpr auto ZENITY  = "/usr/bin/zenity";
@@ -117,6 +117,11 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
         {
           /* not sure if there is a way to make zenity start from last start directory(?) */
           args = { ZENITY, "--file-selection", "--title", title };
+          if (zenity_filename != "" && fs::exists (zenity_filename))
+            {
+              args.push_back ("--filename");
+              args.push_back (zenity_filename);
+            }
           args.push_back ("--file-filter=" + filter + "|" + filter_exts);
           args.push_back ("--file-filter=All Files | *");
         }
@@ -413,7 +418,7 @@ LV2UI::render_frame()
       ImGui::BeginDisabled (file_dialog != nullptr);
       if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, widget_height)))
         {
-          file_dialog = std::make_unique<FileDialog> ("LiquidSFZ: Select SFZ/XML File", "SFZ/XML Files", "*.sfz *.xml");
+          file_dialog = std::make_unique<FileDialog> ("LiquidSFZ: Select SFZ/XML File", "SFZ/XML Files", "*.sfz *.xml", plugin->filename());
 
           if (!file_dialog->is_open())
             {
