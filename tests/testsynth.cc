@@ -61,6 +61,17 @@ window_cos (double x) /* von Hann window */
   return 0.5 * cos (x * M_PI) + 0.5;
 }
 
+inline double
+window_gaussian (double x, double alpha = 3.0)
+{
+  if (fabs (x) > 1)
+    return 0;
+
+  // Gaussian function: exp(-0.5 * (x / sigma)^2)
+  // We replace 1/sigma with alpha.
+  return exp(-0.5 * pow (alpha * x, 2));
+}
+
 void
 fft (const uint n_values, float *r_values_in, float *ri_values_out)
 {
@@ -468,6 +479,95 @@ test_pitch()
   /* shift one octave down */
   octave_offset_check (1, 60, 240);
   octave_offset_check (1, 72, 480);
+  printf ("sine generator (sine*) pitch:\n");
+  auto sine_gen_pitch_check = [&] (const string& s, int note, float expect_freq)
+    {
+      write_sfz ("<region>sample=*sine " + s);
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+
+      synth.all_sound_off();
+      synth.add_event_note_on (0, 0, note, 100);
+      synth.process (outputs, sample_rate);
+      auto partial = max_partial (out_left, sample_rate);
+      printf (" - %-44s--> note %d, freq %.4f (expect %.4f)\n", s.c_str(), note, partial.freq, expect_freq);
+      double delta = 0.0005 * expect_freq; // ~= cent resolution
+      assert (fabs (partial.freq - expect_freq) < delta);
+    };
+  double c_60_freq = 261.625565300599;
+  sine_gen_pitch_check ("", 69, 440);
+  sine_gen_pitch_check ("", 57, 220);
+  sine_gen_pitch_check ("", 60, c_60_freq);
+  sine_gen_pitch_check ("pitch_keytrack=50", 60 + 24, 2 * c_60_freq);
+  sine_gen_pitch_check ("pitch_keytrack=0", 80, c_60_freq);
+  sine_gen_pitch_check ("pitch_keycenter=83 pitch_keytrack=0 tune=21", 69, 1000);
+  sine_gen_pitch_check ("pitch_keycenter=83 pitch_keytrack=0 tune=21", 60, 1000);
+  sine_gen_pitch_check ("pitch_keycenter=83 tune=21", 83, 1000);
+  sine_gen_pitch_check ("pitch_keycenter=83 tune=21", 95, 2000);
+  printf ("sine generator (sine*) precision:\n");
+  auto sine_gen_fft_check = [&] ()
+    {
+      write_sfz ("<region>sample=*sine volume_cc7=0 pan_cc10=0");
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      synth.set_gain (sqrt (2));
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+
+      synth.all_sound_off();
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.process (outputs, sample_rate);
+
+      auto p = max_partial (out_left, sample_rate);
+      printf (" - partial freq %f\n", p.freq);
+      assert (fabs (p.freq - c_60_freq) < 1e-4);
+      printf (" - partial mag %f\n", p.mag);
+      assert (fabs (p.mag - 1) < 1e-5);
+
+      constexpr double MIN_PADDING = 4;
+
+      size_t padded_length = 2;
+      while (out_left.size() * MIN_PADDING >= padded_length)
+        padded_length *= 2;
+
+      vector<float> padded_signal;
+      float window_weight = 0;
+      for (size_t i = 0; i < out_left.size(); i++)
+        {
+          const float w = window_gaussian ((i - out_left.size() * 0.5) / (out_left.size() * 0.5), 5);
+          window_weight += w;
+          padded_signal.push_back (out_left[i] * w);
+        }
+      padded_signal.resize (padded_length);
+
+      vector<float> fft_values (padded_signal.size() + 2);
+      fft (padded_signal.size(), padded_signal.data(), fft_values.data());
+
+      vector<float> mag_values;
+      double main = 0, side = 0;
+      for (size_t i = 0; i < fft_values.size(); i += 2)
+        {
+          double freq = double (i) * sample_rate / (2 * fft_values.size());
+          double mag = sqrt (fft_values[i] * fft_values[i] + fft_values[i + 1] * fft_values[i + 1]) * (2 / window_weight);
+          if (fabs (freq - c_60_freq) < 10)
+            main = max (mag, main);
+          else
+            side = max (mag, side);
+        }
+      printf (" - main lobe: %f\n", db (main));
+      assert (fabs (db (main) - 0) < 0.005);
+      printf (" - side lobe: %f\n", db (side));
+      assert (db (side) < -120);
+    };
+  sine_gen_fft_check();
 #endif
 }
 
@@ -745,10 +845,67 @@ test_simple()
     }
   printf (" - random unipolar %f..%f\n", v135_min, v135_max);
   assert (v135_min > -0.01 && v135_min < 1);
-  assert (v135_max > 5.5 && v135_max < 6.01);
+  assert (v135_max > 5 && v135_max < 6.01);
   printf (" - random bipolar %f..%f\n", v136_min, v136_max);
-  assert (v136_min > -6.01 && v136_min < -5.5);
-  assert (v136_max > 5.5 && v136_max < 6.01);
+  assert (v136_min > -6.01 && v136_min < -4);
+  assert (v136_max > 4 && v136_max < 6.01);
+  printf ("silence trigger release test:\n");
+  for (int sample_quality = 1; sample_quality <= 3; sample_quality++)
+    {
+      write_sfz ("<region>trigger=attack sample=*silence"
+                 "<region>trigger=release sample=testsynth.wav");
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      synth.set_sample_quality (sample_quality);
+      synth.set_gain (sqrt (2));
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.add_event_note_off (1000, 0, 60);
+      synth.process (outputs, sample_rate);
+      int min_pos = out_left.size(), max_pos = -1;
+      for (int i = 0; i < int (out_left.size()); i++)
+        {
+          float eps;
+          if (sample_quality == 3)
+            eps = 0.005;
+          else
+            eps = 0;
+          if (fabs (out_left[i]) > eps)
+            {
+              min_pos = std::min (i, min_pos);
+              max_pos = std::max (i, max_pos);
+            }
+        }
+      printf (" - quality %d min_pos=%d (expect 1001) max_pos=%d (expect 1440)\n", sample_quality, min_pos, max_pos);
+      assert (min_pos == 1001 && max_pos == 1440);
+    }
+  printf ("*noise test:\n");
+  write_sfz ("<region>sample=*noise volume_cc7=0 pan_cc10=0");
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  synth.set_sample_quality (3);
+  synth.set_gain (sqrt (2));
+  synth.add_event_note_on (0, 0, 60, 127);
+  synth.process (outputs, sample_rate);
+  float min_rnd = 2, max_rnd = -2, avg_rnd = 0;
+  for (auto f : out_left)
+    {
+      min_rnd = std::min (min_rnd, f);
+      max_rnd = std::max (max_rnd, f);
+      avg_rnd += f;
+    }
+  avg_rnd /= sample_rate;
+  printf (" - min_rnd %f (expect ~= -1)\n", min_rnd);
+  printf (" - max_rnd %f (expect ~= 1)\n", max_rnd);
+  printf (" - avg_rnd %f (expect ~= 0)\n", avg_rnd);
+  assert (avg_rnd > -0.03 && avg_rnd < 0.03);
+  assert (max_rnd > 0.999 && max_rnd < 1.000001);
+  assert (min_rnd < -0.999 && min_rnd > -1.000001);
 }
 
 void

@@ -12,6 +12,21 @@ using namespace LiquidSFZInternal;
 
 using std::clamp;
 
+namespace
+{
+
+static constexpr size_t SIN_TABLE_SIZE = 1024;
+
+static const auto sin_table = []() {
+  std::array<float, SIN_TABLE_SIZE + 2> table;
+  for (size_t i = 0; i < table.size(); i++)
+    table[i] = sin (i * 2 * M_PI / SIN_TABLE_SIZE);
+
+  return table;
+} ();
+
+}
+
 double
 Voice::pan_stereo_factor (double region_pan, int ch)
 {
@@ -53,7 +68,17 @@ Voice::update_replay_speed (bool now)
 
   semi_tones += synth_->get_cc_vec_value (this, region_->tune_cc) * 0.01; // tune_oncc
 
-  replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate() / sample_rate_, now);
+  if (region_->generator == Generator::NOISE || region_->generator == Generator::SILENCE)
+    return;
+  else if (region_->generator == Generator::SINE)
+    {
+      semi_tones += region_->pitch_keycenter - 69;
+      replay_speed_.set (exp2f (semi_tones / 12) * 440 * SIN_TABLE_SIZE / sample_rate_, now);
+    }
+  else
+    {
+      replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate() / sample_rate_, now);
+    }
 }
 
 uint
@@ -106,15 +131,6 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   quality_ = synth_->sample_quality();
   int upsample = quality_ == 3 ? 2 : 1; // upsample for best quality interpolator
 
-  /* play start position */
-  uint offset = region.offset;
-  offset += lrint (region.offset_random * synth_->normalized_random_value());
-  offset += lrint (synth_->get_cc_vec_value (this, region.offset_cc));
-  ppos_ = offset * upsample;
-  if (ppos_ > region.loop_end * upsample)
-    loop_enabled_ = false;
-  last_ippos_ = 0;
-
   update_volume_gain();
   update_amplitude_gain();
   update_pan_gain();
@@ -136,13 +152,33 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
 
   state_ = ACTIVE;
 
-  play_handle_.start_playback (region.cached_sample.get(), synth_->live_mode());
-  sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample, region.end);
-  if (loop_enabled_)
-    sample_reader_.set_loop (region.loop_start, region.loop_end);
-
   synth_->debug ("location %s\n", region.location.c_str());
-  synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), region.cached_sample->channels());
+  if (region.generator == Generator::NONE)
+    {
+      /* play start position */
+      uint offset = region.offset;
+      offset += lrint (region.offset_random * synth_->normalized_random_value());
+      offset += lrint (synth_->get_cc_vec_value (this, region.offset_cc));
+      ppos_ = offset * upsample;
+      if (ppos_ > region.loop_end * upsample)
+        loop_enabled_ = false;
+
+      last_ippos_ = 0;
+
+      play_handle_.start_playback (region.cached_sample.get(), synth_->live_mode());
+      sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample, region.end);
+      if (loop_enabled_)
+        sample_reader_.set_loop (region.loop_start, region.loop_end);
+
+      channels_ = region.cached_sample->channels();
+      synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), channels_);
+    }
+  else
+    {
+      channels_ = 1;
+      ppos_ = 0;
+      synth_->debug ("new voice: generator = %d\n", (int) region.generator);
+    }
 
   filter_envelope_.set_shape (Envelope::Shape::LINEAR);
   filter_envelope_.set_delay (amp_value (vnorm, region.fileg_delay));
@@ -483,28 +519,38 @@ Voice::update_pitch_bend (int bend)
 void
 Voice::process (float **outputs, uint n_frames)
 {
-  int channels = region_->cached_sample->channels();
-
-  if (quality_ == 1)
+  if (region_->generator == Generator::SILENCE)
     {
-      if (channels == 1)
-        process_impl<1, 1> (outputs, n_frames);
+      process_impl<1, 1, Generator::SILENCE> (outputs, n_frames);
+    }
+  else if (region_->generator == Generator::NOISE)
+    {
+      process_impl<1, 1, Generator::NOISE> (outputs, n_frames);
+    }
+  else if (region_->generator == Generator::SINE)
+    {
+      process_impl<1, 1, Generator::SINE> (outputs, n_frames);
+    }
+  else if (quality_ == 1)
+    {
+      if (channels_ == 1)
+        process_impl<1, 1, Generator::NONE> (outputs, n_frames);
       else
-        process_impl<1, 2> (outputs, n_frames);
+        process_impl<1, 2, Generator::NONE> (outputs, n_frames);
     }
   else if (quality_ == 2)
     {
-      if (channels == 1)
-        process_impl<2, 1> (outputs, n_frames);
+      if (channels_ == 1)
+        process_impl<2, 1, Generator::NONE> (outputs, n_frames);
       else
-        process_impl<2, 2> (outputs, n_frames);
+        process_impl<2, 2, Generator::NONE> (outputs, n_frames);
     }
   else if (quality_ == 3)
     {
-      if (channels == 1)
-        process_impl<3, 1> (outputs, n_frames);
+      if (channels_ == 1)
+        process_impl<3, 1, Generator::NONE> (outputs, n_frames);
       else
-        process_impl<3, 2> (outputs, n_frames);
+        process_impl<3, 2, Generator::NONE> (outputs, n_frames);
     }
 }
 
@@ -536,7 +582,7 @@ interp_hermite_6p3o (float ym2, float ym1, float y0, float y1, float y2, float y
   return (((c3*x+c2)*x+c1)*x) * (1/12.0f) + y0;
 }
 
-template<int QUALITY, int CHANNELS>
+template<int QUALITY, int CHANNELS, Generator GENERATOR>
 void
 Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 {
@@ -569,75 +615,101 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
   float out_l[Synth::MAX_BLOCK_SIZE];
   float out_r[Synth::MAX_BLOCK_SIZE];
 
-  for (uint i = 0; i < n_frames; i++)
+  if constexpr (GENERATOR != Generator::NONE)
     {
-      if (!sample_reader_.done() && !envelope_.done())
+      static_assert (CHANNELS == 1 && QUALITY == 1);
+
+      for (uint i = 0; i < n_frames; i++)
         {
-          const int64_t ippos = ppos_;
-          const int delta_pos = ippos - last_ippos_;
-          const float frac = ppos_ - ippos;
-          last_ippos_ = ippos;
-
-          ppos_ += replay_speed_.get_next() * lfo_pitch[i] * UPSAMPLE;
-
           const float amp_gain = envelope_.get_next();
-          if (CHANNELS == 1)
+          if constexpr (GENERATOR == Generator::SILENCE)
+            out_l[i] = 0;
+          if constexpr (GENERATOR == Generator::NOISE)
+            out_l[i] = (synth_->raw_random_value() * float (1.0 / uint (1 << 31)) - 1) * amp_gain;
+          if constexpr (GENERATOR == Generator::SINE)
             {
-              if constexpr (QUALITY == 1)
-                {
-                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 2> (delta_pos);
-
-                  out_l[i] = (samples[0] + frac * (samples[1] - samples[0])) * amp_gain;
-                }
-              if constexpr (QUALITY == 2)
-                {
-                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 6> (delta_pos);
-
-                  out_l[i] = interp_hermite_6p3o (samples[0], samples[1], samples[2], samples[3], samples[4], samples[5], frac) * amp_gain;
-                }
-              if constexpr (QUALITY == 3)
-                {
-                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 4> (delta_pos);
-
-                  out_l[i] = interp_optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac) * amp_gain;
-                }
+              int64_t ipos = ppos_;
+              const float frac = ppos_ - ipos;
+              ipos &= SIN_TABLE_SIZE - 1;
+              out_l[i] = (sin_table[ipos] + frac * (sin_table[ipos + 1] - sin_table[ipos])) * amp_gain;
+              ppos_ += replay_speed_.get_next() * lfo_pitch[i];
             }
-          else if (CHANNELS == 2)
+        }
+      if (envelope_.done())
+        kill();
+    }
+  else
+    {
+      for (uint i = 0; i < n_frames; i++)
+        {
+          if (!sample_reader_.done() && !envelope_.done())
             {
-              if constexpr (QUALITY == 1)
-                {
-                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 2> (delta_pos);
+              const int64_t ippos = ppos_;
+              const int delta_pos = ippos - last_ippos_;
+              const float frac = ppos_ - ippos;
+              last_ippos_ = ippos;
 
-                  out_l[i] = (samples[0] + frac * (samples[2] - samples[0])) * amp_gain;
-                  out_r[i] = (samples[1] + frac * (samples[3] - samples[1])) * amp_gain;
+              ppos_ += replay_speed_.get_next() * lfo_pitch[i] * UPSAMPLE;
+
+              const float amp_gain = envelope_.get_next();
+              if (CHANNELS == 1)
+                {
+                  if constexpr (QUALITY == 1)
+                    {
+                      const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 2> (delta_pos);
+
+                      out_l[i] = (samples[0] + frac * (samples[1] - samples[0])) * amp_gain;
+                    }
+                  if constexpr (QUALITY == 2)
+                    {
+                      const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 6> (delta_pos);
+
+                      out_l[i] = interp_hermite_6p3o (samples[0], samples[1], samples[2], samples[3], samples[4], samples[5], frac) * amp_gain;
+                    }
+                  if constexpr (QUALITY == 3)
+                    {
+                      const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 4> (delta_pos);
+
+                      out_l[i] = interp_optimal_2x_4p (samples[0], samples[1], samples[2], samples[3], frac) * amp_gain;
+                    }
                 }
-              if constexpr (QUALITY == 2)
+              else if (CHANNELS == 2)
                 {
-                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 6> (delta_pos);
+                  if constexpr (QUALITY == 1)
+                    {
+                      const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 2> (delta_pos);
 
-                  out_l[i] = interp_hermite_6p3o (samples[0], samples[2], samples[4], samples[6], samples[8], samples[10], frac) * amp_gain;
-                  out_r[i] = interp_hermite_6p3o (samples[1], samples[3], samples[5], samples[7], samples[9], samples[11], frac) * amp_gain;
+                      out_l[i] = (samples[0] + frac * (samples[2] - samples[0])) * amp_gain;
+                      out_r[i] = (samples[1] + frac * (samples[3] - samples[1])) * amp_gain;
+                    }
+                  if constexpr (QUALITY == 2)
+                    {
+                      const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 6> (delta_pos);
+
+                      out_l[i] = interp_hermite_6p3o (samples[0], samples[2], samples[4], samples[6], samples[8], samples[10], frac) * amp_gain;
+                      out_r[i] = interp_hermite_6p3o (samples[1], samples[3], samples[5], samples[7], samples[9], samples[11], frac) * amp_gain;
+                    }
+                  if constexpr (QUALITY == 3)
+                    {
+                      const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 4> (delta_pos);
+
+                      out_l[i] = interp_optimal_2x_4p (samples[0], samples[2], samples[4], samples[6], frac) * amp_gain;
+                      out_r[i] = interp_optimal_2x_4p (samples[1], samples[3], samples[5], samples[7], frac) * amp_gain;
+                    }
                 }
-              if constexpr (QUALITY == 3)
+              else
                 {
-                  const float *samples = sample_reader_.skip<UPSAMPLE, CHANNELS, 4> (delta_pos);
-
-                  out_l[i] = interp_optimal_2x_4p (samples[0], samples[2], samples[4], samples[6], frac) * amp_gain;
-                  out_r[i] = interp_optimal_2x_4p (samples[1], samples[3], samples[5], samples[7], frac) * amp_gain;
+                  assert (false);
                 }
             }
           else
             {
-              assert (false);
-            }
-        }
-      else
-        {
-          kill();
+              kill();
 
-          /* output memory is uninitialized, so we need to explicitely write every sampl when done */
-          out_l[i] = 0;
-          out_r[i] = 0;
+              /* output memory is uninitialized, so we need to explicitely write every sampl when done */
+              out_l[i] = 0;
+              out_r[i] = 0;
+            }
         }
     }
 
@@ -729,9 +801,7 @@ Voice::process_filter (FImpl& fi, bool envelope, float *left, float *right, uint
 
   auto run_filter = [&] (const auto& cr_func)
     {
-      int channels = region_->cached_sample->channels();
-
-      if (channels == 2)
+      if (channels_ == 2)
         fi.filter.process_mod (left, right, cr_func, n_frames);
       else
         fi.filter.process_mod_mono (left, cr_func, n_frames);

@@ -508,26 +508,39 @@ Loader::set_key_value (const string& key, const string& value)
   if (key == "sample")
     {
       if (starts_with (value, "*"))
-        synth_->warning ("%s unsupported generator %s\n", location().c_str(), value.c_str());
-
-      // on unix, convert \-seperated filename to /-separated filename
-      string native_filename = value;
-      std::replace (native_filename.begin(), native_filename.end(), '\\', PATH_SEPARATOR);
-
-      if (path_is_absolute (native_filename))
         {
-          region.sample = native_filename;
+          if (value == "*silence")
+            region.generator = Generator::SILENCE;
+          else if (value == "*noise")
+            region.generator = Generator::NOISE;
+          else if (value == "*sine")
+            region.generator = Generator::SINE;
+          else
+            {
+              synth_->warning ("%s unsupported generator %s\n", location().c_str(), value.c_str());
+            }
         }
       else
         {
-          string path = sample_path;
-          if (control.default_path != "")
-            path = path_join (path, control.default_path);
+          // on unix, convert \-seperated filename to /-separated filename
+          string native_filename = value;
+          std::replace (native_filename.begin(), native_filename.end(), '\\', PATH_SEPARATOR);
 
-          path = path_join (path, native_filename);
-          region.sample = path_absolute (path);
+          if (path_is_absolute (native_filename))
+            {
+              region.sample = native_filename;
+            }
+          else
+            {
+              string path = sample_path;
+              if (control.default_path != "")
+                path = path_join (path, control.default_path);
+
+              path = path_join (path, native_filename);
+              region.sample = path_absolute (path);
+            }
+          region.sample = path_resolve_case_insensitive (region.sample);
         }
-      region.sample = path_resolve_case_insensitive (region.sample);
       region.location = location();
     }
   else if (key == "lokey")
@@ -1394,46 +1407,52 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
 
   std::set<string> samples_todo, samples_done;
   for (size_t i = 0; i < regions.size(); i++)
-    samples_todo.insert (regions[i].sample);
+    {
+      if (regions[i].generator == Generator::NONE)
+        samples_todo.insert (regions[i].sample);
+    }
   synth_->progress (0);
   for (size_t i = 0; i < regions.size(); i++)
     {
       Region& region = regions[i];
 
-      uint max_offset = region.offset + region.offset_random + lrint (get_cc_vec_max (region.offset_cc));
-
-      const auto load_result = sample_cache.load (region.sample, synth_->preload_time(), max_offset);
-      region.cached_sample = load_result.sample;
-
-      /* update progress info */
-      samples_done.insert (region.sample);
-      synth_->progress (samples_done.size() * 100.0 / samples_todo.size());
-
-      if (region.cached_sample)
+      if (region.generator == Generator::NONE) /* load sample */
         {
-          // ensure that the life-time of our preload settings is the same as the life-time of this region
-          //
-          // this also allows having different preload settings for different regions / synth instances
-          // on the same cached sample
-          region.preload_info = load_result.preload_info;
-        }
+          uint max_offset = region.offset + region.offset_random + lrint (get_cc_vec_max (region.offset_cc));
 
-      if (!region.cached_sample)
-        synth_->warning ("%s: missing sample: '%s'\n", filename.c_str(), region.sample.c_str());
+          const auto load_result = sample_cache.load (region.sample, synth_->preload_time(), max_offset);
+          region.cached_sample = load_result.sample;
 
-      if (region.cached_sample && region.cached_sample->loop())
-        {
-          /* if values have been given explicitely, keep them
-           *   -> user can override loop settings from wav file (cached sample)
-           */
-          if (!region.have_loop_mode)
-            region.loop_mode = LoopMode::CONTINUOUS;
+          /* update progress info */
+          samples_done.insert (region.sample);
+          synth_->progress (samples_done.size() * 100.0 / samples_todo.size());
 
-          if (!region.have_loop_start)
-            region.loop_start = region.cached_sample->loop_start();
+          if (region.cached_sample)
+            {
+              // ensure that the life-time of our preload settings is the same as the life-time of this region
+              //
+              // this also allows having different preload settings for different regions / synth instances
+              // on the same cached sample
+              region.preload_info = load_result.preload_info;
+            }
 
-          if (!region.have_loop_end)
-            region.loop_end = region.cached_sample->loop_end();
+          if (!region.cached_sample)
+            synth_->warning ("%s: missing sample: '%s'\n", filename.c_str(), region.sample.c_str());
+
+          if (region.cached_sample && region.cached_sample->loop())
+            {
+              /* if values have been given explicitely, keep them
+               *   -> user can override loop settings from wav file (cached sample)
+               */
+              if (!region.have_loop_mode)
+                region.loop_mode = LoopMode::CONTINUOUS;
+
+              if (!region.have_loop_start)
+                region.loop_start = region.cached_sample->loop_start();
+
+              if (!region.have_loop_end)
+                region.loop_end = region.cached_sample->loop_end();
+            }
         }
       if (region.fil.cutoff < 0) /* filter defaults to lpf_2p, but only if cutoff was found */
         region.fil.type = Filter::Type::NONE;

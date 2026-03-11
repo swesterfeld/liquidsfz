@@ -75,7 +75,7 @@ public:
 
 private:
   std::shared_ptr<Global> global_;
-  std::minstd_rand random_gen;
+  Pcg32Rng random_gen_;
   std::function<void (Log, const char *)> log_function_;
   std::function<void (double)> progress_function_;
   uint sample_rate_ = 44100; // default
@@ -122,9 +122,6 @@ public:
   Synth() :
     global_ (Global::get()) // init data shared between all Synth instances
   {
-    std::random_device random_dev;
-    random_gen.seed (random_dev());
-
     // preallocate event buffer to avoid malloc in audio thread
     events.reserve (1024);
 
@@ -411,12 +408,12 @@ public:
   {
     // - random must be >= 0.0
     // - random must be <  1.0  (and never 1.0)
-    return random_gen() / double (random_gen.max() + 1);
+    return random_gen_.random() * (1.0 / (1LL << 32));
   }
   uint32_t
   raw_random_value()
   {
-    return random_gen();
+    return random_gen_.random();
   }
   void
   trigger_regions (Trigger trigger, int chan, int key, int vel, double time_since_note_on)
@@ -456,7 +453,7 @@ public:
                  */
                 if (region.lorand <= random && region.hirand > random)
                   {
-                    if (region.cached_sample)
+                    if (region.cached_sample || region.generator != Generator::NONE)
                       {
                         /* handle off_by */
                         if (region.group)
@@ -631,12 +628,12 @@ public:
           }
         else if (entry.cc == EXT_CC_RANDOM_UNIPOLAR)
           {
-            float f = voice->random_helper (cc_param_vec.id()) * (1 / 4294967296.0f); // 2^32, range [0:1]
+            float f = voice->random_helper (cc_param_vec.id()) * (1.f / (1LL << 32)); // range [0:1]
             value += ext_cc_curve (entry, f) * entry.value;
           }
         else if (entry.cc == EXT_CC_RANDOM_BIPOLAR)
           {
-            float f = voice->random_helper (cc_param_vec.id()) * (1 / 2147483648.0f); // 2^31, range [0:2]
+            float f = voice->random_helper (cc_param_vec.id()) * (1.f / (1LL << 31)); // range [0:2]
             /* we don't support curves for random bipolar because it is not
              * clear how to deal with a signed value
              */
