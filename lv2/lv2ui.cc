@@ -36,14 +36,14 @@ class FileDialog
     DONE
   } state = NONE;
 public:
-  FileDialog (const string& title);
+  FileDialog (const string& title, const string& filter, const string& filter_exts);
   ~FileDialog();
 
   bool is_open ();
   string get_filename();
 };
 
-FileDialog::FileDialog (const string& title)
+FileDialog::FileDialog (const string& title, const string& filter, const string& filter_exts)
 {
   constexpr auto KDIALOG = "/usr/bin/kdialog";
   constexpr auto ZENITY  = "/usr/bin/zenity";
@@ -91,9 +91,16 @@ FileDialog::FileDialog (const string& title)
 
       vector<string> args;
       if (dialog_type == KDIALOG)
-        args = { KDIALOG, "--getopenfilename", "--title", title };
+        {
+          args = { KDIALOG, "--getopenfilename", "--title", title, "." };
+          args.push_back (filter + "(" + filter_exts + ")\nAll Files (*)");
+        }
       if (dialog_type == ZENITY)
-        args = { ZENITY, "--file-selection", "--title", title };
+        {
+          args = { ZENITY, "--file-selection", "--title", title };
+          args.push_back ("--file-filter=" + filter + "|" + filter_exts);
+          args.push_back ("--file-filter=All Files | *");
+        }
 
       vector<char *> argv;
       for (auto& arg : args)
@@ -379,7 +386,7 @@ LV2UI::render_frame()
       ImGui::BeginDisabled (file_dialog != nullptr);
       if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, widget_height)))
         {
-          file_dialog = std::make_unique<FileDialog> ("LiquidSFZ: Select SFZ/XML File");
+          file_dialog = std::make_unique<FileDialog> ("LiquidSFZ: Select SFZ/XML File", "SFZ/XML Files", "*.sfz *.xml");
 
           if (!file_dialog->is_open())
             {
