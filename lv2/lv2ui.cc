@@ -20,6 +20,8 @@
 
 #define LIQUIDSFZ_UI_URI      "http://spectmorph.org/plugins/liquidsfz#ui"
 
+namespace fs = std::filesystem;
+
 using std::string;
 using std::vector;
 
@@ -34,15 +36,30 @@ class FileDialog
     DONE
   } state = NONE;
 public:
-  FileDialog();
+  FileDialog (const string& title, const string& filter, const string& filter_exts);
   ~FileDialog();
 
   bool is_open ();
   string get_filename();
 };
 
-FileDialog::FileDialog()
+FileDialog::FileDialog (const string& title, const string& filter, const string& filter_exts)
 {
+  constexpr auto KDIALOG = "/usr/bin/kdialog";
+  constexpr auto ZENITY  = "/usr/bin/zenity";
+  string dialog_type;
+
+  if (fs::exists (KDIALOG))
+    dialog_type = KDIALOG;
+  else if (fs::exists (ZENITY))
+    dialog_type = ZENITY;
+  else
+    {
+      fprintf (stderr, "LiquidSFZ: FileDialog: neither %s nor %s exists, unable to open file dialog\n", KDIALOG, ZENITY);
+      state = ERROR;
+      return;
+    }
+
   int pipe_fds[2];
   if (pipe (pipe_fds) == -1)
     {
@@ -72,13 +89,31 @@ FileDialog::FileDialog()
       close (pipe_fds[0]);
       close (pipe_fds[1]);
 
-      static char *argv[3] {
-        (char *) "/usr/bin/kdialog",
-        (char *) "--getopenfilename",
-        nullptr
-      };
-      execvp (argv[0], argv);
+      vector<string> args;
+      if (dialog_type == KDIALOG)
+        {
+          args = { KDIALOG, "--getopenfilename", "--title", title, "." };
+          args.push_back (filter + "(" + filter_exts + ")\nAll Files (*)");
+        }
+      if (dialog_type == ZENITY)
+        {
+          args = { ZENITY, "--file-selection", "--title", title };
+          args.push_back ("--file-filter=" + filter + "|" + filter_exts);
+          args.push_back ("--file-filter=All Files | *");
+        }
+
+      vector<char *> argv;
+      for (auto& arg : args)
+        argv.push_back (arg.data());
+      argv.push_back (nullptr);
+
+      execvp (argv[0], argv.data());
       perror ("LiquidSFZ: FileDialog: execvp() failed");
+
+      fprintf (stderr, "LiquidSFZ: failed to execute: ");
+      for (auto arg : args)
+        fprintf (stderr, "%s ", arg.c_str());
+      fprintf (stderr, "\n");
 
       // should not be reached in normal operation, so exec failed
       exit (127);
@@ -351,7 +386,7 @@ LV2UI::render_frame()
       ImGui::BeginDisabled (file_dialog != nullptr);
       if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, widget_height)))
         {
-          file_dialog = std::make_unique<FileDialog>();
+          file_dialog = std::make_unique<FileDialog> ("LiquidSFZ: Select SFZ/XML File", "SFZ/XML Files", "*.sfz *.xml");
 
           if (!file_dialog->is_open())
             {
