@@ -12,14 +12,20 @@ using namespace LiquidSFZInternal;
 
 using std::clamp;
 
+namespace
+{
+
 static constexpr size_t SIN_TABLE_SIZE = 1024;
-static auto sin_table = []() {
+
+static const auto sin_table = []() {
   std::array<float, SIN_TABLE_SIZE + 2> table;
   for (size_t i = 0; i < table.size(); i++)
     table[i] = sin (i * 2 * M_PI / SIN_TABLE_SIZE);
 
   return table;
 } ();
+
+}
 
 double
 Voice::pan_stereo_factor (double region_pan, int ch)
