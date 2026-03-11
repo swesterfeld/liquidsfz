@@ -12,6 +12,15 @@ using namespace LiquidSFZInternal;
 
 using std::clamp;
 
+static constexpr size_t SIN_TABLE_SIZE = 1024;
+static auto sin_table = []() {
+  std::array<float, SIN_TABLE_SIZE + 2> table;
+  for (size_t i = 0; i < table.size(); i++)
+    table[i] = sin (i * 2 * M_PI / SIN_TABLE_SIZE);
+
+  return table;
+} ();
+
 double
 Voice::pan_stereo_factor (double region_pan, int ch)
 {
@@ -58,7 +67,7 @@ Voice::update_replay_speed (bool now)
   else if (region_->generator == Generator::SINE)
     {
       semi_tones += region_->pitch_keycenter - 69;
-      replay_speed_.set (exp2f (semi_tones / 12) * 440 * 2 * M_PI / sample_rate_, now);
+      replay_speed_.set (exp2f (semi_tones / 12) * 440 * SIN_TABLE_SIZE / sample_rate_, now);
     }
   else
     {
@@ -611,7 +620,10 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
             out_l[i] = (synth_->raw_random_value() * float (1.0 / uint (1 << 31)) - 1) * amp_gain;
           if constexpr (GENERATOR == Generator::SINE)
             {
-              out_l[i] = sin (ppos_) * amp_gain;
+              int64_t ipos = ppos_;
+              const float frac = ppos_ - ipos;
+              ipos &= SIN_TABLE_SIZE - 1;
+              out_l[i] = (sin_table[ipos] + frac * (sin_table[ipos + 1] - sin_table[ipos])) * amp_gain;
               ppos_ += replay_speed_.get_next() * lfo_pitch[i];
             }
         }
