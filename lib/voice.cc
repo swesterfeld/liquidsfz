@@ -125,15 +125,6 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   quality_ = synth_->sample_quality();
   int upsample = quality_ == 3 ? 2 : 1; // upsample for best quality interpolator
 
-  /* play start position */
-  uint offset = region.offset;
-  offset += lrint (region.offset_random * synth_->normalized_random_value());
-  offset += lrint (synth_->get_cc_vec_value (this, region.offset_cc));
-  ppos_ = offset * upsample;
-  if (ppos_ > region.loop_end * upsample)
-    loop_enabled_ = false;
-  last_ippos_ = 0;
-
   update_volume_gain();
   update_amplitude_gain();
   update_pan_gain();
@@ -158,6 +149,16 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   synth_->debug ("location %s\n", region.location.c_str());
   if (region.generator == Generator::NONE)
     {
+      /* play start position */
+      uint offset = region.offset;
+      offset += lrint (region.offset_random * synth_->normalized_random_value());
+      offset += lrint (synth_->get_cc_vec_value (this, region.offset_cc));
+      ppos_ = offset * upsample;
+      if (ppos_ > region.loop_end * upsample)
+        loop_enabled_ = false;
+
+      last_ippos_ = 0;
+
       play_handle_.start_playback (region.cached_sample.get(), synth_->live_mode());
       sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample, region.end);
       if (loop_enabled_)
@@ -169,6 +170,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   else
     {
       channels_ = 1;
+      ppos_ = 0;
       synth_->debug ("new voice: generator = %d\n", (int) region.generator);
     }
 
