@@ -280,9 +280,13 @@ LV2UI::idle()
         {
           plugin->load_threadsafe (filename, 0);
           file_dialog.reset();
+          redraw();
         }
       else if (!file_dialog->is_open()) // user closed dialog
-        file_dialog.reset();
+        {
+          file_dialog.reset();
+          redraw();
+        }
     }
 
   float new_progress = plugin->load_progress_threadsafe();
