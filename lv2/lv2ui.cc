@@ -35,6 +35,24 @@ class FileDialog
     OPEN,
     DONE
   } state = NONE;
+  static inline string     last_start_dir;
+  static inline std::mutex last_start_dir_mutex;
+  void
+  set_last_start_dir (const string& filename)
+  {
+    std::lock_guard lg (last_start_dir_mutex);
+    fs::path fs_path (fs::absolute (filename));
+    last_start_dir = fs_path.parent_path().string();
+  }
+  string
+  get_last_start_dir()
+  {
+    std::lock_guard lg (last_start_dir_mutex);
+    std::string start_dir;
+    if (last_start_dir != "" && fs::is_directory (last_start_dir))
+      return last_start_dir;
+    return ".";
+  }
 public:
   FileDialog (const string& title, const string& filter, const string& filter_exts);
   ~FileDialog();
@@ -92,11 +110,12 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
       vector<string> args;
       if (dialog_type == KDIALOG)
         {
-          args = { KDIALOG, "--getopenfilename", "--title", title, "." };
+          args = { KDIALOG, "--getopenfilename", "--title", title, get_last_start_dir() };
           args.push_back (filter + "(" + filter_exts + ")\nAll Files (*)");
         }
       if (dialog_type == ZENITY)
         {
+          /* not sure if there is a way to make zenity start from last start directory(?) */
           args = { ZENITY, "--file-selection", "--title", title };
           args.push_back ("--file-filter=" + filter + "|" + filter_exts);
           args.push_back ("--file-filter=All Files | *");
@@ -183,6 +202,10 @@ FileDialog::get_filename()
               filename += ch;
           state = DONE;
           fclose (f);
+
+          set_last_start_dir (filename);
+
+          /* return filename */
           return filename;
         }
       if (pfd.revents & POLLHUP)
