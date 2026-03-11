@@ -881,6 +881,31 @@ test_simple()
       printf (" - quality %d min_pos=%d (expect 1001) max_pos=%d (expect 1440)\n", sample_quality, min_pos, max_pos);
       assert (min_pos == 1001 && max_pos == 1440);
     }
+  printf ("*noise test:\n");
+  write_sfz ("<region>sample=*noise volume_cc7=0 pan_cc10=0");
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  synth.set_sample_quality (3);
+  synth.set_gain (sqrt (2));
+  synth.add_event_note_on (0, 0, 60, 127);
+  synth.process (outputs, sample_rate);
+  float min_rnd = 2, max_rnd = -2, avg_rnd = 0;
+  for (auto f : out_left)
+    {
+      min_rnd = std::min (min_rnd, f);
+      max_rnd = std::max (max_rnd, f);
+      avg_rnd += f;
+    }
+  avg_rnd /= sample_rate;
+  printf (" - min_rnd %f (expect ~= -1)\n", min_rnd);
+  printf (" - max_rnd %f (expect ~= 1)\n", max_rnd);
+  printf (" - avg_rnd %f (expect ~= 0)\n", avg_rnd);
+  assert (avg_rnd > -0.03 && avg_rnd < 0.03);
+  assert (max_rnd > 0.999 && max_rnd < 1.000001);
+  assert (min_rnd < -0.999 && min_rnd > -1.000001);
 }
 
 void
