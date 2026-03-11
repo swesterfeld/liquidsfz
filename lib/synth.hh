@@ -229,6 +229,8 @@ public:
   bool
   load_internal (const std::string& filename)
   {
+    all_sound_off(); // ensure that no voices are playing (and reference samples in cache)
+
     Loader loader (this);
     if (loader.parse (filename, global_->sample_cache, bank_defines_))
       {
