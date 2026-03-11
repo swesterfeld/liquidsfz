@@ -628,12 +628,12 @@ public:
           }
         else if (entry.cc == EXT_CC_RANDOM_UNIPOLAR)
           {
-            float f = voice->random_helper (cc_param_vec.id()) * (1 / 4294967296.0f); // 2^32, range [0:1]
+            float f = voice->random_helper (cc_param_vec.id()) * (1.f / (1LL << 32)); // range [0:1]
             value += ext_cc_curve (entry, f) * entry.value;
           }
         else if (entry.cc == EXT_CC_RANDOM_BIPOLAR)
           {
-            float f = voice->random_helper (cc_param_vec.id()) * (1 / 2147483648.0f); // 2^31, range [0:2]
+            float f = voice->random_helper (cc_param_vec.id()) * (1.f / (1LL << 31)); // range [0:2]
             /* we don't support curves for random bipolar because it is not
              * clear how to deal with a signed value
              */
