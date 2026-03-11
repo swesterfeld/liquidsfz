@@ -20,6 +20,8 @@
 
 #define LIQUIDSFZ_UI_URI      "http://spectmorph.org/plugins/liquidsfz#ui"
 
+namespace fs = std::filesystem;
+
 using std::string;
 using std::vector;
 
@@ -43,6 +45,21 @@ public:
 
 FileDialog::FileDialog()
 {
+  constexpr auto KDIALOG = "/usr/bin/kdialog";
+  constexpr auto ZENITY  = "/usr/bin/zenity";
+  string dialog_type;
+
+  if (fs::exists (KDIALOG))
+    dialog_type = KDIALOG;
+  else if (fs::exists (ZENITY))
+    dialog_type = ZENITY;
+  else
+    {
+      fprintf (stderr, "LiquidSFZ: FileDialog: neither %s nor %s exists, unable to open file dialog\n", KDIALOG, ZENITY);
+      state = ERROR;
+      return;
+    }
+
   int pipe_fds[2];
   if (pipe (pipe_fds) == -1)
     {
@@ -72,13 +89,24 @@ FileDialog::FileDialog()
       close (pipe_fds[0]);
       close (pipe_fds[1]);
 
-      static char *argv[3] {
-        (char *) "/usr/bin/kdialog",
-        (char *) "--getopenfilename",
-        nullptr
-      };
-      execvp (argv[0], argv);
+      vector<string> args;
+      if (dialog_type == KDIALOG)
+        args = { KDIALOG, "--getopenfilename" };
+      if (dialog_type == ZENITY)
+        args = { ZENITY, "--file-selection" };
+
+      vector<char *> argv;
+      for (auto& arg : args)
+        argv.push_back (arg.data());
+      argv.push_back (nullptr);
+
+      execvp (argv[0], argv.data());
       perror ("LiquidSFZ: FileDialog: execvp() failed");
+
+      fprintf (stderr, "LiquidSFZ: failed to execute: ");
+      for (auto arg : args)
+        fprintf (stderr, "%s ", arg.c_str());
+      fprintf (stderr, "\n");
 
       // should not be reached in normal operation, so exec failed
       exit (127);
