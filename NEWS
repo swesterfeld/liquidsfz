@@ -1,3 +1,37 @@
+Overview of Changes in liquidsfz-0.4.0:
+
+* New opcodes:
+  - eqN_freq, eqN_gain... - equalizer support (based on code by Eric Bateman)
+  - global_volume, master_volume, group_volume
+  - width, end (#49), phase=invert, sustain_cc
+  - delay_random, octave_offset, pitch_veltrack
+  - amp_veltrack_onccN and amp_veltrackccN
+* Implement some extended CCs:
+  - CC131 - note on velocity
+  - CC133 - note key
+  - CC135 - random unipolar
+  - CC136 - random bipolar
+* Add simple generators:
+  - sample=*silence generator
+  - sample=*sine generator
+  - sample=*noise generator
+* AriaBank support
+  - Added API and UI for selecting AriaBank programs
+  - Support parsing and loading AriaBank .bank.xml files
+* Add LV2 custom UI based on pugl and ImGUI (Linux only)
+* Parser/Loader improvements:
+  - Support case-insensitive filenames to load .sfz files tested on Windows
+  - Make parser more permissive, accept uppercase opcodes
+  - Support #include="foo.sfz" in addition to #include "foo.sfz"
+  - Improve preprocessor performance
+* Fixes:
+  - Sort incoming midi events if necessary, fix Reaper crash (#47)
+  - Ignore extra spaces surrounding = (#40)
+  - Fix default_path for absolute paths (#48)
+  - Don't add path seperator automatically for default_path
+  - Use new locations for LV2 headers if available
+  - Stop existing voices before loading (fix samplecache race)
+
 Overview of Changes in liquidsfz-0.3.2:
 
 * Fix crashes triggered by Carla while saving without path
