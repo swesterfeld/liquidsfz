@@ -108,6 +108,9 @@ public:
   bool is_switch() const;
 };
 
+/**
+ * \brief Information for one AriaBank program
+ */
 class ProgramInfo
 {
   friend class Synth;
@@ -125,7 +128,7 @@ public:
    *
    * @returns program index (starting at 0)
    */
-  int index() const;
+  uint index() const;
 
   /**
    * In AriaBank .bank.xml files a label (for the end user) is provided for each program.

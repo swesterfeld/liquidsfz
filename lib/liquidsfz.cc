@@ -214,7 +214,7 @@ ProgramInfo::~ProgramInfo()
 {
 }
 
-int
+uint
 ProgramInfo::index() const
 {
   return impl->program_info.index;
