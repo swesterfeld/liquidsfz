@@ -532,16 +532,18 @@ Loader::set_key_value (const string& key, const string& value)
             }
           else
             {
-              string path = sample_path;
+              string path;
               if (control.default_path != "")
                 {
                   if (path_is_absolute (control.default_path))
-                    path = control.default_path;
+                    path = control.default_path + native_filename;
                   else
-                    path = path_join (path, control.default_path);
+                    path = path_join (sample_path, control.default_path) + native_filename;
                 }
-
-              path = path_join (path, native_filename);
+              else
+                {
+                  path = path_join (sample_path, native_filename);
+                }
               region.sample = path_absolute (path);
             }
           region.sample = path_resolve_case_insensitive (region.sample);
