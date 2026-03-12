@@ -1,8 +1,26 @@
 function opcode
 {
-  if [ $(echo | liquidsfz <(echo "<control>$1=0<region>$1=0") |& grep -c unsupported) != 2 ]; then
-    echo "$1" | sed s/0/N/g
+  if [ $(../tests/testliquid --load-only <(echo "<control>$1=0<region>$1=0") |& grep -c unsupported) != 2 ]; then
+    echo "$1" | sed s/0/N/g | sed s/^eq1/eqN/g | sed 's/^/* /g'
   fi
+}
+
+# manually added because eq0_... is not valid
+function eq_opcodes
+{
+  opcode eq1_bw
+  opcode eq1_bw_oncc0
+  opcode eq1_bwcc0
+  opcode eq1_freq
+  opcode eq1_freq_oncc0
+  opcode eq1_freqcc0
+  opcode eq1_gain
+  opcode eq1_gain_oncc0
+  opcode eq1_gaincc0
+  opcode eq1_mode
+  opcode eq1_type
+  opcode eq1_vel2freq
+  opcode eq1_vel2gain
 }
 
 # opcode list generated from in sfzformat.github.io/opcodes
@@ -30,6 +48,7 @@ opcode amp_veltrack_curvecc0
 opcode amp_veltrack_oncc0
 opcode amp_veltrack_random
 opcode ampeg_attack
+opcode ampeg_attack_curvecc0
 opcode ampeg_attack_oncc0
 opcode ampeg_attack_shape
 opcode ampeg_attackcc0
@@ -40,6 +59,7 @@ opcode ampeg_decay_shape
 opcode ampeg_decay_zero
 opcode ampeg_decaycc0
 opcode ampeg_delay
+opcode ampeg_delay_curvecc0
 opcode ampeg_delay_oncc0
 opcode ampeg_delaycc0
 opcode ampeg_dynamic
@@ -48,11 +68,13 @@ opcode ampeg_hold_curvecc0
 opcode ampeg_hold_oncc0
 opcode ampeg_holdcc0
 opcode ampeg_release
+opcode ampeg_release_curvecc0
 opcode ampeg_release_oncc0
 opcode ampeg_release_shape
 opcode ampeg_release_zero
 opcode ampeg_releasecc0
 opcode ampeg_start
+opcode ampeg_start_curvecc0
 opcode ampeg_start_oncc0
 opcode ampeg_startcc0
 opcode ampeg_sustain
@@ -118,10 +140,12 @@ opcode count
 opcode curve_index
 opcode cutoff
 opcode cutoff2
+opcode cutoff2_cc0
 opcode cutoff2_chanaft
 opcode cutoff2_curvecc0
 opcode cutoff2_oncc0
 opcode cutoff2_polyaft
+opcode cutoff2_random
 opcode cutoff2_smoothcc0
 opcode cutoff2_stepcc0
 opcode cutoff_cc0
@@ -225,6 +249,7 @@ opcode eg0_depth_lfo0
 opcode eg0_depthadd_lfo0
 opcode eg0_driveshape
 opcode eg0_driveshape_oncc0
+opcode eg0_dynamic
 opcode eg0_eq0bw
 opcode eg0_eq0bw_oncc0
 opcode eg0_eq0freq
@@ -257,6 +282,8 @@ opcode eg0_resonance2_oncc0
 opcode eg0_resonance_oncc0
 opcode eg0_ringmod
 opcode eg0_ringmod_oncc0
+opcode eg0_sample_dyn_param0
+opcode eg0_sample_dyn_param0_oncc0
 opcode eg0_shape0
 opcode eg0_sustain
 opcode eg0_time0
@@ -266,16 +293,17 @@ opcode eg0_volume_oncc0
 opcode eg0_width
 opcode eg0_width_oncc0
 opcode end
+eq_opcodes
 opcode eq0_bw
 opcode eq0_bw_oncc0
 opcode eq0_bwcc0
-opcode eq0_dynamic
 opcode eq0_freq
 opcode eq0_freq_oncc0
 opcode eq0_freqcc0
 opcode eq0_gain
 opcode eq0_gain_oncc0
 opcode eq0_gaincc0
+opcode eq0_mode
 opcode eq0_type
 opcode eq0_vel2freq
 opcode eq0_vel2gain
@@ -301,6 +329,7 @@ opcode fil_gain_oncc0
 opcode fil_hold
 opcode fil_keycenter
 opcode fil_keytrack
+opcode fil_mode
 opcode fil_random
 opcode fil_release
 opcode fil_sustain
@@ -314,33 +343,41 @@ opcode fil_vel2release
 opcode fil_vel2sustain
 opcode fil_veltrack
 opcode fileg_attack
+opcode fileg_attack_curvecc0
 opcode fileg_attack_oncc0
 opcode fileg_attack_shape
 opcode fileg_attackcc0
 opcode fileg_decay
+opcode fileg_decay_curvecc0
 opcode fileg_decay_oncc0
 opcode fileg_decay_shape
 opcode fileg_decay_zero
 opcode fileg_decaycc0
 opcode fileg_delay
+opcode fileg_delay_curvecc0
 opcode fileg_delay_oncc0
 opcode fileg_delaycc0
 opcode fileg_depth
+opcode fileg_depth_curvecc0
 opcode fileg_depth_oncc0
 opcode fileg_depthcc0
 opcode fileg_dynamic
 opcode fileg_hold
+opcode fileg_hold_curvecc0
 opcode fileg_hold_oncc0
 opcode fileg_holdcc0
 opcode fileg_release
+opcode fileg_release_curvecc0
 opcode fileg_release_oncc0
 opcode fileg_release_shape
 opcode fileg_release_zero
 opcode fileg_releasecc0
 opcode fileg_start
+opcode fileg_start_curvecc0
 opcode fileg_start_oncc0
 opcode fileg_startcc0
 opcode fileg_sustain
+opcode fileg_sustain_curvecc0
 opcode fileg_sustain_oncc0
 opcode fileg_sustaincc0
 opcode fileg_vel2attack
@@ -406,6 +443,7 @@ opcode internal
 opcode key
 opcode label_cc0
 opcode label_key0
+opcode label_output0
 opcode lfo0_amplitude
 opcode lfo0_amplitude_oncc0
 opcode lfo0_amplitude_smoothcc0
@@ -490,6 +528,8 @@ opcode lfo0_resonance2_stepcc0
 opcode lfo0_resonance_oncc0
 opcode lfo0_resonance_smoothcc0
 opcode lfo0_resonance_stepcc0
+opcode lfo0_sample_dyn_param0
+opcode lfo0_sample_dyn_param0_oncc0
 opcode lfo0_scale
 opcode lfo0_scale0
 opcode lfo0_smooth
@@ -521,6 +561,7 @@ opcode lokey
 opcode loop_count
 opcode loop_crossfade
 opcode loop_end
+opcode loop_end_offset
 opcode loop_length_oncc0
 opcode loop_lengthcc0
 opcode loop_mode
@@ -529,9 +570,12 @@ opcode loop_start_oncc0
 opcode loop_startcc0
 opcode loop_tune
 opcode loop_type
+opcode loopcount
 opcode loopend
 opcode loopmode
 opcode loopstart
+opcode looptune
+opcode looptype
 opcode lopolyaft
 opcode loprog
 opcode lorand
@@ -563,6 +607,7 @@ opcode off_time
 opcode offby
 opcode offset
 opcode offset_cc0
+opcode offset_mode
 opcode offset_oncc0
 opcode offset_random
 opcode on_hicc0
@@ -629,26 +674,35 @@ opcode pitch_vel2release
 opcode pitch_vel2sustain
 opcode pitch_veltrack
 opcode pitcheg_attack
+opcode pitcheg_attack_curvecc0
 opcode pitcheg_attack_oncc0
 opcode pitcheg_attack_shape
 opcode pitcheg_decay
+opcode pitcheg_decay_curvecc0
 opcode pitcheg_decay_oncc0
 opcode pitcheg_decay_shape
 opcode pitcheg_decay_zero
 opcode pitcheg_delay
+opcode pitcheg_delay_curvecc0
 opcode pitcheg_delay_oncc0
 opcode pitcheg_depth
+opcode pitcheg_depth_curvecc0
 opcode pitcheg_depth_oncc0
+opcode pitcheg_depthcc0
 opcode pitcheg_dynamic
 opcode pitcheg_hold
+opcode pitcheg_hold_curvecc0
 opcode pitcheg_hold_oncc0
 opcode pitcheg_release
+opcode pitcheg_release_curvecc0
 opcode pitcheg_release_oncc0
 opcode pitcheg_release_shape
 opcode pitcheg_release_zero
 opcode pitcheg_start
+opcode pitcheg_start_curvecc0
 opcode pitcheg_start_oncc0
 opcode pitcheg_sustain
+opcode pitcheg_sustain_curvecc0
 opcode pitcheg_sustain_oncc0
 opcode pitcheg_vel2attack
 opcode pitcheg_vel2decay
@@ -713,7 +767,11 @@ opcode reverse_hicc0
 opcode reverse_locc0
 opcode rt_dead
 opcode rt_decay
+opcode rt_decay0
+opcode rt_decay0_time
 opcode sample
+opcode sample_dyn_param0
+opcode sample_dyn_param0_oncc0
 opcode sample_fadeout
 opcode sample_quality
 opcode script
