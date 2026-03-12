@@ -390,7 +390,7 @@ Loader::parse_eq_param (Region& region, const std::string& key, const std::strin
     return false;
 
   int band_num = atoi (num_str.c_str()) - 1;
-  if (band_num < 0 && band_num >= MAX_EQ_BANDS)
+  if (band_num < 0 || band_num >= MAX_EQ_BANDS)
     {
       synth_->warning ("%s EQ band number %d out of range (max %d bands)\n", location().c_str(), band_num + 1, MAX_EQ_BANDS);
       return false;
