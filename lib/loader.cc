@@ -534,7 +534,12 @@ Loader::set_key_value (const string& key, const string& value)
             {
               string path = sample_path;
               if (control.default_path != "")
-                path = path_join (path, control.default_path);
+                {
+                  if (path_is_absolute (control.default_path))
+                    path = control.default_path;
+                  else
+                    path = path_join (path, control.default_path);
+                }
 
               path = path_join (path, native_filename);
               region.sample = path_absolute (path);
