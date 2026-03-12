@@ -2,12 +2,14 @@
 
 ## SUPPORTED OPCODES
 
-The following SFZ opcodes are supported in liquidsfz-0.3.2:
+The following SFZ opcodes are supported in liquidsfz-0.4.0:
 
 * amp_random
 * amp_velcurve_N
 * amp_veltrack
+* amp_veltrack_onccN
 * ampeg_attack
+* ampeg_attack_curveccN
 * ampeg_attack_onccN
 * ampeg_attackccN
 * ampeg_decay
@@ -15,6 +17,7 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * ampeg_decay_onccN
 * ampeg_decayccN
 * ampeg_delay
+* ampeg_delay_curveccN
 * ampeg_delay_onccN
 * ampeg_delayccN
 * ampeg_hold
@@ -22,6 +25,7 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * ampeg_hold_onccN
 * ampeg_holdccN
 * ampeg_release
+* ampeg_release_curveccN
 * ampeg_release_onccN
 * ampeg_releaseccN
 * ampeg_sustain
@@ -48,6 +52,7 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * bend_up
 * cutoff
 * cutoff2
+* cutoff2_ccN
 * cutoff2_curveccN
 * cutoff2_onccN
 * cutoff_ccN
@@ -58,6 +63,18 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * delay_ccN
 * delay_curveccN
 * delay_onccN
+* delay_random
+* end
+* eqN_bw
+* eqN_bw_onccN
+* eqN_bwccN
+* eqN_freq
+* eqN_freq_onccN
+* eqN_freqccN
+* eqN_gain
+* eqN_gain_onccN
+* eqN_gainccN
+* eqN_vel2gain
 * fil2_keycenter
 * fil2_keytrack
 * fil2_veltrack
@@ -65,24 +82,31 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * fil_keytrack
 * fil_veltrack
 * fileg_attack
+* fileg_attack_curveccN
 * fileg_attack_onccN
 * fileg_attackccN
 * fileg_decay
+* fileg_decay_curveccN
 * fileg_decay_onccN
 * fileg_decayccN
 * fileg_delay
+* fileg_delay_curveccN
 * fileg_delay_onccN
 * fileg_delayccN
 * fileg_depth
+* fileg_depth_curveccN
 * fileg_depth_onccN
 * fileg_depthccN
 * fileg_hold
+* fileg_hold_curveccN
 * fileg_hold_onccN
 * fileg_holdccN
 * fileg_release
+* fileg_release_curveccN
 * fileg_release_onccN
 * fileg_releaseccN
 * fileg_sustain
+* fileg_sustain_curveccN
 * fileg_sustain_onccN
 * fileg_sustainccN
 * fileg_vel2attack
@@ -99,7 +123,9 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * fillfo_freq
 * fillfo_freqccN
 * gain_ccN
+* global_volume
 * group
+* group_volume
 * hiccN
 * hikey
 * hirand
@@ -135,6 +161,8 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * loopstart
 * lorand
 * lovel
+* master_volume
+* octave_offset
 * off_by
 * off_mode
 * off_time
@@ -149,12 +177,14 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * pan_ccN
 * pan_curveccN
 * pan_onccN
+* phase
 * pitch
 * pitch_curveccN
 * pitch_keycenter
 * pitch_keytrack
 * pitch_onccN
 * pitch_random
+* pitch_veltrack
 * pitchlfo_delay
 * pitchlfo_depth
 * pitchlfo_depthccN
@@ -176,6 +206,7 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * set_ccN
 * set_hdccN
 * set_realccN
+* sustain_cc
 * sw_default
 * sw_hikey
 * sw_hilast
@@ -192,6 +223,9 @@ The following SFZ opcodes are supported in liquidsfz-0.3.2:
 * volume
 * volume_curveccN
 * volume_onccN
+* width
+* width_curveccN
+* width_onccN
 * xf_cccurve
 * xf_keycurve
 * xf_velcurve
