@@ -12,7 +12,7 @@ It can also load and play Hydrogen drumkits. We support JACK and LV2.
 The main goal is to provide a library that is easy to integrate into other
 projects.
 
- * API documentation is available here: https://space.twc.de/~stefan/liquidsfz/api-0.3.2
+ * API documentation is available here: https://space.twc.de/~stefan/liquidsfz/api-0.4.0
  * There is also a list of [currently supported SFZ opcodes](OPCODES.md)
 
 The API should be fairly stable at this point, so we try to maintain source
@@ -50,6 +50,13 @@ Or if you want to load a Hydrogen drumkit, like this:
 
     liquidsfz /usr/share/hydrogen/data/drumkits/GMRockKit/drumkit.xml
 
+Finally, support for AriaBank `.bank.xml` files is available. Files can be loaded
+like this
+
+    liquidsfz ~/sfz/karoryfer.shinyguitar-master/Shinyguitar.bank.xml
+
+and programs can be switched using the program command.
+
 liquidsfz works as a JACK client with midi input and audio ouput. If you connect
 the JACK midi input / audio output using a patchbay, you can send midi events
 to liquidsfz to test the sfz loader.
@@ -70,10 +77,10 @@ The code is licensed under
 
 ## RELEASES
 
-The current version of liquidsfz is liquidsfz-0.3.2, and can be downloaded
+The current version of liquidsfz is liquidsfz-0.4.0, and can be downloaded
 here:
 
-* https://github.com/swesterfeld/liquidsfz/releases/download/0.3.2/liquidsfz-0.3.2.tar.bz2
+* https://github.com/swesterfeld/liquidsfz/releases/download/0.4.0/liquidsfz-0.4.0.tar.bz2
 
 ## BINARY LV2 PLUGIN
 
@@ -84,7 +91,7 @@ binary.
 
 The Linux version is available here:
 
-* https://github.com/swesterfeld/liquidsfz/releases/download/0.3.2/liquidsfz-0.3.2-x86_64.tar.gz
+* https://github.com/swesterfeld/liquidsfz/releases/download/0.4.0/liquidsfz-0.4.0-x86_64.tar.gz
 
 To install it, extract the archive and
 
@@ -93,7 +100,8 @@ To install it, extract the archive and
 
 ### WINDOWS BINARY
 
-The Windows plugin is available here:
+The Windows plugin is no longer supported (in 0.4.0 or higher), an old version is avialable
+at
 
 * https://github.com/swesterfeld/liquidsfz/releases/download/0.3.2/liquidsfz-0.3.2-win64.zip
 
