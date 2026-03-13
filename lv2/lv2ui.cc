@@ -14,8 +14,6 @@
 #include "pugl/gl.h"
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
-#include "lv2/ui/ui.h"
-#include "lv2/instance-access/instance-access.h"
 #include "lv2plugin.hh"
 
 #define LIQUIDSFZ_UI_URI      "http://spectmorph.org/plugins/liquidsfz#ui"
