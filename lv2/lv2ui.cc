@@ -33,6 +33,10 @@ class FileDialog
     OPEN,
     DONE
   } state = NONE;
+
+  constexpr static auto KDIALOG = "/usr/bin/kdialog";
+  constexpr static auto ZENITY  = "/usr/bin/zenity";
+
   static inline string     last_start_dir;
   static inline std::mutex last_start_dir_mutex;
   void
@@ -56,13 +60,18 @@ public:
   ~FileDialog();
 
   bool is_open ();
+  static bool have_helpers();
   string get_filename();
 };
 
+bool
+FileDialog::have_helpers()
+{
+  return fs::exists (KDIALOG) || fs::exists (ZENITY);
+}
+
 FileDialog::FileDialog (const string& title, const string& filter, const string& filter_exts, const string& zenity_filename)
 {
-  constexpr auto KDIALOG = "/usr/bin/kdialog";
-  constexpr auto ZENITY  = "/usr/bin/zenity";
   string dialog_type;
 
   if (fs::exists (KDIALOG))
@@ -71,6 +80,7 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
     dialog_type = ZENITY;
   else
     {
+      /* shouldn't happen because caller should check have_helpers() */
       fprintf (stderr, "LiquidSFZ: FileDialog: neither %s nor %s exists, unable to open file dialog\n", KDIALOG, ZENITY);
       state = ERROR;
       return;
@@ -234,6 +244,7 @@ struct LV2UI
 
   int redraw_required_frames = 0;
   bool configured  = false;
+  bool show_missing_file_dialog_helpers = false;
   double last_time = 0;
 
   float plugin_control_level = 0;
@@ -403,97 +414,135 @@ LV2UI::render_frame()
       ImGuiWindowFlags_NoBringToFrontOnFocus |
       ImGuiWindowFlags_AlwaysAutoResize;
 
-  ImGui::Begin("MainUI", nullptr, flags);
+  ImGui::Begin ("MainUI", nullptr, flags);
 
-  // Get the standard height for a widget in the current style
-  float widget_height = ImGui::GetFrameHeight();
-  if (progress >= 0)
+  if (show_missing_file_dialog_helpers)
     {
-      ImGui::ProgressBar (progress / 100, ImVec2 (-FLT_MIN, widget_height));
+      // Calculate height of the UI block
+      float block_height =
+            ImGui::GetTextLineHeightWithSpacing() * 3   // 3 text lines
+          + ImGui::GetFrameHeightWithSpacing();         // button
+
+      // Center vertically
+      float avail = ImGui::GetContentRegionAvail().y;
+      if (avail > block_height)
+          ImGui::SetCursorPosY (ImGui::GetCursorPosY() + (avail - block_height) * 0.5f);
+
+      ImGui::TextColored (ImVec4 (1.0f, 0.35f, 0.35f, 1.0f), "Error: File dialog helpers missing, please install one of the following:");
+
+      ImGui::BulletText ("zenity (recommended)");
+      ImGui::BulletText ("kdialog");
+
+      // Center the button
+      float width = 120.0f;
+      ImGui::SetCursorPosX ((ImGui::GetWindowSize().x - width) * 0.5f);
+
+      if (ImGui::Button ("OK", ImVec2 (width, 0)))
+        {
+          show_missing_file_dialog_helpers = false;
+          redraw();
+        }
     }
   else
     {
-      ImGui::BeginDisabled (file_dialog != nullptr);
-      if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, widget_height)))
+      // Get the standard height for a widget in the current style
+      float widget_height = ImGui::GetFrameHeight();
+      if (progress >= 0)
         {
-          file_dialog = std::make_unique<FileDialog> ("LiquidSFZ: Select SFZ/XML File", "SFZ/XML Files", "*.sfz *.xml", plugin->filename());
-
-          if (!file_dialog->is_open())
+          ImGui::ProgressBar (progress / 100, ImVec2 (-FLT_MIN, widget_height));
+        }
+      else
+        {
+          ImGui::BeginDisabled (file_dialog != nullptr);
+          if (ImGui::Button ("Load SFZ/XML File...", ImVec2 (-FLT_MIN, widget_height)))
             {
-              /* something went wrong creating the filedialog */
-              file_dialog.reset();
-            }
-        }
-      ImGui::EndDisabled();
-    }
-  if (ImGui::BeginTable ("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
-    {
-      // Column 0: auto-sized to content
-      ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed);
-
-      // Column 1: stretch, takes remaining space
-      ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-
-      ImGui::TableNextRow();
-      ImGui::TableSetColumnIndex (0);
-      ImGui::AlignTextToFramePadding();
-      ImGui::Text("Output Level:");
-      ImGui::TableSetColumnIndex (1);
-      ImGui::SetNextItemWidth (-FLT_MIN);
-      if (ImGui::SliderFloat("##slider1", &plugin_control_level, -80.f, 20.f))
-        {
-          write_function (controller, LV2Plugin::LEVEL, sizeof (float), 0, &plugin_control_level);
-        }
-
-      ImGui::TableNextRow();
-      ImGui::TableSetColumnIndex (0);
-      ImGui::AlignTextToFramePadding();
-      ImGui::Text ("Program:");
-      ImGui::TableSetColumnIndex (1);
-      ImGui::SetNextItemWidth (-FLT_MIN);
-
-      vector<string> programs = plugin->programs();
-      string filename = plugin->filename();
-      if (programs.size() == 0)
-        {
-          std::filesystem::path filepath = filename;
-          programs = { filepath.stem().string() };
-        }
-
-      /* if program is invalid (> length of programs), display first item as
-       * selected, this will not change the invalid program until the user
-       * touches the combo box
-       */
-      int program = std::min<int> (plugin->program(), programs.size());
-      if (ImGui::BeginCombo ("##programs", programs[program].c_str()))
-        {
-          for (int i = 0; i < (int) programs.size(); i++)
-            {
-              ImGui::PushID (i);
-
-              bool is_selected = (program == i);
-              if (ImGui::Selectable (programs[i].c_str(), is_selected))
+              if (!file_dialog->have_helpers())
                 {
-                  /* load new program (same file) */
-                  plugin->load_threadsafe (filename, i);
+                  show_missing_file_dialog_helpers = true;
                 }
+              else
+                {
+                  file_dialog = std::make_unique<FileDialog> ("LiquidSFZ: Select SFZ/XML File", "SFZ/XML Files", "*.sfz *.xml", plugin->filename());
 
-              if (is_selected)
-                ImGui::SetItemDefaultFocus();
-
-              ImGui::PopID();
+                  if (!file_dialog->is_open())
+                    {
+                      /* something went wrong creating the filedialog */
+                      file_dialog.reset();
+                    }
+                }
+              redraw();
             }
-          ImGui::EndCombo();
+          ImGui::EndDisabled();
         }
+      if (ImGui::BeginTable ("PropertyTable", 2, ImGuiTableFlags_SizingStretchProp))
+        {
+          // Column 0: auto-sized to content
+          ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed);
 
-      ImGui::TableNextRow();
-      ImGui::TableSetColumnIndex (0);
-      ImGui::AlignTextToFramePadding();
-      ImGui::Text ("Status:");
-      ImGui::TableSetColumnIndex (1);
-      ImGui::TextUnformatted (plugin->status().c_str());
+          // Column 1: stretch, takes remaining space
+          ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 
-      ImGui::EndTable();
+          ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex (0);
+          ImGui::AlignTextToFramePadding();
+          ImGui::Text("Output Level:");
+          ImGui::TableSetColumnIndex (1);
+          ImGui::SetNextItemWidth (-FLT_MIN);
+          if (ImGui::SliderFloat("##slider1", &plugin_control_level, -80.f, 20.f))
+            {
+              write_function (controller, LV2Plugin::LEVEL, sizeof (float), 0, &plugin_control_level);
+            }
+
+          ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex (0);
+          ImGui::AlignTextToFramePadding();
+          ImGui::Text ("Program:");
+          ImGui::TableSetColumnIndex (1);
+          ImGui::SetNextItemWidth (-FLT_MIN);
+
+          vector<string> programs = plugin->programs();
+          string filename = plugin->filename();
+          if (programs.size() == 0)
+            {
+              std::filesystem::path filepath = filename;
+              programs = { filepath.stem().string() };
+            }
+
+          /* if program is invalid (> length of programs), display first item as
+           * selected, this will not change the invalid program until the user
+           * touches the combo box
+           */
+          int program = std::min<int> (plugin->program(), programs.size());
+          if (ImGui::BeginCombo ("##programs", programs[program].c_str()))
+            {
+              for (int i = 0; i < (int) programs.size(); i++)
+                {
+                  ImGui::PushID (i);
+
+                  bool is_selected = (program == i);
+                  if (ImGui::Selectable (programs[i].c_str(), is_selected))
+                    {
+                      /* load new program (same file) */
+                      plugin->load_threadsafe (filename, i);
+                    }
+
+                  if (is_selected)
+                    ImGui::SetItemDefaultFocus();
+
+                  ImGui::PopID();
+                }
+              ImGui::EndCombo();
+            }
+
+          ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex (0);
+          ImGui::AlignTextToFramePadding();
+          ImGui::Text ("Status:");
+          ImGui::TableSetColumnIndex (1);
+          ImGui::TextUnformatted (plugin->status().c_str());
+
+          ImGui::EndTable();
+        }
     }
   ImVec2 required_size = ImGui::GetWindowSize();
   ImGui::End();
