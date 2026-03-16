@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <poll.h>
+#include <math.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <filesystem>
@@ -243,7 +244,6 @@ struct LV2UI
   std::unique_ptr<FileDialog> file_dialog;
 
   int redraw_required_frames = 0;
-  bool configured  = false;
   bool show_missing_file_dialog_helpers = false;
   double last_time = 0;
 
@@ -334,7 +334,6 @@ LV2UI::on_event (const PuglEvent *event)
       case PUGL_CONFIGURE:
         io.DisplaySize = ImVec2 (event->configure.width, event->configure.height);
         glViewport (0, 0, event->configure.width, event->configure.height);
-        configured = true;
         break;
 
       case PUGL_CLOSE:
@@ -545,6 +544,7 @@ LV2UI::render_frame()
         }
     }
   ImVec2 required_size = ImGui::GetWindowSize();
+
   ImGui::End();
   return required_size;
 }
@@ -607,11 +607,56 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   ui->write_function = write_function;
   ui->controller = controller;
 
+  // 2. Setup ImGui
+  IMGUI_CHECKVERSION();
+  ImGuiContext* ctx = ImGui::CreateContext();
+  ui->imgui_ctx = ctx;
+  ImGui::SetCurrentContext (ctx);
+  ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = nullptr; // don't write imgui.ini
+  ImGui::StyleColorsDark();
+
+  /* Scaling */
+
+  float scale_factor = puglGetScaleFactor (view);
+
+  // Scale all UI elements (buttons, sliders, padding)
+  ImGuiStyle& style = ImGui::GetStyle();
+  style.ScaleAllSizes (scale_factor);
+
+  // Scale the default font
+  float base_font_size = 13.f;
+  int font_size = lrint (base_font_size * scale_factor);
+
+  io.Fonts->AddFontFromFileTTF ((string (bundle_path) + "/dejavu-lgc-sans.ttf").c_str(), font_size);
+
+  /* Compute required window width / height */
+  float frame_height = font_size + (style.FramePadding.y * 2.0f);
+
+  int window_width = 400 * scale_factor;
+  int window_height =
+    (
+      style.WindowPadding.y +
+      frame_height +
+      style.ItemSpacing.y +
+      style.CellPadding.y +
+      frame_height +
+      2 * style.CellPadding.y +
+      frame_height +
+      2 * style.CellPadding.y +
+      frame_height +
+      style.CellPadding.y +
+      style.WindowPadding.y
+    );
+
+  /* setup window */
+
   // XXXpuglSetClassName(world, "ImGui Minimal Example");
   // XXXpuglSetWindowTitle(view, "ImGui Minimal Example");
-  puglSetSizeHint (view, PUGL_MIN_SIZE, 64, 64);
-  puglSetSizeHint (view, PUGL_MAX_SIZE, 2048, 2048);
-  puglSetSizeHint (view, PUGL_DEFAULT_SIZE, 400, 100);
+
+  puglSetSizeHint (view, PUGL_MIN_SIZE, window_width, window_height);
+  puglSetSizeHint (view, PUGL_MAX_SIZE, window_width, window_height);
+  puglSetSizeHint (view, PUGL_DEFAULT_SIZE, window_width, window_height);
   puglSetViewHint (view, PUGL_RESIZABLE, false);
   puglSetBackend (view, puglGlBackend());
 
@@ -637,57 +682,14 @@ instantiate (const LV2UI_Descriptor*   descriptor,
     }
   puglShow (view, PUGL_SHOW_PASSIVE);
 
-  // 2. Setup ImGui
-  IMGUI_CHECKVERSION();
-  ImGuiContext* ctx = ImGui::CreateContext();
-  ui->imgui_ctx = ctx;
-  ImGui::SetCurrentContext (ctx);
-  ImGuiIO& io = ImGui::GetIO();
-  io.IniFilename = nullptr; // don't write imgui.ini
-  ImGui::StyleColorsDark();
-
-  // --- SCALING LOGIC ---
-  float scale_factor = puglGetScaleFactor (view);
-
-  // 1. Scale all UI elements (buttons, sliders, padding)
-  ImGuiStyle& style = ImGui::GetStyle();
-  style.ScaleAllSizes (scale_factor);
-
-  // 2. Scale the default font
-  double base_font_size = 12.f;
-  io.Fonts->AddFontFromFileTTF ((string (bundle_path) + "/dejavu-lgc-sans.ttf").c_str(), base_font_size * scale_factor);
-  // ---------------------
-
   // Note: To call OpenGL initialization outside of a Pugl event,
   // we must manually make the context current first.
   puglEnterContext (view);
   ImGui_ImplOpenGL3_Init ("#version 130");
-  ImVec2 required_size;
-
-  // * ImGui doesn't return correct size on first frame, so we need to render twice
-  // * ImGui also doesn't correctly layout the first few frames, so we render a bunch
-  //   of frames to "warm up" the layout
-  for (int frames = 0; frames < 50; frames++)
-    {
-      ImGui_ImplOpenGL3_NewFrame();
-      io.DisplaySize = ImVec2 (400 * scale_factor, 400 * scale_factor);
-
-      ImGui::NewFrame();
-      ImGui::SetNextWindowSize (ImVec2 (400 * scale_factor, 0));
-      required_size = ui->render_frame();
-      ImGui::EndFrame();
-    }
   puglLeaveContext (view);
-  puglSetSizeHint (view, PUGL_CURRENT_SIZE, required_size.x, required_size.y);
-
-  while (!ui->configured)
-    {
-      usleep (50000);
-      ui->idle();
-    }
 
   if (ui_resize)
-    ui_resize->ui_resize (ui_resize->handle, required_size.x, required_size.y);
+    ui_resize->ui_resize (ui_resize->handle, window_width, window_height);
 
   *widget = (void *) puglGetNativeView (view);
   return ui;
