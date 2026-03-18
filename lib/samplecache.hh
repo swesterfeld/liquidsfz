@@ -372,6 +372,7 @@ private:
   std::thread         loader_thread_;
   std::atomic<size_t> atomic_n_total_bytes_ = 0;
   std::atomic<uint>   atomic_cache_file_count_ = 0;
+  std::atomic<uint>   atomic_cache_miss_count_ = 0;
   std::atomic<size_t> atomic_max_cache_size_ = 1024 * 1024 * 512;
   SFPool              sf_pool_;
   double              last_cleanup_time_ = 0;
@@ -438,6 +439,18 @@ public:
   {
     static_assert (decltype (atomic_cache_file_count_)::is_always_lock_free);
     return atomic_cache_file_count_;
+  }
+  uint
+  cache_miss_count()
+  {
+    static_assert (decltype (atomic_cache_miss_count_)::is_always_lock_free);
+    return atomic_cache_miss_count_;
+  }
+  void
+  increment_miss_count()
+  {
+    static_assert (decltype (atomic_cache_miss_count_)::is_always_lock_free);
+    atomic_cache_miss_count_++;
   }
   void
   set_max_cache_size (size_t max_cache_size)

@@ -557,6 +557,16 @@ LV2Plugin::status()
   return current_status;
 }
 
+string
+LV2Plugin::cache_status() const
+{
+  /* cache status functions are RT safe and can be called from any thread without locking */
+  return string_printf ("%d samples, %d cache misses | %.1f MB",
+                        synth.cache_file_count(),
+                        synth.cache_miss_count(),
+                        synth.cache_size() / 1024. / 1024);
+}
+
 static LV2_Handle
 instantiate (const LV2_Descriptor*     descriptor,
              double                    rate,

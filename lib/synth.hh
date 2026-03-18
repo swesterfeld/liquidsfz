@@ -379,6 +379,11 @@ public:
   {
     return global_->sample_cache.cache_file_count();
   }
+  uint
+  cache_miss_count() const
+  {
+    return global_->sample_cache.cache_miss_count();
+  }
   void
   set_max_cache_size (size_t max_cache_size)
   {

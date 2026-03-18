@@ -40,6 +40,10 @@ Sample::PlayHandle::lookup (sample_count_t pos)
 
           return true;
         }
+      else
+        {
+          sample_->sample_cache_->increment_miss_count();
+        }
     }
   samples_ = nullptr;
   start_pos_ = end_pos_ = 0;

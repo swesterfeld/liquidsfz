@@ -188,6 +188,12 @@ Synth::cache_file_count() const
   return impl->synth.cache_file_count();
 }
 
+uint
+Synth::cache_miss_count() const
+{
+  return impl->synth.cache_miss_count();
+}
+
 void
 Synth::set_max_cache_size (size_t max_cache_size)
 {

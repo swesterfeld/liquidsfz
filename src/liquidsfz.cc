@@ -513,6 +513,7 @@ public:
     size_t cache_size = 0;
     size_t max_cache_size = 0;
     int cache_file_count = 0;
+    uint cache_miss_count = 0;
     int preload_time_ms = 0;
     int sample_rate = 0;
     int sample_quality = 0;
@@ -523,6 +524,7 @@ public:
       cache_size = synth.cache_size();
       max_cache_size = synth.max_cache_size();
       cache_file_count = synth.cache_file_count();
+      cache_miss_count = synth.cache_miss_count();
       preload_time_ms = synth.preload_time();
       sample_rate = synth.sample_rate();
       sample_quality = synth.sample_quality();
@@ -544,6 +546,7 @@ public:
     printf ("Sample Quality           : %d (%s)\n", sample_quality, sample_quality_str.c_str());
     printf ("Preload Time             : %d ms\n", preload_time_ms);
     printf ("Cached Samples           : %d\n", cache_file_count);
+    printf ("Cache Misses             : %d\n", cache_miss_count);
     printf ("Cache Size               : %.1f MB\n", cache_size / 1024. / 1024.);
     printf ("Maximum Cache Size       : %.1f MB\n", max_cache_size / 1024. / 1024.);
     printf ("Sample Rate              : %d\n", sample_rate);
@@ -571,12 +574,14 @@ public:
         int max_voices = -1;
         size_t cache_size = 0;
         int cache_file_count = 0;
+        int cache_miss_count = 0;
 
         cmd_q.append ([&]() {
           voices = synth.active_voice_count();
           max_voices = synth.max_voices();
           cache_size = synth.cache_size();
           cache_file_count = synth.cache_file_count();
+          cache_miss_count = synth.cache_miss_count();
         });
         cmd_q.wait_all();
 
@@ -592,7 +597,7 @@ public:
             last_rusage_time = rusage_time;
           }
 
-        string stats = string_printf ("Voices: %d/%d ~ Cache: %d samples | %.1f MB ~ CPU: %.1f%%", voices, max_voices, cache_file_count, cache_size / 1024. / 1024., cpu_usage);
+        string stats = string_printf ("Voices: %d/%d ~ Cache: %d samples, %d cache misses | %.1f MB ~ CPU: %.1f%%", voices, max_voices, cache_file_count, cache_miss_count, cache_size / 1024. / 1024., cpu_usage);
         if (stats != old_stats)
           {
             printf ("%s     \r", stats.c_str());

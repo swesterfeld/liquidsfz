@@ -246,6 +246,7 @@ struct LV2UI
   int redraw_required_frames = 0;
   bool show_missing_file_dialog_helpers = false;
   double last_time = 0;
+  string cache_status;
 
   float plugin_control_level = 0;
   float progress = -1;
@@ -307,6 +308,12 @@ LV2UI::idle()
   if (new_progress != progress)
     {
       progress = new_progress;
+      redraw();
+    }
+  string new_cache_status = plugin->cache_status();
+  if (new_cache_status != cache_status)
+    {
+      cache_status = new_cache_status;
       redraw();
     }
 }
@@ -540,6 +547,13 @@ LV2UI::render_frame()
           ImGui::TableSetColumnIndex (1);
           ImGui::TextUnformatted (plugin->status().c_str());
 
+          ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex (0);
+          ImGui::AlignTextToFramePadding();
+          ImGui::Text ("Cache:");
+          ImGui::TableSetColumnIndex (1);
+          ImGui::TextUnformatted (cache_status.c_str());
+
           ImGui::EndTable();
         }
     }
@@ -640,6 +654,8 @@ instantiate (const LV2UI_Descriptor*   descriptor,
       frame_height +
       style.ItemSpacing.y +
       style.CellPadding.y +
+      frame_height +
+      2 * style.CellPadding.y +
       frame_height +
       2 * style.CellPadding.y +
       frame_height +
