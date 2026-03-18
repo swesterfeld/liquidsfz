@@ -129,4 +129,5 @@ public:
   std::string filename();
   std::string status();
   bool redraw_required();
+  std::string cache_status() const;
 };
