@@ -20,6 +20,7 @@ class SampleReader
   int loop_start_ = -1;
   int loop_end_ = -1;
   int region_end_ = 0;
+  bool loop_first_ = true;
   int upsample_buffer_size_ = 0;
   static constexpr int MAX_UPSAMPLE_BUFFER_SIZE = 10;
   std::array<float, MAX_UPSAMPLE_BUFFER_SIZE * 4> samples_; // max: 2x upsampling, stereo
@@ -35,6 +36,7 @@ public:
     play_handle_ = play_handle;
     cached_sample_ = cached_sample;
     loop_start_ = loop_end_ = -1;
+    loop_first_ = true;
     last_index_ = -1000;
     upsample_buffer_size_ = 0;
     samples_.fill (0);

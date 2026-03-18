@@ -920,6 +920,7 @@ SampleReader::skip (int delta)
       while (relative_pos_ > loop_end_ * UPSAMPLE)
         {
           relative_pos_ -= (loop_end_ - loop_start_ + 1) * UPSAMPLE;
+          loop_first_ = false;
         }
     }
 
@@ -960,7 +961,7 @@ SampleReader::skip (int delta)
               int x = start_x + i;
               if (in_loop)
                 {
-                  while (x < loop_start_)
+                  while (x < loop_start_ && !loop_first_)
                     x += loop_end_ - loop_start_ + 1;
                   while (x > loop_end_)
                     x -= loop_end_ - loop_start_ + 1;
@@ -998,7 +999,7 @@ SampleReader::skip (int delta)
                 {
                   while (x > loop_end_)
                     x -= (loop_end_ - loop_start_ + 1);
-                  while (x < loop_start_)
+                  while (x < loop_start_ && !loop_first_)
                     x += (loop_end_ - loop_start_ + 1);
                 }
               for (int c = 0; c < CHANNELS; c++)
