@@ -18,8 +18,10 @@ main (int argc, char **argv)
 
   int sample_rate = 48000;
   int quality = -1;
+  int program = 1;
   ap.parse_opt ("--rate", sample_rate);
   ap.parse_opt ("--quality", quality);
+  ap.parse_opt ("--program", program);
   bool load_only = ap.parse_opt ("--load-only");
 
   vector<string> args;
@@ -33,7 +35,20 @@ main (int argc, char **argv)
     synth.set_sample_quality (quality);
   synth.set_sample_rate (sample_rate);
   synth.set_live_mode (false);
-  if (!synth.load (args[0]))
+  if (synth.is_bank (args[0]))
+    {
+      if (!synth.load_bank (args[0]))
+        {
+          fprintf (stderr, "error: failed to load bank\n");
+          return 1;
+        }
+      if (!synth.select_program (program - 1))
+        {
+          fprintf (stderr, "error: failed to program %d\n", program);
+          return 1;
+        }
+    }
+  else if (!synth.load (args[0]))
     {
       fprintf (stderr, "parse error: exiting\n");
       return 1;
