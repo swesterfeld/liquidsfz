@@ -534,6 +534,25 @@ public:
   uint cache_file_count() const;
 
   /**
+   * \brief Get number of sample cache lookup misses
+   *
+   * Returns the number of times a sample data lookup in the shared sample
+   * cache failed. In this case the requested sample data was not available in
+   * the cache and zero values were used instead, which may result in an
+   * audible glitch.
+   *
+   * The sample cache is shared between all liquidsfz Synth instances, so the
+   * number returned by this function reflects the total number of cache
+   * misses across all instances.
+   *
+   * <em>This function is real-time safe and can be safely called from any
+   * thread at any time without synchronization.</em>
+   *
+   * @returns number of sample cache lookup misses
+   */
+  uint cache_miss_count() const;
+
+  /**
    * \brief Set maximum memory used by sample cache
    *
    * @param max_cache_size maximum number of bytes to use for the cache
