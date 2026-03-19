@@ -110,9 +110,9 @@ Sample::preload (const string& filename)
         {
           if (instrument.loops[0].mode == SF_LOOP_FORWARD)
             {
-              loop_ = true;
+              loop_       = true;
               loop_start_ = instrument.loops[0].start;
-              loop_end_ = instrument.loops[0].end;
+              loop_end_   = instrument.loops[0].end - 1; // convert libsndfile end offset to sfz end offset
             }
         }
       }

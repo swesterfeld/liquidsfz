@@ -172,7 +172,7 @@ sine_detect (double mix_freq, const vector<float>& signal)
 }
 
 void
-write_sample (const vector<float>& samples, int rate, int channels = 1)
+write_sample (const vector<float>& samples, int rate, int channels = 1, int loop_start = -1, int loop_end = -1)
 {
   SF_INFO sfinfo = {0,};
   sfinfo.samplerate = rate;
@@ -182,8 +182,23 @@ write_sample (const vector<float>& samples, int rate, int channels = 1)
   SNDFILE *sndfile = sf_open ("testsynth.wav", SFM_WRITE, &sfinfo);
   assert (sndfile);
 
+  if (loop_start >= 0 && loop_end >= 0)
+    {
+      SF_INSTRUMENT inst{};
+
+      inst.loop_count = 1;
+      inst.loops[0].mode = SF_LOOP_FORWARD;
+      inst.loops[0].start = loop_start;
+      inst.loops[0].end   = loop_end;
+      inst.loops[0].count = 0;      // infinite loop
+
+      // Apply instrument chunk (writes SMPL chunk in WAV)
+      int r = sf_command (sndfile, SFC_SET_INSTRUMENT, &inst, sizeof(inst));
+      assert (r == SF_TRUE);
+    }
   sf_count_t count = sf_writef_float (sndfile, &samples[0], samples.size() / channels);
   assert (count == sf_count_t (samples.size() / channels));
+
   sf_close (sndfile);
 }
 
@@ -333,6 +348,52 @@ test_tiny_loop()
             }
         }
     }
+#endif
+}
+
+void
+test_wav_loop()
+{
+#if HAVE_FFTW
+  printf ("wav loop tests:\n");
+  constexpr int sample_rate = 44100;
+  int offset = 42;
+  vector<float> samples (200, 1); /* fill with one samples */
+
+  for (int i = 0; i < 100; i++)
+    samples[i + offset] = sin (i * 2 * M_PI / 100);
+
+  auto check_pure_sine = [&] (int start, int end, bool expect_pure)
+    {
+      write_sample (samples, sample_rate, 1, start, end);
+      write_sfz ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0 offset=99");
+
+      Synth synth;
+      synth.set_sample_rate (sample_rate);
+      synth.set_live_mode (false);
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      synth.set_sample_quality (3);
+      synth.set_gain (sqrt(2));
+      synth.add_event_note_on (0, 0, 60, 127);
+
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+      synth.process (outputs, sample_rate);
+
+      auto partials = sine_detect (sample_rate, out_left);
+      bool pure = partials.size() == 1 && fabs (partials[0].mag - 1) < 0.01;
+
+      printf (" - pure sine test: loop %d .. %d, pure=%s (expect pure=%s)\n",
+              start, end, pure ? "true" : "false", expect_pure ? "true" : "false");
+      assert (pure == expect_pure);
+    };
+  check_pure_sine (offset, offset + 101, false);
+  check_pure_sine (offset, offset + 100, true);
+  check_pure_sine (offset - 1, offset + 100, false);
 #endif
 }
 
@@ -1107,6 +1168,7 @@ main (int argc, char **argv)
   test_simple();
   test_interp_time_align();
   test_tiny_loop();
+  test_wav_loop();
   test_pitch();
   test_width();
   test_end();
