@@ -295,6 +295,7 @@ public:
     {
       start_playback (nullptr, live_mode_);
     }
+    LIQUIDSFZ_ALWAYS_INLINE
     const float *
     get_n (sample_count_t pos, sample_count_t n)
     {

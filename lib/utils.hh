@@ -23,6 +23,8 @@
   #define LIQUIDSFZ_OS_WINDOWS 1
 #endif
 
+#define LIQUIDSFZ_ALWAYS_INLINE inline __attribute__((always_inline))
+
 #if INTPTR_MAX == INT64_MAX
   #define LIQUIDSFZ_64BIT 1 // 64-bit
 #elif INTPTR_MAX == INT32_MAX
