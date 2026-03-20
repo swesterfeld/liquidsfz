@@ -1459,6 +1459,23 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
 
               if (!region.have_loop_end)
                 region.loop_end = region.cached_sample->loop_end();
+
+              if (region.loop_mode != LoopMode::NONE)
+                {
+                  /* sanity check for loop points */
+                  if (region.loop_start < 0)
+                    synth_->warning ("%s: invalid loop range [%d, %d], loop_start must be >= 0\n",
+                                     region.sample.c_str(), region.loop_start, region.loop_end);
+
+                  if (region.loop_end < region.loop_start)
+                    synth_->warning ("%s: invalid loop range [%d, %d], loop_end must be >= loop_start\n",
+                                     region.sample.c_str(), region.loop_start, region.loop_end);
+
+                  int sample_length = region.cached_sample->n_samples() / region.cached_sample->channels();
+                  if (region.loop_end >= sample_length)
+                    synth_->warning ("%s: invalid loop range [%d, %d], sample_length=%d: loop_end must be < sample_length\n",
+                                     region.sample.c_str(), region.loop_start, region.loop_end, sample_length);
+                }
             }
         }
       if (region.fil.cutoff < 0) /* filter defaults to lpf_2p, but only if cutoff was found */
