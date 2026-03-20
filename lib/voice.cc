@@ -168,7 +168,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
       play_handle_.start_playback (region.cached_sample.get(), synth_->live_mode());
       sample_reader_.restart (&play_handle_, region.cached_sample.get(), upsample, region.end);
       if (loop_enabled_)
-        sample_reader_.set_loop (region.loop_start, region.loop_end);
+        sample_reader_.set_loop (region.loop_start, region.loop_end, region.loop_count);
 
       channels_ = region.cached_sample->channels();
       synth_->debug ("new voice %s - channels %d\n", region.sample.c_str(), channels_);
@@ -912,15 +912,25 @@ SampleReader::skip (int delta)
   bool in_loop = false;
   if (loop_start_ >= 0)
     {
-      // FIXME: may want to have more states:
-      //  (a) entered loop
-      //  (b) reached end of loop (n times) to implement loop_count opcode
       in_loop = (relative_pos_ >= loop_start_ * UPSAMPLE);
 
       while (relative_pos_ > loop_end_ * UPSAMPLE)
         {
-          relative_pos_ -= (loop_end_ - loop_start_ + 1) * UPSAMPLE;
-          loop_first_ = false;
+          if (loop_iteration_ == loop_count_)
+            {
+              stop_loop();
+              in_loop = false;
+              break;
+            }
+          else
+            {
+              relative_pos_ -= (loop_end_ - loop_start_ + 1) * UPSAMPLE;
+
+              loop_first_ = false;
+              loop_iteration_++;
+              if (loop_iteration_ == loop_count_)
+                loop_last_ = true;
+            }
         }
     }
 
@@ -963,7 +973,7 @@ SampleReader::skip (int delta)
                 {
                   while (x < loop_start_ && !loop_first_)
                     x += loop_end_ - loop_start_ + 1;
-                  while (x > loop_end_)
+                  while (x > loop_end_ && !loop_last_)
                     x -= loop_end_ - loop_start_ + 1;
                 }
               for (int c = 0; c < CHANNELS; c++)
@@ -997,7 +1007,7 @@ SampleReader::skip (int delta)
 
               if (in_loop)
                 {
-                  while (x > loop_end_)
+                  while (x > loop_end_ && !loop_last_)
                     x -= (loop_end_ - loop_start_ + 1);
                   while (x < loop_start_ && !loop_first_)
                     x += (loop_end_ - loop_start_ + 1);
