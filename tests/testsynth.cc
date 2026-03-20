@@ -398,6 +398,54 @@ test_wav_loop()
   check_pure_sine (offset, offset + 101, false);
   check_pure_sine (offset, offset + 100, true);
   check_pure_sine (offset - 1, offset + 100, false);
+
+  printf ("loop_count tests:\n");
+  auto check_loop_count = [&] (int start, int end, int loop_count)
+    {
+      write_sample (samples, sample_rate, 1, start, end);
+      write_sfz (string_printf ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0 loop_count=%d", loop_count));
+      Synth synth;
+      if (!synth.load ("testsynth.sfz"))
+        {
+          fprintf (stderr, "parse error: exiting\n");
+          exit (1);
+        }
+      synth.set_sample_rate (sample_rate);
+      synth.set_live_mode (false);
+      synth.set_gain (sqrt(2));
+      synth.all_sound_off();
+      synth.set_sample_quality (2);
+      synth.add_event_note_on (0, 0, 60, 127);
+
+      vector<float> out_left (sample_rate), out_right (sample_rate);
+      float *outputs[2] = { out_left.data(), out_right.data() };
+      synth.process (outputs, sample_rate);
+
+      int len = 0;
+      float err = 0;
+      for (int i = 0; i < int (out_left.size()); i++)
+        {
+          float expect;
+          if (i < offset)
+            expect = 1;
+          else if (i < offset + 100 * (loop_count + 1))
+            expect = sin ((i - offset) * 2 * M_PI / 100);
+          else if (i < 100 * (loop_count + 2))
+            expect = 1;
+          else
+            expect = 0;
+
+          err = max (fabs (out_left[i] - expect), err);
+          err = max (fabs (out_right[i] - expect), err);
+          if (out_left[i] > 0.5)
+            len = i + 1;
+        }
+      printf (" - loop_count=%d, err=%.2g (expect 0), len=%d (expect %d)\n", loop_count, err, len, (loop_count + 2) * 100);
+      assert (err < 1e-6);
+      assert (len == (loop_count + 2) * 100);
+    };
+  for (int loop_count : { 0, 1, 2, 3, 10 })
+    check_loop_count (offset, offset + 100, loop_count);
 #endif
 }
 

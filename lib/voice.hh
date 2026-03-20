@@ -19,8 +19,11 @@ class SampleReader
   int channels_ = 0;
   int loop_start_ = -1;
   int loop_end_ = -1;
+  int loop_count_ = INT_MAX;
+  int loop_iteration_ = 0;
   int region_end_ = 0;
   bool loop_first_ = true;
+  bool loop_last_ = false;
   int upsample_buffer_size_ = 0;
   static constexpr int MAX_UPSAMPLE_BUFFER_SIZE = 10;
   std::array<float, MAX_UPSAMPLE_BUFFER_SIZE * 4> samples_; // max: 2x upsampling, stereo
@@ -36,16 +39,23 @@ public:
     play_handle_ = play_handle;
     cached_sample_ = cached_sample;
     loop_start_ = loop_end_ = -1;
+    loop_count_ = INT_MAX;
+    loop_iteration_ = 0;
     loop_first_ = true;
+    loop_last_ = false;
     last_index_ = -1000;
     upsample_buffer_size_ = 0;
     samples_.fill (0);
   }
   void
-  set_loop (int loop_start, int loop_end)
+  set_loop (int loop_start, int loop_end, int loop_count)
   {
-    loop_start_ = loop_start;
-    loop_end_ = loop_end;
+    if (loop_count > 0) /* loop_count == 0 plays loop section exactly once, so we don't need to loop */
+      {
+        loop_start_ = loop_start;
+        loop_end_ = loop_end;
+        loop_count_ = loop_count;
+      }
   }
   void
   stop_loop()
