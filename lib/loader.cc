@@ -590,6 +590,8 @@ Loader::set_key_value (const string& key, const string& value)
       region.loop_end = convert_int (value);
       region.have_loop_end = true;
     }
+  else if (key == "loop_count")
+    region.loop_count = convert_int (value);
   else if (split_sub_key (key, "locc", sub_key))
     {
       int cc = sub_key;

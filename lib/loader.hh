@@ -4,6 +4,7 @@
 
 #include <string>
 #include <set>
+#include <climits>
 
 #include "log.hh"
 #include "samplecache.hh"
@@ -275,6 +276,7 @@ struct Region
   int pitch_veltrack = 0;
   int loop_start = 0;
   int loop_end = 0;
+  int loop_count = INT_MAX;
   LoopMode loop_mode = LoopMode::NONE;
   bool have_loop_mode = false;
   bool have_loop_start = false;
