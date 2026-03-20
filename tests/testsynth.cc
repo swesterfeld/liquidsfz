@@ -376,20 +376,24 @@ test_wav_loop()
           fprintf (stderr, "parse error: exiting\n");
           exit (1);
         }
-      synth.set_sample_quality (3);
       synth.set_gain (sqrt(2));
-      synth.add_event_note_on (0, 0, 60, 127);
+      for (int quality = 1; quality <= 3; quality++)
+        {
+          synth.all_sound_off();
+          synth.set_sample_quality (quality);
+          synth.add_event_note_on (0, 0, 60, 127);
 
-      vector<float> out_left (sample_rate), out_right (sample_rate);
-      float *outputs[2] = { out_left.data(), out_right.data() };
-      synth.process (outputs, sample_rate);
+          vector<float> out_left (sample_rate), out_right (sample_rate);
+          float *outputs[2] = { out_left.data(), out_right.data() };
+          synth.process (outputs, sample_rate);
 
-      auto partials = sine_detect (sample_rate, out_left);
-      bool pure = partials.size() == 1 && fabs (partials[0].mag - 1) < 0.01;
+          auto partials = sine_detect (sample_rate, out_left);
+          bool pure = partials.size() == 1 && fabs (partials[0].mag - 1) < 0.01;
 
-      printf (" - pure sine test: loop %d .. %d, pure=%s (expect pure=%s)\n",
-              start, end, pure ? "true" : "false", expect_pure ? "true" : "false");
-      assert (pure == expect_pure);
+          printf (" - pure sine test: loop %d .. %d, quality %d, pure=%s (expect pure=%s)\n",
+                  start, end, quality, pure ? "true" : "false", expect_pure ? "true" : "false");
+          assert (pure == expect_pure);
+        }
     };
   check_pure_sine (offset, offset + 101, false);
   check_pure_sine (offset, offset + 100, true);
