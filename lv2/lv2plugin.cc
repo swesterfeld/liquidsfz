@@ -263,18 +263,6 @@ LV2Plugin::run (uint32_t n_samples)
 {
   LV2_Atom_Forge_Frame notify_frame;
 
-  if (old_level != *level)
-    {
-      synth.set_gain (db_to_factor (*level));
-      old_level = *level;
-    }
-  if (old_freewheel != *freewheel)
-    {
-      /* set live mode to true if freewheel is disabled */
-      synth.set_live_mode (*freewheel < 0.5f);
-      old_freewheel = *freewheel;
-    }
-
   const uint32_t capacity = notify_port->atom.size;
   lv2_atom_forge_set_buffer (&forge, (uint8_t *) notify_port, capacity);
   lv2_atom_forge_sequence_head (&forge, &notify_frame, 0);
@@ -304,6 +292,18 @@ LV2Plugin::run (uint32_t n_samples)
   float *outputs[2] = { left_out, right_out };
   if (!load_in_progress)
     {
+      if (old_level != *level)
+        {
+          synth.set_gain (db_to_factor (*level));
+          old_level = *level;
+        }
+      if (old_freewheel != *freewheel)
+        {
+          /* set live mode to true if freewheel is disabled */
+          synth.set_live_mode (*freewheel < 0.5f);
+          old_freewheel = *freewheel;
+        }
+
       synth.process (outputs, n_samples);
     }
   else
