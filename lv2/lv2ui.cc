@@ -36,6 +36,7 @@ class FileDialog
   } state = NONE;
 
   constexpr static auto KDIALOG = "/usr/bin/kdialog";
+  constexpr static auto YAD     = "/usr/bin/yad";
   constexpr static auto ZENITY  = "/usr/bin/zenity";
 
   static inline string     last_start_dir;
@@ -68,7 +69,7 @@ public:
 bool
 FileDialog::have_helpers()
 {
-  return fs::exists (KDIALOG) || fs::exists (ZENITY);
+  return fs::exists (KDIALOG) || fs::exists (YAD) || fs::exists (ZENITY);
 }
 
 FileDialog::FileDialog (const string& title, const string& filter, const string& filter_exts, const string& zenity_filename)
@@ -79,10 +80,12 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
     dialog_type = KDIALOG;
   else if (fs::exists (ZENITY))
     dialog_type = ZENITY;
+  else if (fs::exists (YAD))
+    dialog_type = YAD;
   else
     {
       /* shouldn't happen because caller should check have_helpers() */
-      fprintf (stderr, "LiquidSFZ: FileDialog: neither %s nor %s exists, unable to open file dialog\n", KDIALOG, ZENITY);
+      fprintf (stderr, "LiquidSFZ: FileDialog: missing helpers: %s, %s or %s, unable to open file dialog\n", KDIALOG, YAD, ZENITY);
       state = ERROR;
       return;
     }
@@ -122,10 +125,10 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
           args = { KDIALOG, "--getopenfilename", "--title", title, get_last_start_dir() };
           args.push_back (filter + "(" + filter_exts + ")\nAll Files (*)");
         }
-      if (dialog_type == ZENITY)
+      /* yad and zenity share the same command line arguments */
+      if (dialog_type == YAD || dialog_type == ZENITY)
         {
-          /* not sure if there is a way to make zenity start from last start directory(?) */
-          args = { ZENITY, "--file-selection", "--title", title };
+          args = { dialog_type, "--file-selection", "--title", title };
           if (zenity_filename != "" && fs::exists (zenity_filename))
             {
               args.push_back ("--filename");
@@ -426,7 +429,7 @@ LV2UI::render_frame()
     {
       // Calculate height of the UI block
       float block_height =
-            ImGui::GetTextLineHeightWithSpacing() * 3   // 3 text lines
+            ImGui::GetTextLineHeightWithSpacing() * 4   // 4 text lines
           + ImGui::GetFrameHeightWithSpacing();         // button
 
       // Center vertically
@@ -437,6 +440,7 @@ LV2UI::render_frame()
       ImGui::TextColored (ImVec4 (1.0f, 0.35f, 0.35f, 1.0f), "Error: File dialog helpers missing, please install one of the following:");
 
       ImGui::BulletText ("zenity (recommended)");
+      ImGui::BulletText ("yad");
       ImGui::BulletText ("kdialog");
 
       // Center the button
