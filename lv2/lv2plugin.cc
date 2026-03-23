@@ -140,11 +140,11 @@ LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule
         {
           switch (level)
             {
-              case LiquidSFZ::Log::INFO:    lv2_log_note (&logger, "liquidsfz: %s\n", msg);
+              case LiquidSFZ::Log::INFO:    lv2_log_note (&logger, "liquidsfz: %s", msg);
                                             break;
-              case LiquidSFZ::Log::WARNING: lv2_log_warning (&logger, "liquidsfz: %s\n", msg);
+              case LiquidSFZ::Log::WARNING: lv2_log_warning (&logger, "liquidsfz: %s", msg);
                                             break;
-              case LiquidSFZ::Log::ERROR:   lv2_log_error (&logger, "liquidsfz: %s\n", msg);
+              case LiquidSFZ::Log::ERROR:   lv2_log_error (&logger, "liquidsfz: %s", msg);
                                             break;
               default:                      break;
             }
