@@ -835,7 +835,7 @@ Loader::set_key_value (const string& key, const string& value)
       // actual value conversion is performed by parse_eq_param
     }
   else
-    synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
+    warn_unsupported_opcode (key);
 }
 
 void
@@ -884,7 +884,7 @@ Loader::set_key_value_control (const string& key, const string& value)
       update_key_info (sub_key).label = value;
     }
   else
-    synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
+    warn_unsupported_opcode (key);
 }
 
 void
@@ -906,7 +906,7 @@ Loader::set_key_value_curve (const string& key, const string& value)
       active_curve_section.curve.set (sub_key, convert_float (value));
     }
   else
-    synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), key.c_str());
+    warn_unsupported_opcode (key);
 }
 
 void
@@ -1600,4 +1600,14 @@ Loader::get_cc_vec_max (const CCParamVec& cc_param_vec)
     max_value += get_cc_curve_max (entry) * entry.value;
 
   return max_value;
+}
+
+void
+Loader::warn_unsupported_opcode (const string& opcode)
+{
+  if (!unsupported_opcodes_warned.count (opcode))
+    {
+      synth_->warning ("%s unsupported opcode '%s'\n", location().c_str(), opcode.c_str());
+      unsupported_opcodes_warned.insert (opcode);
+    }
 }

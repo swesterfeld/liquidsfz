@@ -448,6 +448,9 @@ class Loader
   float get_cc_vec_max (const CCParamVec& cc_param_vec);
   float get_cc_curve_max (const CCParamVec::Entry& entry);
 
+  std::set<std::string> unsupported_opcodes_warned;
+  void warn_unsupported_opcode (const std::string& opcode);
+
   static constexpr int MAX_INCLUDE_DEPTH = 25;
 public:
   Loader (Synth *synth)
