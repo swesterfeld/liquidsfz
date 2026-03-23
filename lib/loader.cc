@@ -1165,7 +1165,26 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
               lines.push_back (line_info);
               line_info.line = "";
 
-              string include_filename = path_resolve_case_insensitive (path_absolute (path_join (sample_path, sm[1].str())));
+              /*
+               * handle $VARIABLE in include path
+               */
+              string raw_filename = sm[1].str();
+              string subst_filename;
+              size_t x = 0;
+              while (x < raw_filename.size())
+                {
+                  if (raw_filename[x] == '$' && find_variable (raw_filename.substr (x), define))
+                    {
+                      subst_filename += define.value;
+                      x += define.variable.size();
+                    }
+                  else
+                    {
+                      subst_filename += raw_filename[x++];
+                    }
+                }
+
+              string include_filename = path_resolve_case_insensitive (path_absolute (path_join (sample_path, subst_filename)));
 
               if (level < MAX_INCLUDE_DEPTH) // prevent infinite recursion for buggy .sfz
                 {
