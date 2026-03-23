@@ -108,7 +108,7 @@ RTMutex::unlock()
   locked_flag.clear();
 }
 
-LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam) :
+LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam, LV2_Log_Log *log) :
   schedule (schedule),
   midnam (midnam)
 {
@@ -132,6 +132,24 @@ LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule
 
   uris.liquidsfz_sfzfile  = map->map (map->handle, LIQUIDSFZ_URI "#sfzfile");
   uris.liquidsfz_program  = map->map (map->handle, LIQUIDSFZ_URI "#program");
+
+  if (log)
+    {
+      lv2_log_logger_init (&logger, map, log);
+      synth.set_log_function ([this] (LiquidSFZ::Log level, const char *msg)
+        {
+          switch (level)
+            {
+              case LiquidSFZ::Log::INFO:    lv2_log_note (&logger, "liquidsfz: %s\n", msg);
+                                            break;
+              case LiquidSFZ::Log::WARNING: lv2_log_warning (&logger, "liquidsfz: %s\n", msg);
+                                            break;
+              case LiquidSFZ::Log::ERROR:   lv2_log_error (&logger, "liquidsfz: %s\n", msg);
+                                            break;
+              default:                      break;
+            }
+        });
+    }
 }
 
 void
@@ -576,6 +594,7 @@ instantiate (const LV2_Descriptor*     descriptor,
   LV2_Worker_Schedule *schedule = nullptr;
   LV2_URID_Map *map = nullptr;
   LV2_Midnam *midnam = nullptr;
+  LV2_Log_Log* log = nullptr;
 
   for (int i = 0; features[i]; i++)
     {
@@ -591,11 +610,15 @@ instantiate (const LV2_Descriptor*     descriptor,
         {
           midnam = (LV2_Midnam*)features[i]->data;
         }
+      else if (!strcmp (features[i]->URI, LV2_LOG__log))
+        {
+          log = (LV2_Log_Log*)features[i]->data;
+        }
     }
   if (!map || !schedule)
     return nullptr; // host bug, we need this feature
 
-  return new LV2Plugin (rate, map, schedule, midnam);
+  return new LV2Plugin (rate, map, schedule, midnam, log);
 }
 
 static void
