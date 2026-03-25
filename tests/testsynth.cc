@@ -934,13 +934,13 @@ test_simple()
       synth.add_event_note_on (0, 0, note, vel);
       synth.process (outputs, sample_rate);
 
-      double db_diff = db (peak (out_left));
+      double peak_db = db (peak (out_left));
       if (cmp)
         {
-          printf (" - %s: expected db %.2f, got db %.2f\n", s.c_str(), expect, db_diff);
-          assert (fabs (expect - db_diff) < 1e-3);
+          printf (" - %s: expected db %.2f, got db %.2f\n", s.c_str(), expect, peak_db);
+          assert (fabs (expect - peak_db) < 1e-3);
         }
-      return db_diff;
+      return peak_db;
     };
   chk_xcc ("volume_oncc131=6", 60, 127, 6);
   chk_xcc ("volume_oncc131=6", 60, 64, 6.0 * 64 / 127);
@@ -1019,6 +1019,24 @@ test_simple()
   assert (avg_rnd > -0.03 && avg_rnd < 0.03);
   assert (max_rnd > 0.999 && max_rnd < 1.000001);
   assert (min_rnd < -0.999 && min_rnd > -1.000001);
+
+  /* 2 <control> sections: values should be merged, not overwritten */
+  write_sfz ("<control>set_cc100=127<control>set_cc101=127<region>sample=testsynth.wav lokey=20 hikey=100 loop_mode=loop_continuous loop_start=0 loop_end=440"
+             " volume_cc7=0 pan_cc10=0 amp_veltrack=0 amplitude_oncc100=100 amplitude_oncc101=100");
+  if (!synth.load ("testsynth.sfz"))
+    {
+      fprintf (stderr, "parse error: exiting\n");
+      exit (1);
+    }
+  synth.all_sound_off();
+  synth.set_gain (sqrt (2));
+  synth.add_event_note_on (0, 0, 60, 100);
+  synth.process (outputs, sample_rate);
+
+  double peak_db = db (peak (out_left));
+  printf ("2control test:\n");
+  printf (" - got db %.2f (expect 0)\n", peak_db);
+  assert (fabs (peak_db) < 1e-3);
 }
 
 void
