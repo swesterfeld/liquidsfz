@@ -1168,6 +1168,8 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
                * handle $VARIABLE in include path
                */
               string raw_filename = sm[1].str();
+              std::replace (raw_filename.begin(), raw_filename.end(), '\\', PATH_SEPARATOR); // native path
+
               string subst_filename;
               size_t x = 0;
               while (x < raw_filename.size())
