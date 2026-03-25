@@ -57,6 +57,7 @@ class FileDialog
       return last_start_dir;
     return ".";
   }
+  bool is_kde_full_session();
 public:
   FileDialog (const string& title, const string& filter, const string& filter_exts, const string& zenity_filename);
   ~FileDialog();
@@ -72,17 +73,34 @@ FileDialog::have_helpers()
   return fs::exists (KDIALOG) || fs::exists (YAD) || fs::exists (ZENITY);
 }
 
+bool
+FileDialog::is_kde_full_session()
+{
+  char *env = getenv ("KDE_FULL_SESSION");
+  return env && (strcmp (env, "true") == 0);
+}
+
 FileDialog::FileDialog (const string& title, const string& filter, const string& filter_exts, const string& zenity_filename)
 {
-  string dialog_type;
+  // prefer kdialog on KDE, zenity on non-KDE desktops
+  string         dialog_type;
+  vector<string> dialog_helpers;
 
-  if (fs::exists (KDIALOG))
-    dialog_type = KDIALOG;
-  else if (fs::exists (ZENITY))
-    dialog_type = ZENITY;
-  else if (fs::exists (YAD))
-    dialog_type = YAD;
+  if (is_kde_full_session())
+    dialog_helpers = { KDIALOG, ZENITY, YAD };
   else
+    dialog_helpers = { ZENITY, YAD, KDIALOG };
+
+  for (auto d : dialog_helpers)
+    {
+      if (fs::exists (d))
+        {
+          dialog_type = d;
+          break;
+        }
+    }
+
+  if (dialog_type == "")
     {
       /* shouldn't happen because caller should check have_helpers() */
       fprintf (stderr, "LiquidSFZ: FileDialog: missing helpers: %s, %s or %s, unable to open file dialog\n", KDIALOG, YAD, ZENITY);
