@@ -958,7 +958,6 @@ Loader::handle_tag (const std::string& tag)
   if (tag == "control")
     {
       in_control = true;
-      control = Control();
     }
   else if (tag == "curve")
     {
