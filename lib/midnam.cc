@@ -4,8 +4,8 @@
 #include "liquidsfz.hh"
 #include "midnam.hh"
 
-using pugi::xml_node;
-using pugi::xml_document;
+using LiquidSFZInternal::pugi::xml_node;
+using LiquidSFZInternal::pugi::xml_document;
 using std::string;
 
 namespace LiquidSFZInternal

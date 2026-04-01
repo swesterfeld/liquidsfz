@@ -120,6 +120,9 @@
 #	define PUGIXML_CHAR char
 #endif
 
+namespace LiquidSFZInternal
+{
+
 namespace pugi
 {
 	// Character type used for all internal storage and operations; depends on PUGIXML_WCHAR_MODE
@@ -131,7 +134,12 @@ namespace pugi
 #endif
 }
 
+}
+
 // The PugiXML namespace
+namespace LiquidSFZInternal
+{
+
 namespace pugi
 {
 	// Tree node types
@@ -1420,6 +1428,8 @@ namespace pugi
 	// Get current memory management functions
 	allocation_function PUGIXML_FUNCTION get_memory_allocation_function();
 	deallocation_function PUGIXML_FUNCTION get_memory_deallocation_function();
+}
+
 }
 
 #if !defined(PUGIXML_NO_STL) && (defined(_MSC_VER) || defined(__ICC))

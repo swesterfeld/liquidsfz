@@ -147,8 +147,8 @@ using std::memset;
 
 // We put implementation details into an anonymous namespace in source mode, but have to keep it in non-anonymous namespace in header-only mode to prevent binary bloat.
 #ifdef PUGIXML_HEADER_ONLY
-#	define PUGI__NS_BEGIN namespace pugi { namespace impl {
-#	define PUGI__NS_END } }
+#	define PUGI__NS_BEGIN namespace LiquidSFZInternal { namespace pugi { namespace impl {
+#	define PUGI__NS_END } } }
 #	define PUGI__FN inline
 #	define PUGI__FN_NO_INLINE inline
 #else
@@ -156,8 +156,8 @@ using std::memset;
 #		define PUGI__NS_BEGIN namespace pugi { namespace impl {
 #		define PUGI__NS_END } }
 #	else
-#		define PUGI__NS_BEGIN namespace pugi { namespace impl { namespace {
-#		define PUGI__NS_END } } }
+#		define PUGI__NS_BEGIN namespace LiquidSFZInternal { namespace pugi { namespace impl { namespace {
+#		define PUGI__NS_END } } } }
 #	endif
 #	define PUGI__FN
 #	define PUGI__FN_NO_INLINE PUGI__NO_INLINE
@@ -1089,6 +1089,8 @@ namespace pugi
 	};
 }
 #else
+namespace LiquidSFZInternal
+{
 namespace pugi
 {
 	struct xml_attribute_struct
@@ -1128,6 +1130,7 @@ namespace pugi
 
 		xml_attribute_struct* first_attribute;
 	};
+}
 }
 #endif
 
@@ -5048,6 +5051,8 @@ PUGI__NS_BEGIN
 	};
 PUGI__NS_END
 
+namespace LiquidSFZInternal
+{
 namespace pugi
 {
 	PUGI__FN xml_writer_file::xml_writer_file(void* file_): file(file_)
@@ -7269,6 +7274,7 @@ namespace pugi
 	{
 		return impl::xml_memory::deallocate;
 	}
+}
 }
 
 #if !defined(PUGIXML_NO_STL) && (defined(_MSC_VER) || defined(__ICC))
@@ -12013,6 +12019,8 @@ PUGI__NS_BEGIN
 	}
 PUGI__NS_END
 
+namespace LiquidSFZInternal
+{
 namespace pugi
 {
 #ifndef PUGIXML_NO_EXCEPTIONS
@@ -12794,6 +12802,7 @@ namespace pugi
 	{
 		return query.evaluate_node(*this);
 	}
+}
 }
 
 #endif
