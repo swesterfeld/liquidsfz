@@ -5,7 +5,12 @@ using std::string;
 
 class SfzReader
 {
-
+public:
+  enum Warning
+  {
+    INCOMPLETE_OPCODE_ASSIGNMENT
+  };
+private:
 string s;
 int p = 0;
 
@@ -106,14 +111,18 @@ parse (const string& line)
           if (!opcode.empty())
             {
               string opcode_value = read_opcode_value();
-              if (!opcode_value.empty() && on_opcode)
+              if (!opcode_value.empty())
                 on_opcode (opcode, opcode_value);
+            }
+          else
+            {
+              on_warning (INCOMPLETE_OPCODE_ASSIGNMENT);
             }
         }
       else if (s[p] == '<')
         {
           string tag = read_tag();
-          if (!tag.empty() && on_tag)
+          if (!tag.empty())
             on_tag (tag);
         }
       else if (s[p] == ' ')
@@ -127,4 +136,13 @@ parse (const string& line)
 
 std::function<void(const std::string&)> on_tag;
 std::function<void(const std::string&, const std::string&)> on_opcode;
+std::function<void(Warning)> on_warning;
+
+SfzReader()
+{
+  on_tag = [](const string&){};
+  on_opcode = [](const string&, const string&){};
+  on_warning = [](Warning){};
+}
+
 };

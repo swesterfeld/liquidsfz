@@ -1332,6 +1332,15 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
     {
       set_key_value (to_lower (key), strip_spaces (value));
     };
+  sfz_reader.on_warning = [this] (SfzReader::Warning warning)
+    {
+      switch (warning)
+        {
+          case SfzReader::INCOMPLETE_OPCODE_ASSIGNMENT:
+            synth_->warning ("%s incomplete opcode assignment\n", location().c_str());
+            break;
+        }
+    };
 
   for (auto line_info : lines)
     {
