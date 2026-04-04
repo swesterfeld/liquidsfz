@@ -15,7 +15,7 @@ read_opcode()
   size_t start = p;
 
   const char *ss = s.c_str();
-  while (isalnum (ss[p]))
+  while (isalnum (ss[p]) || ss[p] == '_')
     p++;
 
   if (ss[p] == '=')
@@ -31,6 +31,8 @@ read_opcode()
 string
 read_tag()
 {
+  p++; // skip '<'
+
   size_t start = p;
 
   const char *ss = s.c_str();
@@ -39,8 +41,9 @@ read_tag()
 
   if (ss[p] == '>')
     {
-      p++;
-      return string (ss + start, p - start);
+      string tag (ss + start, p - start);
+      p++; // skip '>'
+      return tag;
     }
 
   return "";
@@ -94,6 +97,7 @@ void
 parse (const string& line)
 {
   s = line;
+  p = 0;
   for (;;)
     {
       if (isalnum (s[p]))
@@ -116,6 +120,8 @@ parse (const string& line)
         p++;
       else if (s[p] == 0)
         break;
+      else
+        p++; /* TODO:? */
     }
 }
 
