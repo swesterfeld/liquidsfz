@@ -213,12 +213,18 @@ Loader::parse_eg_param (const string& eg, EGParam& amp_param, const std::string&
 bool
 Loader::parse_ampeg_param (EGParam& amp_param, const string& key, const string& value, const string& param_str)
 {
+  if (!starts_with (key, "ampeg_"))
+    return false;
+
   return parse_eg_param ("ampeg", amp_param, key, value, param_str);
 }
 
 bool
 Loader::parse_fileg_param (EGParam& amp_param, const string& key, const string& value, const string& param_str)
 {
+  if (!starts_with (key, "fileg_"))
+    return false;
+
   return parse_eg_param ("fileg", amp_param, key, value, param_str);
 }
 
@@ -1320,9 +1326,6 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
         }
     }
 
-  static const regex space_re ("\\s+(.*)");
-  static const regex tag_re ("<([^>]*)>(.*)");
-  static const regex key_val_re ("([a-zA-Z0-9_]+)\\s*=\\s*(\\S+)(.*)");
   SFZReader sfz_reader;
   sfz_reader.on_tag = [this] (const string& tag)
     {
