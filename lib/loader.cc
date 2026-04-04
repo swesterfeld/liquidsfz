@@ -3,6 +3,7 @@
 #include "loader.hh"
 #include "synth.hh"
 #include "hydrogenimport.hh"
+#include "sfzreader.hh"
 
 #include <algorithm>
 #include <regex>
@@ -1322,63 +1323,20 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
   static const regex space_re ("\\s+(.*)");
   static const regex tag_re ("<([^>]*)>(.*)");
   static const regex key_val_re ("([a-zA-Z0-9_]+)\\s*=\\s*(\\S+)(.*)");
+  SfzReader sfz_reader;
+  sfz_reader.on_tag = [this] (const string& tag)
+    {
+      handle_tag (tag);
+    };
+  sfz_reader.on_opcode = [this] (const string& key, const string& value)
+    {
+      set_key_value (to_lower (key), strip_spaces (value));
+    };
+
   for (auto line_info : lines)
     {
       current_line_info = line_info; // for error location reporting
-
-      auto l = line_info.line;
-      while (l.size())
-        {
-          std::smatch sm;
-          //printf ("@%s@\n", l.c_str());
-          if (regex_match (l, sm, space_re))
-            {
-              l = sm[1];
-            }
-          else if (regex_match (l, sm, tag_re))
-            {
-              handle_tag (sm[1].str());
-              l = sm[2];
-            }
-          else if (regex_match (l, key_val_re))
-            {
-              /* we need to handle three cases to deal with values that may contain spaces:
-               *
-               * - value extends until end of line
-               * - value is followed by <tag>
-               * - value is followed by another opcode (foo=bar)
-               */
-              static const regex key_val_space_re_eol ("([a-zA-Z0-9_]+)\\s*=([^=<]+)");
-              static const regex key_val_space_re_tag ("([a-zA-Z0-9_]+)\\s*=([^=<]+)(<.*)");
-              static const regex key_val_space_re_eq ("([a-zA-Z0-9_]+)\\s*=([^=<]+)(\\s[a-zA-Z0-9_]+\\s*=.*)");
-
-              if (regex_match (l, sm, key_val_space_re_eol))
-                {
-                  set_key_value (to_lower (sm[1].str()), strip_spaces (sm[2].str()));
-                  l = "";
-                }
-              else if (regex_match (l, sm, key_val_space_re_tag))
-                {
-                  set_key_value (to_lower (sm[1].str()), strip_spaces (sm[2].str()));
-                  l = sm[3]; // parse rest
-                }
-              else if (regex_match (l, sm, key_val_space_re_eq))
-                {
-                  set_key_value (to_lower (sm[1].str()), strip_spaces (sm[2].str()));
-                  l = sm[3]; // parse rest
-                }
-              else
-                {
-                  synth_->error ("%s parse error in opcode parsing\n", location().c_str());
-                  return false;
-                }
-            }
-          else
-            {
-              synth_->error ("%s toplevel parsing failed\n", location().c_str());
-              return false;
-            }
-        }
+      sfz_reader.parse (line_info.line);
     }
   if (!active_region.empty())
     regions.push_back (active_region);
