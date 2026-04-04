@@ -21,6 +21,12 @@ SFZReader::x_isalnum (char c) /* not locale dependent */
          (c >= '0' && c <= '9');
 }
 
+bool
+SFZReader::x_isspace (char c) /* not locale dependent */
+{
+  return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+}
+
 string
 SFZReader::read_opcode()
 {
@@ -62,12 +68,12 @@ SFZReader::read_tag()
 string
 SFZReader::strip_spaces (const char *str, size_t len)
 {
-  while (len && str[0] == ' ') // strip leading whitespace
+  while (len && x_isspace (str[0])) // strip leading whitespace
     {
       str++;
       len--;
     }
-  while (len && str[len - 1] == ' ') // strip trailing whitespace
+  while (len && x_isspace (str[len - 1])) // strip trailing whitespace
     {
       len--;
     }
@@ -82,7 +88,7 @@ SFZReader::read_opcode_value()
 
   while (s[p])
     {
-      if (s[p] == ' ')
+      if (x_isspace (s[p]))
         {
           last_space = p;
           p++;
@@ -115,7 +121,7 @@ SFZReader::read_opcode_value()
 void
 SFZReader::skip_unexpected_characters()
 {
-  while (s[p] && s[p] != ' ' && s[p] != '<')
+  while (s[p] && !x_isspace (s[p]) && s[p] != '<')
     p++;
   return;
 }
@@ -153,7 +159,7 @@ SFZReader::parse (const string& line)
           if (!tag.empty())
             on_tag (tag);
         }
-      else if (s[p] == ' ')
+      else if (x_isspace (s[p]))
         {
           p++;
         }

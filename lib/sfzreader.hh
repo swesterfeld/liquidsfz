@@ -20,6 +20,7 @@ private:
   int         p = 0;
 
   inline bool x_isalnum (char c);
+  inline bool x_isspace (char c);
 
   std::string strip_spaces (const char *str, size_t len);
 
