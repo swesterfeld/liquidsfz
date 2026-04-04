@@ -70,4 +70,11 @@ main()
   expect_opcode ("group_label", "#t");
   expect_tag ("group");
   end_test();
+
+  begin_test ("region_label=   group_label=#t pan=<region>");
+  expect_warning (SFZReader::MISSING_OPCODE_VALUE);
+  expect_opcode ("group_label", "#t");
+  expect_warning (SFZReader::MISSING_OPCODE_VALUE);
+  expect_tag ("region");
+  end_test();
 }
