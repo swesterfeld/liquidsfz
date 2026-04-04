@@ -95,9 +95,12 @@ path_resolve_case_insensitive (const string& path)
 {
   fs::path input_path (path);
 
+  // fast normalization
+  input_path = input_path.lexically_normal();
+
   // resolve quickly if case matches exactly
   if (fs::exists (input_path))
-    return fs::canonical (input_path).string();
+    return input_path.string();
 
   fs::path current;
 
