@@ -9,7 +9,7 @@ using std::string;
 int
 main()
 {
-  SfzReader sfz_reader;
+  SFZReader sfz_reader;
   string parsed;
   string expected;
   sfz_reader.on_opcode = [&] (const string& opcode, const string& value)
@@ -20,7 +20,7 @@ main()
     {
       parsed += string_printf ("tag: %s\n", tag.c_str());
     };
-  sfz_reader.on_warning = [&] (SfzReader::Warning w)
+  sfz_reader.on_warning = [&] (SFZReader::Warning w)
     {
       parsed += string_printf ("warning: %d\n", w);
     };
@@ -33,7 +33,7 @@ main()
     {
       expected += string_printf ("opcode: %s='%s'\n", opcode.c_str(), value.c_str());
     };
-  auto expect_warning = [&] (SfzReader::Warning w)
+  auto expect_warning = [&] (SFZReader::Warning w)
     {
       expected += string_printf ("warning: %d\n", w);
     };
@@ -53,15 +53,15 @@ main()
   end_test();
 
   begin_test ("xxx<region>foo=bar=bazz");
-  expect_warning (SfzReader::INCOMPLETE_OPCODE_ASSIGNMENT);
+  expect_warning (SFZReader::INCOMPLETE_OPCODE_ASSIGNMENT);
   expect_tag ("region");
-  expect_warning (SfzReader::EQUAL_SIGN_IN_OPCODE_VALUE);
+  expect_warning (SFZReader::EQUAL_SIGN_IN_OPCODE_VALUE);
   expect_opcode ("foo", "bar=bazz");
   end_test();
 
   begin_test("<region>...<region>");
   expect_tag ("region");
-  expect_warning (SfzReader::UNEXPECTED_CHARACTERS);
+  expect_warning (SFZReader::UNEXPECTED_CHARACTERS);
   expect_tag ("region");
   end_test();
 }
