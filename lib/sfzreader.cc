@@ -126,7 +126,13 @@ SFZReader::parse (const string& line)
             {
               string opcode_value = read_opcode_value();
               if (!opcode_value.empty())
-                on_opcode (opcode, opcode_value);
+                {
+                  on_opcode (opcode, opcode_value);
+                }
+              else
+                {
+                  on_warning (MISSING_OPCODE_VALUE);
+                }
             }
           else
             {
