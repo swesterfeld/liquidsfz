@@ -15,8 +15,8 @@ public:
     UNEXPECTED_CHARACTERS
   };
 private:
-  std::string s;
-  int p = 0;
+  const char *s = nullptr;
+  int         p = 0;
 
   std::string read_opcode();
   std::string read_tag();

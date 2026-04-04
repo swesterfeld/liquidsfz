@@ -18,13 +18,12 @@ SFZReader::read_opcode()
 {
   size_t start = p;
 
-  const char *ss = s.c_str();
-  while (isalnum (ss[p]) || ss[p] == '_')
+  while (isalnum (s[p]) || s[p] == '_')
     p++;
 
-  if (ss[p] == '=')
+  if (s[p] == '=')
     {
-      string opcode (ss + start, p - start);
+      string opcode (s + start, p - start);
       p++; // skip '='
       return opcode;
     }
@@ -39,13 +38,12 @@ SFZReader::read_tag()
 
   size_t start = p;
 
-  const char *ss = s.c_str();
-  while (ss[p] != '>' && ss[p] != 0)
+  while (s[p] != '>' && s[p] != 0)
     p++;
 
-  if (ss[p] == '>')
+  if (s[p] == '>')
     {
-      string tag (ss + start, p - start);
+      string tag (s + start, p - start);
       p++; // skip '>'
       return tag;
     }
@@ -56,16 +54,14 @@ SFZReader::read_tag()
 string
 SFZReader::read_opcode_value()
 {
-  int value_start = p;
+  size_t start = p;
   int last_space = -1;
-
-  const char *ss = s.c_str();
 
   for (;;)
     {
-      if (ss[p] == 0)
+      if (s[p] == 0)
         {
-          return s.substr (value_start);
+          return string (s + start, p - start);
         }
       else if (s[p] == ' ')
         {
@@ -77,7 +73,7 @@ SFZReader::read_opcode_value()
           if (last_space != -1)
             {
               p = last_space;
-              return string (ss + value_start, last_space - value_start);
+              return string (s + start, last_space - start);
             }
           else
             {
@@ -87,7 +83,7 @@ SFZReader::read_opcode_value()
         }
       else if (s[p] == '<')
         {
-          return string (ss + value_start, p - value_start);
+          return string (s + start, p - start);
         }
       else
         {
@@ -100,8 +96,7 @@ SFZReader::read_opcode_value()
 void
 SFZReader::skip_unexpected_characters()
 {
-  const char *ss = s.c_str();
-  while (ss[p] && ss[p] != ' ' && ss[p] != '<')
+  while (s[p] && s[p] != ' ' && s[p] != '<')
     p++;
   return;
 }
@@ -109,7 +104,7 @@ SFZReader::skip_unexpected_characters()
 void
 SFZReader::parse (const string& line)
 {
-  s = line;
+  s = line.c_str();
   p = 0;
   for (;;)
     {
