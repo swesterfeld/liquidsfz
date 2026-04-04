@@ -64,4 +64,10 @@ main()
   expect_warning (SFZReader::UNEXPECTED_CHARACTERS);
   expect_tag ("region");
   end_test();
+
+  begin_test ("region_label= bar   group_label=#t  <group>");
+  expect_opcode ("region_label", "bar");
+  expect_opcode ("group_label", "#t");
+  expect_tag ("group");
+  end_test();
 }
