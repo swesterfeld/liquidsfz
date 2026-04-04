@@ -4,6 +4,8 @@
 
 using namespace LiquidSFZInternal;
 
+using std::string;
+
 int
 main()
 {

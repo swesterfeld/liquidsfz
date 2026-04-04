@@ -2,9 +2,9 @@ LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
 AM_CXXFLAGS = $(FFTW_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
-TESTS = testsynth
+TESTS = testsynth testsfzreader
 
-noinst_PROGRAMS = $(TESTS) testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter testsfzreader
+noinst_PROGRAMS = $(TESTS) testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter
 
 EXTRA_DIST = gen-upsample.py testupsample.sfz
 
