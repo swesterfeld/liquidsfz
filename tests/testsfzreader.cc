@@ -50,8 +50,10 @@ main()
   expect_opcode ("loop_mode", "loop_continuous");
   end_test();
 
-  begin_test ("xxx<region>");
+  begin_test ("xxx<region>foo=bar=bazz");
   expect_warning (SfzReader::INCOMPLETE_OPCODE_ASSIGNMENT);
   expect_tag ("region");
+  expect_warning (SfzReader::EQUAL_SIGN_IN_OPCODE_VALUE);
+  expect_opcode ("foo", "bar=bazz");
   end_test();
 }
