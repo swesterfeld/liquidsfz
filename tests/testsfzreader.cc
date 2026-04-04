@@ -77,4 +77,10 @@ main()
   expect_warning (SFZReader::MISSING_OPCODE_VALUE);
   expect_tag ("region");
   end_test();
+
+  begin_test ("sample=*sine\tvolume=24");
+  expect_opcode ("sample", "*sine");
+  expect_opcode ("volume", "24");
+  end_test();
+
 }
