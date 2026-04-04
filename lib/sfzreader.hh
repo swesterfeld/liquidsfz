@@ -9,7 +9,8 @@ public:
   enum Warning
   {
     INCOMPLETE_OPCODE_ASSIGNMENT,
-    EQUAL_SIGN_IN_OPCODE_VALUE
+    EQUAL_SIGN_IN_OPCODE_VALUE,
+    UNEXPECTED_CHARACTERS
   };
 private:
 string s;
@@ -99,6 +100,15 @@ read_opcode_value()
   return "";
 }
 
+void
+skip_unexpected_characters()
+{
+  const char *ss = s.c_str();
+  while (ss[p] && ss[p] != ' ' && ss[p] != '<')
+    p++;
+  return;
+}
+
 public:
 void
 parse (const string& line)
@@ -132,7 +142,10 @@ parse (const string& line)
       else if (s[p] == 0)
         break;
       else
-        p++; /* TODO:? */
+        {
+          on_warning (UNEXPECTED_CHARACTERS);
+          skip_unexpected_characters();
+        }
     }
 }
 

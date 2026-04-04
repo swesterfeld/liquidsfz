@@ -1342,6 +1342,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
           case SfzReader::EQUAL_SIGN_IN_OPCODE_VALUE:
             synth_->warning ("%s opcode value contains '=' (equal sign)\n", location().c_str());
             break;
+          case SfzReader::UNEXPECTED_CHARACTERS:
+            synth_->warning ("%s unexpected characters in input\n", location().c_str());
+            break;
         }
     };
 
