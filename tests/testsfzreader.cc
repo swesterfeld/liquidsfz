@@ -56,4 +56,10 @@ main()
   expect_warning (SfzReader::EQUAL_SIGN_IN_OPCODE_VALUE);
   expect_opcode ("foo", "bar=bazz");
   end_test();
+
+  begin_test("<region>...<region>");
+  expect_tag ("region");
+  expect_warning (SfzReader::UNEXPECTED_CHARACTERS);
+  expect_tag ("region");
+  end_test();
 }
