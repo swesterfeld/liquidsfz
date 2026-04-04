@@ -19,6 +19,8 @@ private:
   const char *s = nullptr;
   int         p = 0;
 
+  inline bool x_isalnum (char c);
+
   std::string strip_spaces (const char *str, size_t len);
 
   std::string read_opcode();

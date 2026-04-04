@@ -13,12 +13,20 @@ SFZReader::SFZReader()
   on_warning = [](Warning){};
 }
 
+bool
+SFZReader::x_isalnum (char c) /* not locale dependent */
+{
+  return (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
+         (c >= '0' && c <= '9');
+}
+
 string
 SFZReader::read_opcode()
 {
   size_t start = p;
 
-  while (isalnum (s[p]) || s[p] == '_')
+  while (x_isalnum (s[p]) || s[p] == '_')
     p++;
 
   if (s[p] == '=')
@@ -119,7 +127,7 @@ SFZReader::parse (const string& line)
   p = 0;
   while (s[p])
     {
-      if (isalnum (s[p]))
+      if (x_isalnum (s[p]))
         {
           string opcode = read_opcode();
           if (!opcode.empty())
