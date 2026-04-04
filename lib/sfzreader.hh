@@ -8,7 +8,8 @@ class SfzReader
 public:
   enum Warning
   {
-    INCOMPLETE_OPCODE_ASSIGNMENT
+    INCOMPLETE_OPCODE_ASSIGNMENT,
+    EQUAL_SIGN_IN_OPCODE_VALUE
   };
 private:
 string s;
@@ -82,6 +83,7 @@ read_opcode_value()
             }
           else
             {
+              on_warning (EQUAL_SIGN_IN_OPCODE_VALUE);
               p++;
             }
         }

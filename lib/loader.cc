@@ -1339,6 +1339,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
           case SfzReader::INCOMPLETE_OPCODE_ASSIGNMENT:
             synth_->warning ("%s incomplete opcode assignment\n", location().c_str());
             break;
+          case SfzReader::EQUAL_SIGN_IN_OPCODE_VALUE:
+            synth_->warning ("%s opcode value contains '=' (equal sign)\n", location().c_str());
+            break;
         }
     };
 
