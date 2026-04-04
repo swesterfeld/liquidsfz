@@ -6,7 +6,7 @@ using std::string;
 
 namespace LiquidSFZInternal {
 
-SfzReader::SfzReader()
+SFZReader::SFZReader()
 {
   on_tag = [](const string&){};
   on_opcode = [](const string&, const string&){};
@@ -14,7 +14,7 @@ SfzReader::SfzReader()
 }
 
 string
-SfzReader::read_opcode()
+SFZReader::read_opcode()
 {
   size_t start = p;
 
@@ -33,7 +33,7 @@ SfzReader::read_opcode()
 }
 
 string
-SfzReader::read_tag()
+SFZReader::read_tag()
 {
   p++; // skip '<'
 
@@ -54,7 +54,7 @@ SfzReader::read_tag()
 }
 
 string
-SfzReader::read_opcode_value()
+SFZReader::read_opcode_value()
 {
   int value_start = p;
   int last_space = -1;
@@ -98,7 +98,7 @@ SfzReader::read_opcode_value()
 }
 
 void
-SfzReader::skip_unexpected_characters()
+SFZReader::skip_unexpected_characters()
 {
   const char *ss = s.c_str();
   while (ss[p] && ss[p] != ' ' && ss[p] != '<')
@@ -107,7 +107,7 @@ SfzReader::skip_unexpected_characters()
 }
 
 void
-SfzReader::parse (const string& line)
+SFZReader::parse (const string& line)
 {
   s = line;
   p = 0;

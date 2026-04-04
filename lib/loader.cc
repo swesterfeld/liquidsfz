@@ -1323,7 +1323,7 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
   static const regex space_re ("\\s+(.*)");
   static const regex tag_re ("<([^>]*)>(.*)");
   static const regex key_val_re ("([a-zA-Z0-9_]+)\\s*=\\s*(\\S+)(.*)");
-  SfzReader sfz_reader;
+  SFZReader sfz_reader;
   sfz_reader.on_tag = [this] (const string& tag)
     {
       handle_tag (tag);
@@ -1332,17 +1332,17 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
     {
       set_key_value (to_lower (key), strip_spaces (value));
     };
-  sfz_reader.on_warning = [this] (SfzReader::Warning warning)
+  sfz_reader.on_warning = [this] (SFZReader::Warning warning)
     {
       switch (warning)
         {
-          case SfzReader::INCOMPLETE_OPCODE_ASSIGNMENT:
+          case SFZReader::INCOMPLETE_OPCODE_ASSIGNMENT:
             synth_->warning ("%s incomplete opcode assignment\n", location().c_str());
             break;
-          case SfzReader::EQUAL_SIGN_IN_OPCODE_VALUE:
+          case SFZReader::EQUAL_SIGN_IN_OPCODE_VALUE:
             synth_->warning ("%s opcode value contains '=' (equal sign)\n", location().c_str());
             break;
-          case SfzReader::UNEXPECTED_CHARACTERS:
+          case SFZReader::UNEXPECTED_CHARACTERS:
             synth_->warning ("%s unexpected characters in input\n", location().c_str());
             break;
         }

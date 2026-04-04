@@ -5,7 +5,7 @@
 
 namespace LiquidSFZInternal {
 
-class SfzReader
+class SFZReader
 {
 public:
   enum Warning
@@ -24,7 +24,7 @@ private:
 
   void skip_unexpected_characters();
 public:
-  SfzReader();
+  SFZReader();
 
   std::function<void(const std::string&)> on_tag;
   std::function<void(const std::string&, const std::string&)> on_opcode;
