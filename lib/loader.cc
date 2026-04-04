@@ -1330,7 +1330,7 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
     };
   sfz_reader.on_opcode = [this] (const string& key, const string& value)
     {
-      set_key_value (to_lower (key), strip_spaces (value));
+      set_key_value (to_lower (key), value);
     };
   sfz_reader.on_warning = [this] (SFZReader::Warning warning)
     {

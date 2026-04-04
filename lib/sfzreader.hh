@@ -18,6 +18,8 @@ private:
   const char *s = nullptr;
   int         p = 0;
 
+  std::string strip_spaces (const char *str, size_t len);
+
   std::string read_opcode();
   std::string read_tag();
   std::string read_opcode_value();

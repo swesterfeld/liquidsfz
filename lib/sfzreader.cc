@@ -52,18 +52,29 @@ SFZReader::read_tag()
 }
 
 string
+SFZReader::strip_spaces (const char *str, size_t len)
+{
+  while (len && str[0] == ' ') // strip leading whitespace
+    {
+      str++;
+      len--;
+    }
+  while (len && str[len - 1] == ' ') // strip trailing whitespace
+    {
+      len--;
+    }
+  return string (str, len);
+}
+
+string
 SFZReader::read_opcode_value()
 {
   size_t start = p;
   int last_space = -1;
 
-  for (;;)
+  while (s[p])
     {
-      if (s[p] == 0)
-        {
-          return string (s + start, p - start);
-        }
-      else if (s[p] == ' ')
+      if (s[p] == ' ')
         {
           last_space = p;
           p++;
@@ -73,7 +84,7 @@ SFZReader::read_opcode_value()
           if (last_space != -1)
             {
               p = last_space;
-              return string (s + start, last_space - start);
+              return strip_spaces (s + start, last_space - start);
             }
           else
             {
@@ -83,14 +94,14 @@ SFZReader::read_opcode_value()
         }
       else if (s[p] == '<')
         {
-          return string (s + start, p - start);
+          return strip_spaces (s + start, p - start);
         }
       else
         {
           p++;
         }
     }
-  return "";
+  return strip_spaces (s + start, p - start);
 }
 
 void
@@ -106,7 +117,7 @@ SFZReader::parse (const string& line)
 {
   s = line.c_str();
   p = 0;
-  for (;;)
+  while (s[p])
     {
       if (isalnum (s[p]))
         {
@@ -129,9 +140,9 @@ SFZReader::parse (const string& line)
             on_tag (tag);
         }
       else if (s[p] == ' ')
-        p++;
-      else if (s[p] == 0)
-        break;
+        {
+          p++;
+        }
       else
         {
           on_warning (UNEXPECTED_CHARACTERS);
