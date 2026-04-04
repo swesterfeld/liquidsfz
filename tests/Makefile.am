@@ -4,7 +4,7 @@ AM_CXXFLAGS = $(FFTW_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
 TESTS = testsynth
 
-noinst_PROGRAMS = $(TESTS) testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter
+noinst_PROGRAMS = $(TESTS) testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter testsfzreader
 
 EXTRA_DIST = gen-upsample.py testupsample.sfz
 
@@ -34,6 +34,9 @@ testfilter_LDADD = $(LIQUIDSFZ_LIBS)
 
 testsynth_SOURCES = testsynth.cc
 testsynth_LDADD = $(LIQUIDSFZ_LIBS) $(FFTW_LIBS)
+
+testsfzreader_SOURCES = testsfzreader.cc
+testsfzreader_LDADD = $(LIQUIDSFZ_LIBS)
 
 if COND_WITH_FFTW
 noinst_PROGRAMS += testupsample
