@@ -545,7 +545,8 @@ public:
   bool
   starts_with (const std::string& key, const std::string& start)
   {
-    return key.substr (0, start.size()) == start;
+    return key.size() >= start.size() &&
+           key.compare (0, start.size(), start) == 0;
   }
   bool
   ends_with (const std::string& key, const std::string& end)

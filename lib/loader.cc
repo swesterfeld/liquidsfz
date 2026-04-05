@@ -3,6 +3,7 @@
 #include "loader.hh"
 #include "synth.hh"
 #include "hydrogenimport.hh"
+#include "sfzreader.hh"
 
 #include <algorithm>
 #include <regex>
@@ -212,12 +213,18 @@ Loader::parse_eg_param (const string& eg, EGParam& amp_param, const std::string&
 bool
 Loader::parse_ampeg_param (EGParam& amp_param, const string& key, const string& value, const string& param_str)
 {
+  if (!starts_with (key, "ampeg_"))
+    return false;
+
   return parse_eg_param ("ampeg", amp_param, key, value, param_str);
 }
 
 bool
 Loader::parse_fileg_param (EGParam& amp_param, const string& key, const string& value, const string& param_str)
 {
+  if (!starts_with (key, "fileg_"))
+    return false;
+
   return parse_eg_param ("fileg", amp_param, key, value, param_str);
 }
 
@@ -1150,7 +1157,6 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
                   define.value    = strip_spaces (sm[2]);
                   control.defines.push_back (define);
                 }
-
               i += sm.length() - sm[3].length();
             }
           else if (regex_match (line, sm, include_re))
@@ -1282,6 +1288,12 @@ Loader::convert_lfo (Region& region, SimpleLFO& simple_lfo, SimpleLFO::Type type
 bool
 Loader::parse (const string& filename, SampleCache& sample_cache, const vector<Control::Define>& defines)
 {
+  if (looks_like_binary_file (filename))
+    {
+      synth_->error ("%s: looks like binary data\n", filename.c_str());
+      return false;
+    }
+
   init_default_curves();
 
   sample_path = path_dirname (filename);
@@ -1319,66 +1331,41 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
         }
     }
 
-  static const regex space_re ("\\s+(.*)");
-  static const regex tag_re ("<([^>]*)>(.*)");
-  static const regex key_val_re ("([a-zA-Z0-9_]+)\\s*=\\s*(\\S+)(.*)");
-  for (auto line_info : lines)
+  SFZReader sfz_reader;
+  sfz_reader.on_tag = [this] (const string& tag)
+    {
+      handle_tag (tag);
+    };
+  sfz_reader.on_opcode = [this] (const string& key, const string& value)
+    {
+      set_key_value (to_lower (key), value);
+    };
+  sfz_reader.on_warning = [this] (SFZReader::Warning warning)
+    {
+      switch (warning)
+        {
+          case SFZReader::INCOMPLETE_OPCODE_ASSIGNMENT:
+            synth_->warning ("%s incomplete opcode assignment\n", location().c_str());
+            break;
+          case SFZReader::EQUAL_SIGN_IN_OPCODE_VALUE:
+            synth_->warning ("%s opcode value contains '=' (equal sign)\n", location().c_str());
+            break;
+          case SFZReader::MISSING_OPCODE_VALUE:
+            synth_->warning ("%s missing opcode value\n", location().c_str());
+            break;
+          case SFZReader::INCOMPLETE_TAG:
+            synth_->warning ("%s incomplete tag\n", location().c_str());
+            break;
+          case SFZReader::UNEXPECTED_CHARACTERS:
+            synth_->warning ("%s unexpected characters in input\n", location().c_str());
+            break;
+        }
+    };
+
+  for (const auto& line_info : lines)
     {
       current_line_info = line_info; // for error location reporting
-
-      auto l = line_info.line;
-      while (l.size())
-        {
-          std::smatch sm;
-          //printf ("@%s@\n", l.c_str());
-          if (regex_match (l, sm, space_re))
-            {
-              l = sm[1];
-            }
-          else if (regex_match (l, sm, tag_re))
-            {
-              handle_tag (sm[1].str());
-              l = sm[2];
-            }
-          else if (regex_match (l, key_val_re))
-            {
-              /* we need to handle three cases to deal with values that may contain spaces:
-               *
-               * - value extends until end of line
-               * - value is followed by <tag>
-               * - value is followed by another opcode (foo=bar)
-               */
-              static const regex key_val_space_re_eol ("([a-zA-Z0-9_]+)\\s*=([^=<]+)");
-              static const regex key_val_space_re_tag ("([a-zA-Z0-9_]+)\\s*=([^=<]+)(<.*)");
-              static const regex key_val_space_re_eq ("([a-zA-Z0-9_]+)\\s*=([^=<]+)(\\s[a-zA-Z0-9_]+\\s*=.*)");
-
-              if (regex_match (l, sm, key_val_space_re_eol))
-                {
-                  set_key_value (to_lower (sm[1].str()), strip_spaces (sm[2].str()));
-                  l = "";
-                }
-              else if (regex_match (l, sm, key_val_space_re_tag))
-                {
-                  set_key_value (to_lower (sm[1].str()), strip_spaces (sm[2].str()));
-                  l = sm[3]; // parse rest
-                }
-              else if (regex_match (l, sm, key_val_space_re_eq))
-                {
-                  set_key_value (to_lower (sm[1].str()), strip_spaces (sm[2].str()));
-                  l = sm[3]; // parse rest
-                }
-              else
-                {
-                  synth_->error ("%s parse error in opcode parsing\n", location().c_str());
-                  return false;
-                }
-            }
-          else
-            {
-              synth_->error ("%s toplevel parsing failed\n", location().c_str());
-              return false;
-            }
-        }
+      sfz_reader.parse (line_info.line);
     }
   if (!active_region.empty())
     regions.push_back (active_region);
@@ -1389,6 +1376,17 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
   // finalize curves
   for (auto& c : curves)
     curve_table.expand_curve (c);
+
+  // check if there are any valid regions
+  size_t valid_regions = 0;
+  for (const auto& region : regions)
+    if (region.generator != Generator::NONE || region.sample.size())
+      valid_regions++;
+  if (!valid_regions)
+    {
+      synth_->error ("%s: no valid regions found (no valid samples / generators)\n", filename.c_str());
+      return false;
+    }
 
   // filter extended CCs from cc_list
   vector<CCInfo> filtered_cc_list;

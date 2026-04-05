@@ -85,6 +85,8 @@ std::string path_dirname (const std::string& filename);
 std::string path_join (const std::string& path1, const std::string& path2);
 std::string path_resolve_case_insensitive (const std::string& path);
 
+bool looks_like_binary_file (const std::string& filename);
+
 class LinearSmooth
 {
   float value_ = 0;
