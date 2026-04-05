@@ -1362,7 +1362,7 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
         }
     };
 
-  for (auto line_info : lines)
+  for (const auto& line_info : lines)
     {
       current_line_info = line_info; // for error location reporting
       sfz_reader.parse (line_info.line);
