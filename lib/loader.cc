@@ -1371,6 +1371,17 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
   for (auto& c : curves)
     curve_table.expand_curve (c);
 
+  // check if there are any valid regions
+  size_t valid_regions = 0;
+  for (const auto& region : regions)
+    if (region.generator != Generator::NONE || region.sample.size())
+      valid_regions++;
+  if (!valid_regions)
+    {
+      synth_->error ("%s: no valid regions found (no valid samples / generators)\n", filename.c_str());
+      return false;
+    }
+
   // filter extended CCs from cc_list
   vector<CCInfo> filtered_cc_list;
   std::copy_if (cc_list.begin(), cc_list.end(),
