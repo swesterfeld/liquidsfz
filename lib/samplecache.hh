@@ -237,7 +237,7 @@ public:
   {
     return unload_possible_;
   }
-  std::string
+  const std::string&
   filename() const
   {
     return filename_;
