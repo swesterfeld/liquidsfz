@@ -1288,6 +1288,12 @@ Loader::convert_lfo (Region& region, SimpleLFO& simple_lfo, SimpleLFO::Type type
 bool
 Loader::parse (const string& filename, SampleCache& sample_cache, const vector<Control::Define>& defines)
 {
+  if (looks_like_binary_file (filename))
+    {
+      synth_->error ("%s: looks like binary data\n", filename.c_str());
+      return false;
+    }
+
   init_default_curves();
 
   sample_path = path_dirname (filename);

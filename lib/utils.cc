@@ -149,4 +149,37 @@ string_to_double (const string& str)
   return d;
 }
 
+bool
+looks_like_binary_file (const string& filename)
+{
+  FILE* f = fopen (filename.c_str(), "rb"); // binary mode
+  if (!f)
+    return false;
+
+  const size_t SAMPLE_SIZE = 4096;
+  unsigned char buffer[SAMPLE_SIZE];
+
+  size_t n = fread (buffer, 1, SAMPLE_SIZE, f);
+  fclose (f);
+
+  if (n == 0)
+    return false; // empty file → treat as text
+
+  // check control characters
+  size_t bad = 0;
+  for (size_t i = 0; i < n; ++i)
+    {
+      unsigned char c = buffer[i];
+
+      if (!c)         // \0 -> binary
+        return true;
+
+      if (c < 32 && c != '\n' && c != '\r' && c != '\t')
+        bad++;
+    }
+
+  // >5% control characters: suspicious → likely binary
+  return bad > n / 20;
+}
+
 }

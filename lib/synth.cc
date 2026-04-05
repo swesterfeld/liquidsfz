@@ -225,6 +225,9 @@ Synth::debug (const char *format, ...) const
 bool
 Synth::is_bank (const string& filename) const
 {
+  if (looks_like_binary_file (filename))
+    return false;
+
   pugi::xml_document doc;
   auto result = doc.load_file (filename.c_str());
   if (!result)
