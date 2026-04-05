@@ -7,15 +7,6 @@ namespace LiquidSFZInternal {
 
 class SFZReader
 {
-public:
-  enum Warning
-  {
-    INCOMPLETE_OPCODE_ASSIGNMENT,
-    EQUAL_SIGN_IN_OPCODE_VALUE,
-    MISSING_OPCODE_VALUE,
-    INCOMPLETE_TAG,
-    UNEXPECTED_CHARACTERS
-  };
 private:
   const char *s = nullptr;
   int         p = 0;
@@ -31,6 +22,15 @@ private:
 
   void skip_unexpected_characters();
 public:
+  enum Warning
+  {
+    INCOMPLETE_OPCODE_ASSIGNMENT,
+    EQUAL_SIGN_IN_OPCODE_VALUE,
+    MISSING_OPCODE_VALUE,
+    INCOMPLETE_TAG,
+    UNEXPECTED_CHARACTERS
+  };
+
   SFZReader();
 
   std::function<void(const std::string&)> on_tag;
