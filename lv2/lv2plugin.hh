@@ -106,6 +106,8 @@ private:
   LV2_Midnam              *midnam = nullptr;
   LV2_Atom_Forge           forge;
   LV2_Log_Logger           logger;
+  int                      log_warnings = 0;
+  int                      log_errors = 0;
   LiquidSFZ::Synth         synth;
   std::string              midnam_model;
   std::string              midnam_str;

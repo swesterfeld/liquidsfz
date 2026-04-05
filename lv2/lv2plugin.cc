@@ -143,8 +143,10 @@ LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule
               case LiquidSFZ::Log::INFO:    lv2_log_note (&logger, "liquidsfz: %s", msg);
                                             break;
               case LiquidSFZ::Log::WARNING: lv2_log_warning (&logger, "liquidsfz: %s", msg);
+                                            log_warnings++;
                                             break;
               case LiquidSFZ::Log::ERROR:   lv2_log_error (&logger, "liquidsfz: %s", msg);
+                                            log_errors++;
                                             break;
               default:                      break;
             }
@@ -195,6 +197,17 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
           current_status = status;
           ui_redraw_required = true;
         };
+      auto set_status_ok = [&] ()
+        {
+          if (log_warnings && log_errors)
+            set_status (string_printf ("OK (%d errors, %d warnings)", log_errors, log_warnings));
+          else if (log_errors)
+            set_status (string_printf ("OK (%d errors)", log_errors));
+          else if (log_warnings)
+            set_status (string_printf ("OK (%d warnings)", log_warnings));
+          else
+            set_status ("OK");
+        };
       auto update_programs = [this] ()
         {
           RTMutexWaitLockGuard lg (rt_mutex);
@@ -215,6 +228,8 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
         {
           load_progress = percent;
         });
+      log_warnings = 0;
+      log_errors = 0;
       if (synth.is_bank (filename))
         {
           if (synth.load_bank (filename))
@@ -223,7 +238,7 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
               update_programs();
 
               if (synth.select_program (program))
-                set_status ("OK");
+                set_status_ok();
               else
                 set_status (string_printf ("ERROR loading '%s', program %d.", fp.filename().c_str(), program + 1));
             }
@@ -239,7 +254,7 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
           clear_programs();
 
           if (synth.load (filename))
-            set_status ("OK");
+            set_status_ok();
           else
             set_status (string_printf ("ERROR loading '%s'.", fp.filename().c_str()));
         }
