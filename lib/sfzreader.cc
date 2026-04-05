@@ -52,14 +52,20 @@ SFZReader::read_tag()
 
   size_t start = p;
 
-  while (s[p] != '>' && s[p] != 0)
-    p++;
-
-  if (s[p] == '>')
+  while (s[p])
     {
-      string tag (s + start, p - start);
-      p++; // skip '>'
-      return tag;
+      if (s[p] == '>')
+        {
+          string tag (s + start, p - start);
+          p++; // skip '>'
+          return tag;
+        }
+      if (s[p] == '<')
+        {
+          p++; // skip '<'
+          return "";  // fail (something like <foo<bar)
+        }
+      p++;
     }
 
   return "";
@@ -157,7 +163,13 @@ SFZReader::parse (const string& line)
         {
           string tag = read_tag();
           if (!tag.empty())
-            on_tag (tag);
+            {
+              on_tag (tag);
+            }
+          else
+            {
+              on_warning (INCOMPLETE_TAG);
+            }
         }
       else if (x_isspace (s[p]))
         {

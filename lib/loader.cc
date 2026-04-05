@@ -1157,7 +1157,6 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
                   define.value    = strip_spaces (sm[2]);
                   control.defines.push_back (define);
                 }
-
               i += sm.length() - sm[3].length();
             }
           else if (regex_match (line, sm, include_re))
@@ -1347,6 +1346,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
             break;
           case SFZReader::MISSING_OPCODE_VALUE:
             synth_->warning ("%s missing opcode value\n", location().c_str());
+            break;
+          case SFZReader::INCOMPLETE_TAG:
+            synth_->warning ("%s incomplete tag\n", location().c_str());
             break;
           case SFZReader::UNEXPECTED_CHARACTERS:
             synth_->warning ("%s unexpected characters in input\n", location().c_str());
