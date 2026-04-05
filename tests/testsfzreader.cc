@@ -83,4 +83,18 @@ main()
   expect_opcode ("volume", "24");
   end_test();
 
+  begin_test ("<group");
+  expect_warning (SFZReader::INCOMPLETE_TAG);
+  end_test();
+
+  begin_test ("<group<region>");
+  expect_warning (SFZReader::INCOMPLETE_TAG);
+  expect_warning (SFZReader::INCOMPLETE_OPCODE_ASSIGNMENT);
+  expect_warning (SFZReader::UNEXPECTED_CHARACTERS);
+  end_test();
+
+  begin_test ("<group<pan=100");
+  expect_warning (SFZReader::INCOMPLETE_TAG);
+  expect_opcode ("pan", "100");
+  end_test();
 }
