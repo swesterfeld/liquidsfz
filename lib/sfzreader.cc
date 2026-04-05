@@ -27,6 +27,9 @@ SFZReader::x_isspace (char c) /* not locale dependent */
   return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
 }
 
+/*
+ * parse opcode name and equals sign ([a-zA-Z0-9_]+=)
+ */
 string
 SFZReader::read_opcode()
 {
@@ -45,6 +48,9 @@ SFZReader::read_opcode()
   return "";
 }
 
+/*
+ * parse tag (like <region>)
+ */
 string
 SFZReader::read_tag()
 {
@@ -86,6 +92,14 @@ SFZReader::strip_spaces (const char *str, size_t len)
   return string (str, len);
 }
 
+/*
+ * handle three cases
+ *
+ * - value extends until end of line
+ * - value is followed by <tag>
+ * - value is followed by another opcode (foo=bar)
+ */
+
 string
 SFZReader::read_opcode_value()
 {
@@ -104,7 +118,7 @@ SFZReader::read_opcode_value()
           if (last_space != -1)
             {
               p = last_space;
-              return strip_spaces (s + start, last_space - start);
+              return strip_spaces (s + start, last_space - start); // value is followed by another opcode
             }
           else
             {
@@ -114,14 +128,14 @@ SFZReader::read_opcode_value()
         }
       else if (s[p] == '<')
         {
-          return strip_spaces (s + start, p - start);
+          return strip_spaces (s + start, p - start); // value is followed by <tag>
         }
       else
         {
           p++;
         }
     }
-  return strip_spaces (s + start, p - start);
+  return strip_spaces (s + start, p - start); // value extends until endo of line
 }
 
 void
