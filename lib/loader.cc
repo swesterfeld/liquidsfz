@@ -1473,21 +1473,24 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
           if (!region.cached_sample)
             synth_->warning ("%s: missing sample: '%s'\n", filename.c_str(), region.sample.c_str());
 
-          if (region.cached_sample && region.cached_sample->loop())
+          if (region.cached_sample)
             {
-              /* if values have been given explicitely, keep them
-               *   -> user can override loop settings from wav file (cached sample)
-               */
-              if (!region.have_loop_mode)
-                region.loop_mode = LoopMode::CONTINUOUS;
+              if (region.cached_sample->loop())
+                {
+                  /* if values have been given explicitely, keep them
+                   *   -> user can override loop settings from wav file (cached sample)
+                   */
+                  if (!region.have_loop_mode)
+                    region.loop_mode = LoopMode::CONTINUOUS;
 
-              if (!region.have_loop_start)
-                region.loop_start = region.cached_sample->loop_start();
+                  if (!region.have_loop_start)
+                    region.loop_start = region.cached_sample->loop_start();
 
-              if (!region.have_loop_end)
-                region.loop_end = region.cached_sample->loop_end();
+                  if (!region.have_loop_end)
+                    region.loop_end = region.cached_sample->loop_end();
+                }
 
-              if (region.loop_mode != LoopMode::NONE)
+              if (region.loop_mode != LoopMode::NONE && region.loop_mode != LoopMode::ONE_SHOT)
                 {
                   /* sanity check for loop points */
                   if (region.loop_start < 0)
