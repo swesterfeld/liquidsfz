@@ -294,7 +294,7 @@ struct Region
   EGParam ampeg_hold     { 0 };
   EGParam ampeg_decay    { 0 };
   EGParam ampeg_sustain  { 100 };
-  EGParam ampeg_release  { 0 };
+  EGParam ampeg_release  { 0.03 }; // 30 ms appears to be used as default is Sforzando
   Curve   amp_velcurve;
 
   /* fil envelope generator */
