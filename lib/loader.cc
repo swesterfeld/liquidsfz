@@ -1340,25 +1340,32 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
     {
       set_key_value (to_lower (key), value);
     };
-  sfz_reader.on_warning = [this] (SFZReader::Warning warning)
+  std::set<string> reader_warnings;
+  sfz_reader.on_warning = [&] (SFZReader::Warning warning)
     {
+      string msg;
       switch (warning)
         {
           case SFZReader::INCOMPLETE_OPCODE_ASSIGNMENT:
-            synth_->warning ("%s incomplete opcode assignment\n", location().c_str());
+            msg = string_printf ("%s incomplete opcode assignment\n", location().c_str());
             break;
           case SFZReader::EQUAL_SIGN_IN_OPCODE_VALUE:
-            synth_->warning ("%s opcode value contains '=' (equal sign)\n", location().c_str());
+            msg = string_printf ("%s opcode value contains '=' (equal sign)\n", location().c_str());
             break;
           case SFZReader::MISSING_OPCODE_VALUE:
-            synth_->warning ("%s missing opcode value\n", location().c_str());
+            msg = string_printf ("%s missing opcode value\n", location().c_str());
             break;
           case SFZReader::INCOMPLETE_TAG:
-            synth_->warning ("%s incomplete tag\n", location().c_str());
+            msg = string_printf ("%s incomplete tag\n", location().c_str());
             break;
           case SFZReader::UNEXPECTED_CHARACTERS:
-            synth_->warning ("%s unexpected characters in input\n", location().c_str());
+            msg = string_printf ("%s unexpected characters in input\n", location().c_str());
             break;
+        }
+      if (!reader_warnings.count (msg))
+        {
+          synth_->warning ("%s", msg.c_str());
+          reader_warnings.insert (msg);
         }
     };
 
