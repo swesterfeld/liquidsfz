@@ -536,7 +536,7 @@ public:
       return Trigger::RELEASE;
     return Trigger::ATTACK;
   }
-  LoopMode convert_loop_mode (const std::string& l);
+  void set_loop_mode (Region& region, const std::string& l);
   Phase convert_phase (const std::string& p);
   OffMode convert_off_mode (const std::string& s);
   XFCurve convert_xfcurve (const std::string& c);

@@ -35,19 +35,34 @@ to_lower (const string& s)
   return r;
 }
 
-LoopMode
-Loader::convert_loop_mode (const string& l)
+void
+Loader::set_loop_mode (Region& region, const string& l)
 {
   if (l == "no_loop")
-    return LoopMode::NONE;
+    {
+      region.loop_mode = LoopMode::NONE;
+      region.have_loop_mode = true;
+      return;
+    }
   else if (l == "one_shot")
-    return LoopMode::ONE_SHOT;
+    {
+      region.loop_mode = LoopMode::ONE_SHOT;
+      region.have_loop_mode = true;
+      return;
+    }
   else if (l == "loop_continuous")
-    return LoopMode::CONTINUOUS;
+    {
+      region.loop_mode = LoopMode::CONTINUOUS;
+      region.have_loop_mode = true;
+      return;
+    }
   else if (l == "loop_sustain")
-    return LoopMode::SUSTAIN;
+    {
+      region.loop_mode = LoopMode::SUSTAIN;
+      region.have_loop_mode = true;
+      return;
+    }
   synth_->warning ("%s unknown loop mode: %s\n", location().c_str(), l.c_str());
-  return LoopMode::NONE;
 }
 
 Phase
@@ -583,10 +598,7 @@ Loader::set_key_value (const string& key, const string& value)
   else if (key == "hirand")
     region.hirand = convert_float (value);
   else if (key == "loop_mode" || key == "loopmode")
-    {
-      region.loop_mode = convert_loop_mode (value);
-      region.have_loop_mode = true;
-    }
+    set_loop_mode (region, value);
   else if (key == "loop_start" || key == "loopstart")
     {
       region.loop_start = convert_int (value);
