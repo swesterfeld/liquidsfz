@@ -2,7 +2,7 @@
 
 ## SUPPORTED OPCODES
 
-The following SFZ opcodes are supported in liquidsfz-0.4.0:
+The following SFZ opcodes are supported in liquidsfz-0.4.1:
 
 * amp_random
 * amp_velcurve_N
@@ -77,9 +77,11 @@ The following SFZ opcodes are supported in liquidsfz-0.4.0:
 * eqN_vel2gain
 * fil2_keycenter
 * fil2_keytrack
+* fil2_type
 * fil2_veltrack
 * fil_keycenter
 * fil_keytrack
+* fil_type
 * fil_veltrack
 * fileg_attack
 * fileg_attack_curveccN
@@ -123,6 +125,7 @@ The following SFZ opcodes are supported in liquidsfz-0.4.0:
 * fillfo_freq
 * fillfo_freqccN
 * gain_ccN
+* gain_onccN
 * global_volume
 * group
 * group_volume
@@ -153,6 +156,7 @@ The following SFZ opcodes are supported in liquidsfz-0.4.0:
 * lfoN_wave
 * loccN
 * lokey
+* loop_count
 * loop_end
 * loop_mode
 * loop_start

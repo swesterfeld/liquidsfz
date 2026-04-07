@@ -1,6 +1,19 @@
 function opcode
 {
-  if [ $(../tests/testliquid --load-only <(echo "<control>$1=0<region>$1=0") |& grep -c unsupported) != 2 ]; then
+  echo "<control>$1=0<region>sample=*sine" > opcode-list-control.$$
+  echo "<region>$1=0 sample=*sine" > opcode-list-region.$$
+
+  UNSUPPORTED_COUNT=$(
+    (
+      ../tests/testliquid --load-only opcode-list-control.$$
+      ../tests/testliquid --load-only opcode-list-region.$$
+    ) |& grep -c unsupported.opcode
+  )
+
+  rm opcode-list-control.$$
+  rm opcode-list-region.$$
+
+  if [ $UNSUPPORTED_COUNT != 2 ]; then
     echo "$1" | sed s/0/N/g | sed s/^eq1/eqN/g | sed 's/^/* /g'
   fi
 }
@@ -25,7 +38,6 @@ function eq_opcodes
 
 # opcode list generated from in sfzformat.github.io/opcodes
 # ls | LC_COLLATE=C sort | sed 's/[A-Z]/0/g;s/.md$//g;s/^/opcode /g'
-opcode _mod
 opcode amp_attack
 opcode amp_decay
 opcode amp_delay
