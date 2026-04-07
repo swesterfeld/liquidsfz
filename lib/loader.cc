@@ -776,6 +776,7 @@ Loader::set_key_value (const string& key, const string& value)
                      "width_*")
        ||  parse_cc (key, value, region.gain_cc,
                      "gain_cc", // acts as alias
+                     "gain_oncc", // acts as alias
                      "volume_*")
        ||  parse_cc (key, value, region.amplitude_cc,
                      "amplitude_*")
