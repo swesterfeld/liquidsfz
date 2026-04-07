@@ -1,4 +1,4 @@
-AC_INIT([liquidsfz],[0.4.0])
+AC_INIT([liquidsfz],[0.4.1])
 AC_CONFIG_SRCDIR([src/liquidsfz.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -9,14 +9,18 @@ AC_DISABLE_SHARED
 LT_INIT([pic-only])
 
 LV2_MINOR_VERSION=4
+LV2_MICRO_VERSION=2
 
-dnl we don't try to map our version numbers to lv2, instead we increment lv2 minor
-dnl version for every single release, and keep micro version at zero, number
-dnl must be even to indicate stable version
+dnl we don't try to map our version numbers to lv2, but keep seperate lv2 versions
+dnl  - increment lv2 minor version for releases with features
+dnl  - increment lv2 micro version for releases with bugfixes
+dnl
+dnl keep both version numbers *even* to indicate stable version
 dnl
 dnl see also: https://lv2plug.in/ns/lv2core#minorVersion
 
 AC_SUBST(LV2_MINOR_VERSION)
+AC_SUBST(LV2_MICRO_VERSION)
 
 dnl Version splitted
 

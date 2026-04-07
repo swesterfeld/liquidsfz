@@ -33,7 +33,7 @@ midnam:update a lv2:Feature .
       foaf:homepage <http://space.twc.de/~stefan>;
     ];
 
-  lv2:microVersion 0;
+  lv2:microVersion @LV2_MICRO_VERSION@;
   lv2:minorVersion @LV2_MINOR_VERSION@;
 
   lv2:requiredFeature urid:map,
