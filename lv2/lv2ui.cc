@@ -38,6 +38,7 @@ class FileDialog
   constexpr static auto KDIALOG = "/usr/bin/kdialog";
   constexpr static auto YAD     = "/usr/bin/yad";
   constexpr static auto ZENITY  = "/usr/bin/zenity";
+  constexpr static auto USRSCRIPT  = "/usr/local/bin/sfzselect";
 
   static inline string     last_start_dir;
   static inline std::mutex last_start_dir_mutex;
@@ -70,7 +71,7 @@ public:
 bool
 FileDialog::have_helpers()
 {
-  return fs::exists (KDIALOG) || fs::exists (YAD) || fs::exists (ZENITY);
+  return fs::exists (KDIALOG) || fs::exists (YAD) || fs::exists (ZENITY) || fs::exists (USRSCRIPT);
 }
 
 bool
@@ -87,9 +88,9 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
   vector<string> dialog_helpers;
 
   if (is_kde_full_session())
-    dialog_helpers = { KDIALOG, ZENITY, YAD };
+    dialog_helpers = { USRSCRIPT, KDIALOG, ZENITY, YAD };
   else
-    dialog_helpers = { ZENITY, YAD, KDIALOG };
+    dialog_helpers = { USRSCRIPT,  ZENITY, YAD, KDIALOG };
 
   for (auto d : dialog_helpers)
     {
@@ -138,6 +139,7 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
       close (pipe_fds[1]);
 
       vector<string> args;
+      if (dialog_type == USRSCRIPT) args = { USRSCRIPT };
       if (dialog_type == KDIALOG)
         {
           args = { KDIALOG, "--getopenfilename", "--title", title, get_last_start_dir() };
