@@ -1,4 +1,5 @@
 - Trigger::CC is loaded from .sfz in Loader, but not used anywhere
+- static build should be in CI
 - key switches (details: sw_down, sw_up)
 - envelope minimum times (prevent clicks)
 - possibly contstrain parameters (however, sforzando doesn't always constrain either)
