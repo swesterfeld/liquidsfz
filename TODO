@@ -1,11 +1,12 @@
-- *silence
+- Trigger::CC is loaded from .sfz in Loader, but not used anywhere
 - key switches (details: sw_down, sw_up)
 - envelope minimum times (prevent clicks)
 - possibly contstrain parameters (however, sforzando doesn't always constrain either)
 - hyrogen drumkit importer ignores ubuntu 24.04 GMRockKit instrument pan attributes
 
 maybe:
-- aria xml index
+- cache should have streaming reserve (20% or so)
+- plugin cache/preload size could be configurable
 - implement voice killing
 - use bandlimited/filtered interpolation
 - sseify upsampling filter
