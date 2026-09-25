@@ -58,6 +58,7 @@ class FileDialog
     return ".";
   }
   bool is_kde_full_session();
+  void restore_ardour_environment();
 public:
   FileDialog (const string& title, const string& filter, const string& filter_exts, const string& zenity_filename);
   ~FileDialog();
@@ -78,6 +79,47 @@ FileDialog::is_kde_full_session()
 {
   char *env = getenv ("KDE_FULL_SESSION");
   return env && (strcmp (env, "true") == 0);
+}
+
+void
+FileDialog::restore_ardour_environment()
+{
+  const char *bundled = getenv ("ARDOUR_BUNDLED");
+  if (!bundled || strcmp (bundled, "true") != 0)
+    return;
+
+  const char *saved = getenv ("PREBUNDLE_ENV");
+  if (!saved || !*saved)
+    return;
+
+  // Make a copy before clearenv() invalidates the getenv() pointer.
+  string original (saved);
+
+  clearenv();
+
+  // PREBUNDLE_ENV is the newline-separated output of env.
+  size_t pos = 0;
+
+  while (pos < original.size())
+    {
+      size_t end = original.find ('\n', pos);
+
+      if (end == string::npos)
+        end = original.size();
+
+      string entry = original.substr (pos, end - pos);
+      size_t eq = entry.find ('=');
+
+      if (eq != string::npos && eq > 0)
+        {
+          string name = entry.substr (0, eq);
+          string value = entry.substr (eq + 1);
+
+          setenv (name.c_str(), value.c_str(), 1);
+        }
+
+      pos = end + 1;
+    }
 }
 
 FileDialog::FileDialog (const string& title, const string& filter, const string& filter_exts, const string& zenity_filename)
@@ -160,6 +202,9 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
       for (auto& arg : args)
         argv.push_back (arg.data());
       argv.push_back (nullptr);
+
+      /* Restore the original environment when running in bundled Ardour. */
+      restore_ardour_environment();
 
       execvp (argv[0], argv.data());
       perror ("LiquidSFZ: FileDialog: execvp() failed");
