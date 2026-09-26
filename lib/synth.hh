@@ -155,6 +155,9 @@ public:
     idle_voices_.clear();
     idle_voices_changed_ = false;
 
+    // LFOGen keeps a pointer to its owning Voice, so construct all voices at
+    // their final addresses without relocating them as the vector grows.
+    voices_.reserve (n_voices);
     for (uint i = 0; i < n_voices; i++)
       voices_.emplace_back (this, limits_);
 
