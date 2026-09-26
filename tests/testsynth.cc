@@ -1256,7 +1256,10 @@ test_grow_voices_with_lfo()
       // The free list is consumed backwards: after growth the first voice is
       // newly constructed, but the second was relocated. Use separate channels
       // so the second note does not release the first one.
-      synth.add_event_note_on (0, 0, 60, 127);
+      // CC131 is note-on velocity. Different velocities make the relocated
+      // voice observably use the wrong owner even without ASan: its stale
+      // pointer refers to the first voice from the baseline render.
+      synth.add_event_note_on (0, 0, 60, 50);
       synth.add_event_note_on (0, 1, 60, 127);
       synth.process (outputs, n_frames);
       assert (synth.active_voice_count() == 2);
