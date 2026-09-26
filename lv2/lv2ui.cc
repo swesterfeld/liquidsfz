@@ -185,10 +185,12 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
           args = { KDIALOG, "--getopenfilename", "--title", title, get_last_start_dir() };
           args.push_back (filter + "(" + filter_exts + ")\nAll Files (*)");
         }
-      /* yad and zenity share the same command line arguments */
+      /* yad and zenity share most command line arguments */
       if (dialog_type == YAD || dialog_type == ZENITY)
         {
-          args = { dialog_type, "--file-selection", "--title", title };
+          string file_selection_option = (dialog_type == YAD) ? "--file" : "--file-selection";
+
+          args = { dialog_type, file_selection_option, "--title", title };
           if (zenity_filename != "" && fs::exists (zenity_filename))
             {
               args.push_back ("--filename");
