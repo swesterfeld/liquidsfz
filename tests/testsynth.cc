@@ -1232,6 +1232,50 @@ test_filter()
   chk_eq (1000, 2, 4);
 }
 
+void
+test_grow_voices_with_lfo()
+{
+  // https://github.com/swesterfeld/liquidsfz/issues/56
+  // LFOGen stores a pointer to its owning Voice. Growing the voice vector must
+  // preserve that relationship when existing Voice objects are relocated.
+  printf ("test growing voice pool with velocity-modulated LFO\n");
+  write_sfz ("<region>sample=*sine lfo1_wave=3 lfo1_freq=0 lfo1_volume_oncc131=6");
+
+  Synth synth;
+  const bool loaded = synth.load ("testsynth.sfz");
+  assert (loaded);
+
+  constexpr uint n_frames = 64;
+  float expected_left[n_frames], expected_right[n_frames];
+  float actual_left[n_frames], actual_right[n_frames];
+  float *expected[] = { expected_left, expected_right };
+  float *actual[] = { actual_left, actual_right };
+
+  auto render = [&] (float **outputs)
+    {
+      // The free list is consumed backwards: after growth the first voice is
+      // newly constructed, but the second was relocated. Use separate channels
+      // so the second note does not release the first one.
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.add_event_note_on (0, 1, 60, 127);
+      synth.process (outputs, n_frames);
+      assert (synth.active_voice_count() == 2);
+    };
+
+  render (expected);
+  synth.set_max_voices (synth.max_voices() + 1);
+  // With the bug, CC131 dereferences the relocated voice's stale owner pointer
+  // in LFOGen::update_ccs(). ASan reports a heap-use-after-free here.
+  render (actual);
+
+  for (uint i = 0; i < n_frames; i++)
+    {
+      assert (std::isfinite (actual_left[i]) && std::isfinite (actual_right[i]));
+      assert (fabs (actual_left[i] - expected_left[i]) < 1e-6);
+      assert (fabs (actual_right[i] - expected_right[i]) < 1e-6);
+    }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1243,6 +1287,7 @@ main (int argc, char **argv)
   test_width();
   test_end();
   test_filter();
+  test_grow_voices_with_lfo();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");
