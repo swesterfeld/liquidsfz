@@ -163,8 +163,6 @@ public:
   int
   process (jack_nframes_t n_frames)
   {
-    cmd_q.run(); // execute pending commands
-
     float *outputs[2] = {
       (float *) jack_port_get_buffer (audio_left, n_frames),
       (float *) jack_port_get_buffer (audio_right, n_frames)
@@ -176,6 +174,9 @@ public:
         std::fill_n (outputs[1], n_frames, 0.0);
         return 0;
       }
+
+    // execute pending commands, since these typically access synth we need to have synth_mutex
+    cmd_q.run();
 
     void* port_buf = jack_port_get_buffer (midi_input_port, n_frames);
     jack_nframes_t event_count = jack_midi_get_event_count (port_buf);
