@@ -1279,6 +1279,28 @@ test_grow_voices_with_lfo()
     }
 }
 
+void
+test_repro_lfo_alloc()
+{
+  // https://github.com/swesterfeld/liquidsfz/issues/56, F10
+  printf ("test LFO alloc\n");
+
+  write_sfz ("<region>sample=*sine key=60 lfo1_freq=1 lfo2_freq=5 lfo2_pitch=100 lfo1_freq_lfo2_oncc1=2");
+
+  Synth synth;
+  const bool loaded = synth.load ("testsynth.sfz");
+  assert (loaded);
+
+  constexpr uint n_frames = 64;
+  float left[n_frames], right[n_frames];
+  float *out[] = { left, right };
+
+  synth.add_event_note_on (0, 0, 60, 100);
+  synth.process (out, n_frames);
+  synth.add_event_cc (0, 0, 1, 127);
+  synth.process (out, n_frames);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1291,6 +1313,7 @@ main (int argc, char **argv)
   test_end();
   test_filter();
   test_grow_voices_with_lfo();
+  test_repro_lfo_alloc();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");
