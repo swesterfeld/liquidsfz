@@ -13,6 +13,16 @@
   #error "unsupported compiler"
 #endif
 
+// RTSan needs explicit realtime entry points in addition to compiler flags.
+#if LIQUIDSFZ_COMP_CLANG
+  #if __has_feature(realtime_sanitizer)
+    #define LIQUIDSFZ_CLANG_NONBLOCKING [[clang::nonblocking]]
+  #endif
+#endif
+#ifndef LIQUIDSFZ_CLANG_NONBLOCKING
+  #define LIQUIDSFZ_CLANG_NONBLOCKING
+#endif
+
 #if LIQUIDSFZ_COMP_GCC
   #define LIQUIDSFZ_PRINTF(format_idx, arg_idx)      __attribute__ ((__format__ (gnu_printf, format_idx, arg_idx)))
 #else

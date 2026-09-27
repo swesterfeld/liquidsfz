@@ -2,6 +2,7 @@
 
 #include "liquidsfz.hh"
 #include "synth.hh"
+#include "utils.hh"
 
 using namespace LiquidSFZ;
 
@@ -39,55 +40,55 @@ Synth::set_max_voices (uint n_voices)
 }
 
 uint
-Synth::max_voices() const
+Synth::max_voices() const LIQUIDSFZ_CLANG_NONBLOCKING
 {
   return impl->synth.max_voices();
 }
 
 void
-Synth::set_live_mode (bool live_mode)
+Synth::set_live_mode (bool live_mode) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.set_live_mode (live_mode);
 }
 
 bool
-Synth::live_mode() const
+Synth::live_mode() const LIQUIDSFZ_CLANG_NONBLOCKING
 {
   return impl->synth.live_mode();
 }
 
 void
-Synth::set_preload_time (uint time_ms)
+Synth::set_preload_time (uint time_ms) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.set_preload_time (time_ms);
 }
 
 uint
-Synth::preload_time() const
+Synth::preload_time() const LIQUIDSFZ_CLANG_NONBLOCKING
 {
   return impl->synth.preload_time();
 }
 
 void
-Synth::set_sample_quality (int sample_quality)
+Synth::set_sample_quality (int sample_quality) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.set_sample_quality (sample_quality);
 }
 
 int
-Synth::sample_quality()
+Synth::sample_quality() LIQUIDSFZ_CLANG_NONBLOCKING
 {
   return impl->synth.sample_quality();
 }
 
 uint
-Synth::active_voice_count() const
+Synth::active_voice_count() const LIQUIDSFZ_CLANG_NONBLOCKING
 {
   return impl->synth.active_voice_count();
 }
 
 void
-Synth::set_gain (float gain)
+Synth::set_gain (float gain) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.set_gain (gain);
 }
@@ -117,43 +118,43 @@ Synth::select_program (uint program)
 }
 
 void
-Synth::add_event_note_on (uint time_frames, int channel, int key, int velocity)
+Synth::add_event_note_on (uint time_frames, int channel, int key, int velocity) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.add_event_note_on (time_frames, channel, key, velocity);
 }
 
 void
-Synth::add_event_note_off (uint time_frames, int channel, int key)
+Synth::add_event_note_off (uint time_frames, int channel, int key) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.add_event_note_off (time_frames, channel, key);
 }
 
 void
-Synth::add_event_cc (uint time_frames, int channel, int cc, int value)
+Synth::add_event_cc (uint time_frames, int channel, int cc, int value) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.add_event_cc (time_frames, channel, cc, value);
 }
 
 void
-Synth::add_event_pitch_bend (uint time_frames, int channel, int value)
+Synth::add_event_pitch_bend (uint time_frames, int channel, int value) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.add_event_pitch_bend (time_frames, channel, value);
 }
 
 void
-Synth::process (float **outputs, uint nframes)
+Synth::process (float **outputs, uint nframes) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.process (outputs, nframes);
 }
 
 void
-Synth::all_sound_off()
+Synth::all_sound_off() LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.all_sound_off();
 }
 
 void
-Synth::system_reset()
+Synth::system_reset() LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.system_reset();
 }
@@ -177,31 +178,31 @@ Synth::set_progress_function (std::function<void (double)> progress_function)
 }
 
 size_t
-Synth::cache_size() const
+Synth::cache_size() const LIQUIDSFZ_CLANG_NONBLOCKING
 {
   return impl->synth.cache_size();
 }
 
 uint
-Synth::cache_file_count() const
+Synth::cache_file_count() const LIQUIDSFZ_CLANG_NONBLOCKING
 {
   return impl->synth.cache_file_count();
 }
 
 uint
-Synth::cache_miss_count() const
+Synth::cache_miss_count() const LIQUIDSFZ_CLANG_NONBLOCKING
 {
   return impl->synth.cache_miss_count();
 }
 
 void
-Synth::set_max_cache_size (size_t max_cache_size)
+Synth::set_max_cache_size (size_t max_cache_size) LIQUIDSFZ_CLANG_NONBLOCKING
 {
   impl->synth.set_max_cache_size (max_cache_size);
 }
 
 size_t
-Synth::max_cache_size() const
+Synth::max_cache_size() const LIQUIDSFZ_CLANG_NONBLOCKING
 {
   return impl->synth.max_cache_size();
 }
