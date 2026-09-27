@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 #include "samplecache.hh"
+#include "utils.hh"
 
 using std::max;
 using std::min;
@@ -26,6 +27,9 @@ Sample::PlayHandle::lookup (sample_count_t pos)
           /* when not in live mode, we need to wakeup the background thread and
            * block until it has completed loading the block
            */
+#if LIQUIDSFZ_HAVE_RTSAN
+          __rtsan::ScopedDisabler disable_rtsan; // offline rendering intentionally blocks
+#endif
           sample_->sample_cache_->trigger_load_and_wait();
 
           data = sample_->buffers_[buffer_index].data.load();

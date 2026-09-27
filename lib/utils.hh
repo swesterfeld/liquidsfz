@@ -16,6 +16,8 @@
 // RTSan needs explicit realtime entry points in addition to compiler flags.
 #if LIQUIDSFZ_COMP_CLANG
   #if __has_feature(realtime_sanitizer)
+    #include <sanitizer/rtsan_interface.h>
+    #define LIQUIDSFZ_HAVE_RTSAN 1
     #define LIQUIDSFZ_CLANG_NONBLOCKING [[clang::nonblocking]]
   #endif
 #endif
