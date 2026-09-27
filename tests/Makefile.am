@@ -6,7 +6,7 @@ TESTS = testsynth testsfzreader
 
 noinst_PROGRAMS = $(TESTS) testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter
 
-EXTRA_DIST = gen-upsample.py testupsample.sfz
+EXTRA_DIST = gen-upsample.py testupsample.sfz repro-lfo-alloc.sfz
 
 testliquid_SOURCES = testliquid.cc
 testliquid_LDADD = $(LIQUIDSFZ_LIBS)

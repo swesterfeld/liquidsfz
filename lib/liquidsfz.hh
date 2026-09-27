@@ -189,6 +189,7 @@ public:
    * correct thing to do when used live in a real time audio thread. This
    * function can be used to make liquidsfz process() function wait for the
    * samples to be loaded.
+   * Rendering with live mode disabled may block and is not real-time safe.
    *
    * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
