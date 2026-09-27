@@ -6,9 +6,9 @@
 // Run:
 //   RTSAN_OPTIONS=fast_unwind_on_fatal=true ./src/liquidsfz tests/repro-lfo-alloc.sfz
 // Enter: noteon 0 60 100
-// Expected: RTSan reports malloc in LFOGen::update_ccs().
-// To also test CC updates, add :halt_on_error=false to RTSAN_OPTIONS,
-// then enter: cc 0 1 127
+// Then enter: cc 0 1 127
+// Expected: no RTSan errors. Before the fix, note-on reports malloc in
+// LFOGen::update_ccs(); :halt_on_error=false also exposes the CC-update error.
 
 <region>
 sample=*sine
