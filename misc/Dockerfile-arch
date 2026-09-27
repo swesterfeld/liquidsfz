@@ -2,11 +2,11 @@ FROM archlinux
 
 RUN pacman -Syu --noconfirm
 RUN pacman -S --noconfirm \
-    gcc clang make automake autoconf libtool pkg-config \
+    gcc clang compiler-rt llvm make automake autoconf libtool pkg-config \
     jack libsndfile lv2 lv2lint fftw mesa libxcursor \
     libxrandr
 
 ADD . /liquidsfz
 WORKDIR /liquidsfz
 
-RUN misc/build.sh
+RUN misc/build.sh --enable-rtsan

@@ -41,3 +41,7 @@ export CC=clang CXX=clang++
 
 build --with-fftw
 lv2lint http://spectmorph.org/plugins/liquidsfz
+
+if [ "${1:-}" = "--enable-rtsan" ]; then
+  build --enable-rtsan --with-fftw --without-lv2
+fi
