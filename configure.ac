@@ -130,6 +130,15 @@ AC_ARG_ENABLE([asan], [AS_HELP_STRING([--enable-asan], [build using address sani
 ])
 dnl -------------------------------------------------------------------------
 
+dnl -------------------- realtime sanitizer ---------------------------------
+AC_ARG_ENABLE([rtsan], [AS_HELP_STRING([--enable-rtsan], [build using realtime sanitizer (Clang)])],
+[], [enable_rtsan=no])
+if test "x$enable_rtsan" = "xyes"; then
+  CXXFLAGS="$CXXFLAGS -fsanitize=realtime -fno-omit-frame-pointer"
+  LDFLAGS="$LDFLAGS -fsanitize=realtime"
+fi
+dnl -------------------------------------------------------------------------
+
 dnl -------------------- glibcxx assertions ----------------------------------
 AC_ARG_ENABLE(debug-cxx,AS_HELP_STRING([--enable-debug-cxx], [setup compiler flags to do C++ STL debug checks]),
 [
@@ -220,6 +229,7 @@ echo "  LV2 plug-in support  . .: $with_lv2"
 echo "  JACK support . . . . . .: $with_jack"
 echo "  Use FFTW library . . . .: $with_fftw"
 echo "  Use address sanitizer. .: $enable_asan"
+echo "  Use realtime sanitizer .: $enable_rtsan"
 echo "  Use stdc++ debug mode  .: $enable_debug_cxx"
 echo "  Install prefix . . . . .: $prefix"
 echo
