@@ -227,7 +227,7 @@ LFOGen::update_ccs()
       if (lfo.to_cutoff)
         mod_links.push_back ({ &lfo.value, lfo.to_cutoff, &outputs[CUTOFF].value });
 
-      for (auto lm : lfo.params->lfo_mods)
+      for (const auto& lm : lfo.params->lfo_mods)
         {
           float to_lfo_freq = (synth_->get_cc_vec_value (voice_, lm.lfo_freq_cc) + lm.lfo_freq);
           if (to_lfo_freq)
