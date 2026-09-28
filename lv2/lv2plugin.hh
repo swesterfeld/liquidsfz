@@ -7,6 +7,7 @@
 #include <atomic>
 
 #include "liquidsfz.hh"
+#include "rtmutex.hh"
 
 #if __has_include (<lv2/core/lv2.h>)
 // new versions of LV2 use different location for headers
@@ -38,15 +39,6 @@
 #endif
 
 #include "lv2_midnam.h"
-
-class RTMutex
-{
-  std::atomic_flag locked_flag = ATOMIC_FLAG_INIT;
-public:
-  bool try_lock();
-  void wait_for_lock();
-  void unlock();
-};
 
 class LV2Plugin
 {
@@ -97,7 +89,7 @@ private:
 
   bool                     load_in_progress = false;
   bool                     ui_redraw_required = false;
-  RTMutex                  rt_mutex;
+  LiquidSFZInternal::RTMutex rt_mutex;
   bool                     inform_ui = false;
   static constexpr int     command_load = 0x10001234; // just some random number
   float                    old_level = 1000;          // outside range [-80:20]
