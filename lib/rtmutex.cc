@@ -2,7 +2,11 @@
 
 #include "rtmutex.hh"
 
-#include <unistd.h>
+#include <algorithm>
+#include <chrono>
+#include <thread>
+
+using namespace std::chrono_literals;
 
 namespace LiquidSFZInternal
 {
@@ -16,13 +20,15 @@ RTMutex::try_lock()
 void
 RTMutex::wait_for_lock()
 {
+  auto delay = 1us;
+  constexpr auto max_delay = 4166us; // one frame at 240 fps
+
   while (!try_lock())
     {
-      // this doesn't happen very often and we are in a non-RT thread, so we
-      // can block it for some time
-      //  => wait for less than one frame drawing time until trying again
-      float fps = 240;
-      usleep (1000 * 1000 / fps);
+      // Only non-RT threads may wait. Start with a short sleep and double
+      // the delay after each failed attempt, up to max_delay.
+      std::this_thread::sleep_for (delay);
+      delay = std::min (delay * 2, max_delay);
     }
 }
 
