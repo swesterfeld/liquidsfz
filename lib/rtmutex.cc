@@ -20,7 +20,7 @@ RTMutex::try_lock()
 void
 RTMutex::wait_for_lock()
 {
-  auto delay = 1us;
+  auto delay = 20us;
   constexpr auto max_delay = 4166us; // one frame at 240 fps
 
   while (!try_lock())
