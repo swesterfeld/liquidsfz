@@ -22,6 +22,7 @@ using std::string;
 using std::vector;
 
 using LiquidSFZInternal::string_printf;
+using LiquidSFZInternal::RTMutexWaitLockGuard;
 
 #undef LIQUIDSFZ_LV2_DEBUG
 
@@ -55,58 +56,6 @@ debug (const char *format, ...)
 {
 }
 #endif
-
-class RTMutexWaitLockGuard
-{
-  RTMutex& mutex_;
-public:
-  explicit RTMutexWaitLockGuard (RTMutex& m)
-    : mutex_ (m)
-  {
-    mutex_.wait_for_lock();
-  }
-  ~RTMutexWaitLockGuard()
-  {
-    mutex_.unlock();
-  }
-
-  // non-copyable
-  RTMutexWaitLockGuard (const RTMutexWaitLockGuard&) = delete;
-  RTMutexWaitLockGuard& operator= (const RTMutexWaitLockGuard&) = delete;
-
-  // non-movable (same as std::lock_guard)
-  RTMutexWaitLockGuard (RTMutexWaitLockGuard&&) = delete;
-  RTMutexWaitLockGuard& operator= (RTMutexWaitLockGuard&&) = delete;
-};
-
-/*
- * do not use a std::mutex here because it may not be hard RT safe to
- * try_lock() / unlock() it (depending on how the mutex is implemented)
- */
-bool
-RTMutex::try_lock()
-{
-  return !locked_flag.test_and_set();
-}
-
-void
-RTMutex::wait_for_lock()
-{
-  while (!try_lock())
-    {
-      // this doesn't happen very often and we are in a non-RT thread, so we
-      // can block it for some time
-      //  => wait for less than one frame drawing time until trying again
-      float fps = 240;
-      usleep (1000 * 1000 / fps);
-    }
-}
-
-void
-RTMutex::unlock()
-{
-  locked_flag.clear();
-}
 
 LV2Plugin::LV2Plugin (int rate, LV2_URID_Map *map, LV2_Worker_Schedule *schedule, LV2_Midnam *midnam, LV2_Log_Log *log) :
   schedule (schedule),

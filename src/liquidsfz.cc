@@ -19,6 +19,7 @@
 #include "liquidsfz.hh"
 #include "cliparser.hh"
 #include "argparser.hh"
+#include "rtmutex.hh"
 #include "config.h"
 
 #include <term.h>
@@ -34,6 +35,8 @@ using LiquidSFZInternal::path_join;
 using LiquidSFZInternal::ArgParser;
 using LiquidSFZInternal::string_printf;
 using LiquidSFZInternal::get_time;
+using LiquidSFZInternal::RTMutex;
+using LiquidSFZInternal::RTMutexWaitLockGuard;
 
 namespace Options
 {
@@ -50,12 +53,12 @@ class CommandQueue
   };
   vector<Command> commands;
   bool            done = false;
-  std::mutex      mutex;
+  RTMutex         mutex;
 public:
   void
   append (std::function<void()> fun) // main thread
   {
-    std::lock_guard lg (mutex);
+    RTMutexWaitLockGuard lg (mutex);
 
     /* we insert and free in this thread to avoid malloc() in audio thread */
     if (done)
@@ -89,7 +92,7 @@ public:
     for (;;)
       {
         usleep (10 * 1000);
-        std::lock_guard lg (mutex);
+        RTMutexWaitLockGuard lg (mutex);
         if (commands.empty() || done)
           return;
       }
@@ -131,7 +134,7 @@ class JackStandalone
 
   CommandQueue cmd_q;
   Synth synth;
-  std::mutex synth_mutex;
+  RTMutex synth_mutex;
   std::vector<ProgramInfo> programs;
   std::vector<KeyInfo> keys;
   std::vector<CCInfo> ccs;
@@ -161,7 +164,7 @@ public:
         }, this);
   }
   int
-  process (jack_nframes_t n_frames)
+  process (jack_nframes_t n_frames) LIQUIDSFZ_CLANG_NONBLOCKING
   {
     float *outputs[2] = {
       (float *) jack_port_get_buffer (audio_left, n_frames),
@@ -297,7 +300,7 @@ public:
       }
     else if (cli_parser.command ("load", filename))
       {
-        std::lock_guard lg (synth_mutex); // can't process() while loading
+        RTMutexWaitLockGuard lg (synth_mutex); // can't process() while loading
         if (load (filename))
           printf ("ok\n");
         else
@@ -321,7 +324,7 @@ public:
       }
     else if (cli_parser.command ("program", value))
       {
-        std::lock_guard lg (synth_mutex); // can't process() while loading
+        RTMutexWaitLockGuard lg (synth_mutex); // can't process() while loading
         value -= 1;
         if (value < 0 || value >= int (programs.size()))
           printf ("unsupported program\n");
@@ -349,7 +352,7 @@ public:
     else if (cli_parser.command ("max_voices", value))
       {
         // NOTE: this is not RT safe so we have to use the lock here
-        std::lock_guard lg (synth_mutex);
+        RTMutexWaitLockGuard lg (synth_mutex);
 
         synth.set_max_voices (std::clamp (value, 0, 4096));
       }

@@ -7,7 +7,7 @@ libliquidsfz_la_SOURCES = liquidsfz.cc liquidsfz.hh loader.cc loader.hh log.hh l
 			  pugixml.hh pugiconfig.hh midnam.cc midnam.hh filter.hh \
 			  lfogen.cc lfogen.hh argparser.cc argparser.hh sfpool.hh sfpool.cc \
 			  upsample.hh samplecache.cc pcg32rng.hh pugixml.cc sfzreader.hh \
-			  sfzreader.cc
+			  sfzreader.cc rtmutex.cc rtmutex.hh
 
 liquidsfzincludedir = $(includedir)
 liquidsfzinclude_HEADERS = liquidsfz.hh
