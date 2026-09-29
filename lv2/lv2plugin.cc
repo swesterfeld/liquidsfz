@@ -294,6 +294,7 @@ LV2Plugin::run (uint32_t n_samples)
         left_out[i] = right_out[i] = 0;
     }
 
+  bool schedule_load = false;
   if (rt_mutex.try_lock())
     {
       if (!load_in_progress && file_or_program_changed)
@@ -301,10 +302,15 @@ LV2Plugin::run (uint32_t n_samples)
           load_in_progress = true;
           file_or_program_changed = false;
 
-          schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
+          schedule_load = true;
         }
       rt_mutex.unlock();
     }
+  // The host may execute work() immediately, so release the mutex it needs
+  // before scheduling (in particular during freewheeling).
+  if (schedule_load)
+    schedule->schedule_work (schedule->handle, sizeof (int), &command_load);
+
   if (inform_ui)
     {
       inform_ui = false;

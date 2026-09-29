@@ -50,6 +50,9 @@ testupsample_LDADD = $(LIQUIDSFZ_LIBS) $(FFTW_LIBS)
 endif
 
 if COND_WITH_LV2
-TESTS += testfiledialog
+TESTS += testfiledialog testlv2worker
 testfiledialog_SOURCES = testfiledialog.cc ../lv2/filedialog.cc ../lv2/filedialog.hh
+testlv2worker_SOURCES = testlv2worker.cc ../lv2/lv2plugin.cc ../lv2/lv2plugin.hh
+testlv2worker_CXXFLAGS = $(AM_CXXFLAGS) $(LV2_CFLAGS)
+testlv2worker_LDADD = $(LIQUIDSFZ_LIBS)
 endif
