@@ -1,3 +1,5 @@
+AUTOMAKE_OPTIONS = subdir-objects
+
 LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
 AM_CXXFLAGS = $(FFTW_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
@@ -45,4 +47,9 @@ if COND_WITH_FFTW
 noinst_PROGRAMS += testupsample
 testupsample_SOURCES = testupsample.cc
 testupsample_LDADD = $(LIQUIDSFZ_LIBS) $(FFTW_LIBS)
+endif
+
+if COND_WITH_LV2
+TESTS += testfiledialog
+testfiledialog_SOURCES = testfiledialog.cc ../lv2/filedialog.cc ../lv2/filedialog.hh
 endif
