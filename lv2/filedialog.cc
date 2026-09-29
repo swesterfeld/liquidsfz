@@ -132,9 +132,9 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
   fprintf (stderr, "LiquidSFZ: FileDialog: missing helpers: %s, %s or %s\n", KDIALOG, YAD, ZENITY);
 }
 
-FileDialog::FileDialog (vector<string> args)
+FileDialog::FileDialog (const vector<string>& args)
 {
-  spawn (std::move (args));
+  spawn (args);
 }
 
 void
@@ -272,5 +272,5 @@ FileDialog::get_filename()
   output.erase (std::remove (output.begin(), output.end(), '\n'), output.end());
   if (!output.empty())
     set_last_start_dir (output);
-  return std::move (output);
+  return output;
 }

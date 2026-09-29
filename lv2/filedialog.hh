@@ -22,7 +22,7 @@ public:
   FileDialog (const std::string& title, const std::string& filter,
               const std::string& filter_exts, const std::string& zenity_filename);
   // Run a helper with prepared arguments (also used by the subprocess tests).
-  explicit FileDialog (std::vector<std::string> args);
+  explicit FileDialog (const std::vector<std::string>& args);
   ~FileDialog();
 
   FileDialog (const FileDialog&) = delete;
