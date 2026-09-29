@@ -23,9 +23,11 @@ namespace fs = std::filesystem;
 
 namespace
 {
+
 constexpr auto KDIALOG = "/usr/bin/kdialog";
-constexpr auto YAD = "/usr/bin/yad";
-constexpr auto ZENITY = "/usr/bin/zenity";
+constexpr auto YAD     = "/usr/bin/yad";
+constexpr auto ZENITY  = "/usr/bin/zenity";
+
 string last_start_dir;
 std::mutex last_start_dir_mutex;
 
@@ -53,7 +55,7 @@ vector<string>
 helper_environment()
 {
   const char *bundled = getenv ("ARDOUR_BUNDLED");
-  const char *saved = getenv ("PREBUNDLE_ENV");
+  const char *saved   = getenv ("PREBUNDLE_ENV");
   vector<string> env;
   if (bundled && strcmp (bundled, "true") == 0 && saved && *saved)
     {
@@ -113,9 +115,11 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
 
       vector<string> args;
       if (helper == KDIALOG)
-        args = { helper, "--getopenfilename", "--title", title, get_last_start_dir(),
-                 filter + "(" + filter_exts + ")\nAll Files (*)" };
-      else
+        {
+          args = { helper, "--getopenfilename", "--title", title, get_last_start_dir(),
+                   filter + "(" + filter_exts + ")\nAll Files (*)" };
+        }
+      else // yad and zenity share most command line arguments
         {
           args = { helper, helper == YAD ? "--file" : "--file-selection", "--title", title };
           if (!zenity_filename.empty() && fs::exists (zenity_filename))
@@ -145,9 +149,11 @@ FileDialog::spawn (vector<string> args)
 
   auto env = helper_environment();
   vector<char *> argv, envp;
+
   for (auto& arg : args)
     argv.push_back (arg.data());
   argv.push_back (nullptr);
+
   for (auto& entry : env)
     envp.push_back (entry.data());
   envp.push_back (nullptr);
