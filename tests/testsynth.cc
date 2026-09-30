@@ -1301,6 +1301,65 @@ test_repro_lfo_alloc()
   synth.process (out, n_frames);
 }
 
+void
+test_unload_playing_sample()
+{
+  // https://github.com/swesterfeld/liquidsfz/issues/56, F04
+  printf ("test unloading a playing sample\n");
+  write_sample (vector<float> (1024, 0.5f), 44100, 1);
+  write_sfz ("<region>sample=testsynth.wav loop_mode=loop_continuous");
+
+  FILE *bank_file = fopen ("testsynth.bank.xml", "w");
+  assert (bank_file);
+  fputs ("<AriaBank><AriaProgram name=\"Test\">"
+         "<AriaElement path=\"testsynth.sfz\"/>"
+         "</AriaProgram></AriaBank>\n", bank_file);
+  fclose (bank_file);
+
+  for (bool replace_bank : { true, false })
+    {
+      Synth synth;
+      // Keep live mode enabled: offline rendering waits for the cache worker,
+      // whose sample references can mask the lifetime bug.
+      bool ok = synth.load_bank ("testsynth.bank.xml");
+      assert (ok);
+      ok = synth.select_program (0);
+      assert (ok);
+
+      float left[64], right[64];
+      float *out[] = { left, right };
+      synth.add_event_note_on (0, 0, 60, 100);
+      synth.process (out, 64);
+      assert (synth.active_voice_count() == 1);
+      assert (std::any_of (left, left + 64, [] (float x) { return x != 0; }));
+
+      // Unload immediately, before the cache worker normally discovers playback.
+      if (replace_bank)
+        {
+          ok = synth.load_bank ("testsynth.bank.xml");
+          assert (ok);
+        }
+      else
+        {
+          ok = synth.select_program (1);
+          assert (!ok);
+        }
+      assert (synth.active_voice_count() == 0);
+      synth.process (out, 64);
+      for (uint i = 0; i < 64; i++)
+        assert (left[i] == 0 && right[i] == 0);
+
+      // Both paths retain a usable bank index.
+      ok = synth.select_program (0);
+      assert (ok);
+      synth.add_event_note_on (0, 0, 60, 100);
+      synth.process (out, 64);
+      assert (synth.active_voice_count() == 1);
+      assert (std::any_of (left, left + 64, [] (float x) { return x != 0; }));
+    }
+  unlink ("testsynth.bank.xml");
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1314,6 +1373,7 @@ main (int argc, char **argv)
   test_filter();
   test_grow_voices_with_lfo();
   test_repro_lfo_alloc();
+  test_unload_playing_sample();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");
