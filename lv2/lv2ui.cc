@@ -303,11 +303,13 @@ LV2UI::render_frame()
               programs = { filepath.stem().string() };
             }
 
-          /* if program is invalid (> length of programs), display first item as
+          /* if program is outside the program list, display first item as
            * selected, this will not change the invalid program until the user
            * touches the combo box
            */
-          int program = std::min<int> (plugin->program(), programs.size());
+          int program = plugin->program();
+          if (program < 0 || static_cast<size_t> (program) >= programs.size())
+            program = 0;
           if (ImGui::BeginCombo ("##programs", programs[program].c_str()))
             {
               for (int i = 0; i < (int) programs.size(); i++)
