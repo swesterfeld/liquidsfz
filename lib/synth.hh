@@ -275,6 +275,9 @@ public:
   void
   unload()
   {
+    // End playback while regions still own the samples used by the voices.
+    all_sound_off();
+
     /* this needs to be kept in sync with load_internal() and should reset
      * the Synth object to a state where nothing is loaded
      */
