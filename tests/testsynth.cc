@@ -1280,6 +1280,67 @@ test_grow_voices_with_lfo()
 }
 
 void
+test_lfo_phase_wrapping()
+{
+  // F09: malformed frequencies must never trap the audio thread in a wrap loop.
+  printf ("test bounded LFO phase wrapping\n");
+#if !LIQUIDSFZ_OS_WINDOWS
+  alarm (10);
+#endif
+
+  auto render = [] (const string& params)
+    {
+      write_sfz ("<region>sample=*sine lfo1_volume=-6 " + params);
+      Synth synth;
+      synth.set_sample_rate (48000);
+      const bool loaded = synth.load ("testsynth.sfz");
+      assert (loaded);
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.add_event_cc (0, 0, 1, 127);
+      vector<float> result;
+      float left[64], right[64];
+      float *out[] = { left, right };
+      double energy = 0;
+      for (int block = 0; block < 128; block++)
+        {
+          synth.process (out, 64);
+          for (uint i = 0; i < 64; i++)
+            {
+              assert (std::isfinite (left[i]) && std::isfinite (right[i]));
+              assert (fabs (left[i]) < 2 && fabs (right[i]) < 2);
+              energy += left[i] * left[i];
+              result.push_back (left[i]);
+            }
+        }
+      assert (energy > 0.01);
+      return result;
+    };
+
+  // Reversing a triangle is equivalent to shifting it by half a cycle.
+  for (int freq : { 0, 5, 100 })
+    {
+      auto backward = render (string_printf ("lfo1_freq=%d", -freq));
+      auto forward = render (string_printf ("lfo1_freq=%d lfo1_phase=0.5", freq));
+      for (size_t i = 0; i < backward.size(); i++)
+        assert (fabs (backward[i] - forward[i]) < 1e-4);
+    }
+
+  for (int wave : { 0, 1, 6, 7 })
+    for (const char *freq : { "1e20", "-1e20", "3e38", "1e39", "-1e39" })
+      render (string_printf ("lfo1_wave=%d lfo1_freq=%s", wave, freq));
+
+  // Exercise controller sums and LFO-to-LFO modulation, including overflow.
+  render ("lfo1_freq=3e38 lfo1_freq_oncc1=3e38");
+  render ("lfo1_freq=5 lfo2_wave=3 lfo2_freq=0 lfo2_freq_lfo1=-100");
+  render ("lfo2_wave=3 lfo2_freq=0 lfo2_freq_lfo1=1e39");
+  render ("lfo2_wave=0 lfo2_freq=0 lfo2_freq_lfo1=1e39"); // 0 * infinity
+  render ("lfo1_freq=5 lfo1_phase=1e39 lfo1_phase_oncc1=-1e39");
+#if !LIQUIDSFZ_OS_WINDOWS
+  alarm (0);
+#endif
+}
+
+void
 test_repro_lfo_alloc()
 {
   // https://github.com/swesterfeld/liquidsfz/issues/56, F10
@@ -1372,6 +1433,7 @@ main (int argc, char **argv)
   test_end();
   test_filter();
   test_grow_voices_with_lfo();
+  test_lfo_phase_wrapping();
   test_repro_lfo_alloc();
   test_unload_playing_sample();
 

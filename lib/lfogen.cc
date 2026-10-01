@@ -41,7 +41,7 @@ LFOGen::start (const Region& region, int sample_rate)
 
       double phase = region.lfos[i].phase;
       phase += synth_->get_cc_vec_value (voice_, region.lfos[i].phase_cc);
-      lfos[i].phase = std::clamp (phase, 0.0, 1.0);
+      lfos[i].phase = std::isfinite (phase) ? std::clamp (phase, 0.0, 1.0) : 0.0;
 
       double delay = region.lfos[i].delay;
       delay += synth_->get_cc_vec_value (voice_, region.lfos[i].delay_cc);
@@ -94,9 +94,21 @@ LFOGen::process_lfo (LFO& lfo, uint n_values)
       lfo.fade_pos = std::min (lfo.fade_len, lfo.fade_pos + n_values);
     }
 
-  lfo.phase += n_values * (lfo.freq + lfo.freq_mod) / sample_rate_;
-  while (lfo.phase > 1)
-    lfo.phase -= 1;
+  float new_phase = lfo.phase + n_values * (lfo.freq + lfo.freq_mod) / sample_rate_;
+  if (new_phase >= 0 && new_phase <= 1)
+    {
+      lfo.phase = new_phase;
+    }
+  else
+    {
+      /* wrap phase into [0:1] */
+      new_phase -= std::floor (new_phase);
+
+      // paranoid: if we have inf or nan here, something is very wrong,
+      // so we don't update lfo.phase to avoid inf/nan in output
+      if (std::isfinite (new_phase))
+        lfo.phase = new_phase;
+    }
 }
 
 template<LFOGen::OutputType T>
