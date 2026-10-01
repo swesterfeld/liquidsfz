@@ -44,15 +44,15 @@ SFPool::Entry::~Entry()
     {
       sf_close (sndfile);
       sndfile = nullptr;
+    }
 
 #if !LIQUIDSFZ_OS_WINDOWS
-      if (mapped_data.mem)
-        {
-          munmap (mapped_data.mem, mapped_data.size);
-          mapped_data.mem = nullptr;
-        }
-#endif
+  if (mapped_data.mem)
+    {
+      munmap (mapped_data.mem, mapped_data.size);
+      mapped_data.mem = nullptr;
     }
+#endif
 }
 
 SNDFILE *
@@ -67,13 +67,15 @@ SFPool::mmap_open (const string& filename, SF_INFO *sfinfo, SFPool::EntryP entry
 
   struct stat sb;
   if (fstat (fd, &sb) == -1)
-    return nullptr; // FIXME: handle error
+    {
+      close (fd);
+      return nullptr; // FIXME: handle error
+    }
 
   unsigned char *addr = (unsigned char *) mmap (nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+  close (fd);
   if (addr == MAP_FAILED)
     return nullptr; // FIXME: Handle error
-
-  close (fd);
 
   entry->mapped_data.mem  = addr;
   entry->mapped_data.size = sb.st_size;
