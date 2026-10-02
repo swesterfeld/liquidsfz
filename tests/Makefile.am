@@ -4,7 +4,7 @@ LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
 AM_CXXFLAGS = $(FFTW_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
-TESTS = testsynth testsfzreader
+TESTS = testsynth testsfzreader testsfpool
 
 noinst_PROGRAMS = $(TESTS) testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter testrtmutex
 
@@ -42,6 +42,9 @@ testsynth_LDADD = $(LIQUIDSFZ_LIBS) $(FFTW_LIBS)
 
 testsfzreader_SOURCES = testsfzreader.cc
 testsfzreader_LDADD = $(LIQUIDSFZ_LIBS)
+
+testsfpool_SOURCES = testsfpool.cc
+testsfpool_LDADD = $(LIQUIDSFZ_LIBS)
 
 if COND_WITH_FFTW
 noinst_PROGRAMS += testupsample
