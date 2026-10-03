@@ -1233,6 +1233,45 @@ test_filter()
 }
 
 void
+test_unsupported_peq_filter()
+{
+  // #56, F11: PEQ is supported by eqN_*, not by the regular filter slots.
+  printf ("test unsupported peq filter type\n");
+  auto render = [] (const string& params, int expected_warnings)
+    {
+      write_sfz ("<region>sample=*sine " + params);
+      Synth synth;
+      int warnings = 0;
+      synth.set_log_function ([&] (LiquidSFZ::Log level, const char *message)
+        {
+          if (level == LiquidSFZ::Log::WARNING && strstr (message, "unsupported filter type: peq"))
+            warnings++;
+        });
+      const bool loaded = synth.load ("testsynth.sfz");
+      assert (loaded);
+      vector<float> left (1024), right (1024);
+      float *out[] = { left.data(), right.data() };
+      synth.add_event_note_on (0, 0, 60, 127);
+      synth.process (out, left.size());
+      assert (warnings == expected_warnings);
+      for (size_t i = 0; i < left.size(); i++)
+        assert (std::isfinite (left[i]) && std::isfinite (right[i]));
+      left.insert (left.end(), right.begin(), right.end());
+      return left;
+    };
+
+  for (const string& eq : { string(), string ("eq1_freq=1000 eq1_bw=1 eq1_gain=6 ") })
+    {
+      const auto expected = render (eq, 0);
+      for (const char *filter : { "fil_type=peq cutoff=1000", "fil2_type=peq cutoff2=1000" })
+        {
+          const auto actual = render (eq + filter, 1);
+          assert (actual == expected);
+        }
+    }
+}
+
+void
 test_grow_voices_with_lfo()
 {
   // https://github.com/swesterfeld/liquidsfz/issues/56
@@ -1432,6 +1471,7 @@ main (int argc, char **argv)
   test_width();
   test_end();
   test_filter();
+  test_unsupported_peq_filter();
   test_grow_voices_with_lfo();
   test_lfo_phase_wrapping();
   test_repro_lfo_alloc();
