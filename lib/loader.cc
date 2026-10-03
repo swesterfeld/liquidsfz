@@ -104,7 +104,8 @@ Filter::Type
 Loader::convert_filter_type (const string& f)
 {
   Filter::Type type = Filter::type_from_string (f);
-  if (type != Filter::Type::NONE)
+  // PEQ uses the dedicated eqN_* path, not the regular filter dispatch.
+  if (type != Filter::Type::NONE && type != Filter::Type::PEQ)
     return type;
 
   synth_->warning ("%s unsupported filter type: %s\n", location().c_str(), f.c_str());
