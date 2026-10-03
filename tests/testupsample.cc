@@ -35,16 +35,19 @@ window_blackman_harris_92 (double x)
   return a0 + a1 * cos (M_PI * x) + a2 * cos (2.0 * M_PI * x) + a3 * cos (3.0 * M_PI * x);
 }
 
-void
-fft (const uint n_values, float *r_values_in, float *ri_values_out)
+vector<float>
+fft (vector<float>& in)
 {
-  auto plan_fft = fftwf_plan_dft_r2c_1d (n_values, r_values_in, (fftwf_complex *) ri_values_out, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
+  // Include every complex output bin, including Nyquist for even input sizes.
+  vector<float> out (2 * (in.size() / 2 + 1));
+  auto plan_fft = fftwf_plan_dft_r2c_1d (in.size(), in.data(), (fftwf_complex *) out.data(), FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
 
-  fftwf_execute_dft_r2c (plan_fft, r_values_in, (fftwf_complex *) ri_values_out);
+  fftwf_execute_dft_r2c (plan_fft, in.data(), (fftwf_complex *) out.data());
 
   // usually we should keep the plan, but for this simple test program, the fft
   // is only computed once, so we can destroy the plan here
   fftwf_destroy_plan (plan_fft);
+  return out;
 }
 
 double
@@ -126,11 +129,10 @@ main (int argc, char **argv)
           // zero pad
           vector<float> padded (out);
           padded.resize (padded.size() * 4);
-          vector<float> out_fft (padded.size());
-          fft (padded.size(), &padded[0], &out_fft[0]);
+          vector<float> out_fft = fft (padded);
           float pass = 0;
           float stop = 0;
-          for (size_t i = 0; i < padded.size(); i += 2)
+          for (size_t i = 0; i < out_fft.size(); i += 2)
             {
               auto re = out_fft[i];
               auto im = out_fft[i + 1];
@@ -180,9 +182,8 @@ main (int argc, char **argv)
       // zero pad
       vector<float> padded (out);
       padded.resize (padded.size() * 4);
-      vector<float> out_fft (padded.size());
-      fft (padded.size(), &padded[0], &out_fft[0]);
-      for (size_t i = 0; i < padded.size(); i += 2)
+      vector<float> out_fft = fft (padded);
+      for (size_t i = 0; i < out_fft.size(); i += 2)
         {
           auto re = out_fft[i];
           auto im = out_fft[i + 1];
@@ -208,10 +209,9 @@ main (int argc, char **argv)
       for (auto &x : out)
         x /= upsample;
 
-      vector<float> out_fft (out.size());
-      fft (out.size(), &out[0], &out_fft[0]);
+      vector<float> out_fft = fft (out);
 
-      for (size_t i = 0; i < out.size(); i += 2)
+      for (size_t i = 0; i < out_fft.size(); i += 2)
         {
           auto re = out_fft[i];
           auto im = out_fft[i + 1];
@@ -276,11 +276,10 @@ main (int argc, char **argv)
           // zero pad
           vector<float> padded (out);
           padded.resize (padded.size() * 4);
-          vector<float> out_fft (padded.size());
-          fft (padded.size(), &padded[0], &out_fft[0]);
+          vector<float> out_fft = fft (padded);
           float pass = 0;
           float stop = 0;
-          for (size_t i = 0; i < padded.size(); i += 2)
+          for (size_t i = 0; i < out_fft.size(); i += 2)
             {
               auto re = out_fft[i];
               auto im = out_fft[i + 1];

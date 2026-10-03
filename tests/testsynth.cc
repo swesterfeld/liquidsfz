@@ -72,18 +72,21 @@ window_gaussian (double x, double alpha = 3.0)
   return exp(-0.5 * pow (alpha * x, 2));
 }
 
-void
-fft (const uint n_values, float *r_values_in, float *ri_values_out)
+vector<float>
+fft (vector<float>& in)
 {
+  // Include every complex output bin, including Nyquist for even input sizes.
+  vector<float> out (2 * (in.size() / 2 + 1));
 #if HAVE_FFTW
-  auto plan_fft = fftwf_plan_dft_r2c_1d (n_values, r_values_in, (fftwf_complex *) ri_values_out, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
+  auto plan_fft = fftwf_plan_dft_r2c_1d (in.size(), in.data(), (fftwf_complex *) out.data(), FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
 
-  fftwf_execute_dft_r2c (plan_fft, r_values_in, (fftwf_complex *) ri_values_out);
+  fftwf_execute_dft_r2c (plan_fft, in.data(), (fftwf_complex *) out.data());
 
   // usually we should keep the plan, but for this simple test program, the fft
   // is only computed once, so we can destroy the plan here
   fftwf_destroy_plan (plan_fft);
 #endif
+  return out;
 }
 
 double
@@ -125,8 +128,7 @@ sine_detect (double mix_freq, const vector<float>& signal)
     }
   padded_signal.resize (padded_length);
 
-  vector<float> fft_values (padded_signal.size() + 2);
-  fft (padded_signal.size(), padded_signal.data(), fft_values.data());
+  vector<float> fft_values = fft (padded_signal);
 
   vector<float> mag_values;
   for (size_t i = 0; i < fft_values.size(); i += 2)
@@ -661,8 +663,7 @@ test_pitch()
         }
       padded_signal.resize (padded_length);
 
-      vector<float> fft_values (padded_signal.size() + 2);
-      fft (padded_signal.size(), padded_signal.data(), fft_values.data());
+      vector<float> fft_values = fft (padded_signal);
 
       vector<float> mag_values;
       double main = 0, side = 0;
