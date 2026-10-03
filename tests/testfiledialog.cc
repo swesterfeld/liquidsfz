@@ -28,7 +28,8 @@ proc_environment_readable()
   char buffer[4096];
   while (true)
     {
-      fread (buffer, 1, sizeof (buffer), file);
+      size_t unused = fread (buffer, 1, sizeof (buffer), file);
+      (void) unused;
       if (ferror (file))
         {
           if (errno == EINTR)
