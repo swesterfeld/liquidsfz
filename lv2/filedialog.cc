@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <memory>
 #include <mutex>
 #include <fcntl.h>
 #include <signal.h>
@@ -52,10 +53,60 @@ set_last_start_dir (const string& filename)
 }
 
 vector<string>
-helper_environment()
+environment_snapshot()
 {
-  const char *bundled = getenv ("ARDOUR_BUNDLED");
-  const char *saved   = getenv ("PREBUNDLE_ENV");
+  // procfs exposes the environment at exec time, not later setenv() changes.
+  // Reading it avoids traversing glibc's concurrently modified pointer array.
+  const auto close_file = [] (FILE *file) { fclose (file); };
+  std::unique_ptr<FILE, decltype (close_file)> file (fopen ("/proc/self/environ", "re"), close_file);
+  if (file)
+    {
+      string contents;
+      char buffer[4096];
+      size_t count;
+      while ((count = fread (buffer, 1, sizeof (buffer), file.get())) > 0)
+        contents.append (buffer, count);
+      if (!ferror (file.get()))
+        {
+          vector<string> env;
+          size_t pos = 0;
+          while (pos < contents.size())
+            {
+              size_t end = contents.find ('\0', pos);
+              if (end == string::npos)
+                end = contents.size();
+              if (end > pos)
+                env.push_back (contents.substr (pos, end - pos));
+              pos = end + 1;
+            }
+          return env;
+        }
+    }
+
+  // Compatibility fallback: concurrent environment changes are not safe here.
+  //  -> reading environ while some other thread calls setenv() can crash
+  vector<string> env;
+  if (char **entry = environ)
+    while (const char *value = *entry++)
+      env.emplace_back (value);
+  return env;
+}
+
+const char *
+environment_value (const vector<string>& env, const string& name)
+{
+  const string prefix = name + "=";
+  for (const auto& entry : env)
+    if (entry.compare (0, prefix.size(), prefix) == 0)
+      return entry.c_str() + prefix.size();
+  return nullptr;
+}
+
+vector<string>
+helper_environment (const vector<string>& snapshot)
+{
+  const char *bundled = environment_value (snapshot, "ARDOUR_BUNDLED");
+  const char *saved   = environment_value (snapshot, "PREBUNDLE_ENV");
   vector<string> env;
   if (bundled && strcmp (bundled, "true") == 0 && saved && *saved)
     {
@@ -82,10 +133,7 @@ helper_environment()
         }
     }
   else
-    {
-      for (char **entry = environ; *entry; entry++)
-        env.emplace_back (*entry);
-    }
+    return snapshot;
   return env;
 }
 }
@@ -99,11 +147,12 @@ FileDialog::have_helpers()
 bool
 FileDialog::is_kde_full_session()
 {
-  char *env = getenv ("KDE_FULL_SESSION");
+  const char *env = environment_value (environment, "KDE_FULL_SESSION");
   return env && (strcmp (env, "true") == 0);
 }
 
 FileDialog::FileDialog (const string& title, const string& filter, const string& filter_exts, const string& zenity_filename)
+  : environment (environment_snapshot())
 {
   vector<string> helpers = is_kde_full_session()
                         ? vector<string> { KDIALOG, ZENITY, YAD }
@@ -137,6 +186,7 @@ FileDialog::FileDialog (const string& title, const string& filter, const string&
 }
 
 FileDialog::FileDialog (const vector<string>& args)
+  : environment (environment_snapshot())
 {
   spawn (args);
 }
@@ -147,7 +197,7 @@ FileDialog::spawn (vector<string> args)
   if (args.empty())
     return;
 
-  auto env = helper_environment();
+  auto env = helper_environment (environment);
   vector<char *> argv, envp;
 
   for (auto& arg : args)

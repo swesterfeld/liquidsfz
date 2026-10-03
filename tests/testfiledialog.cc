@@ -5,17 +5,33 @@
 #include <cassert>
 #include <cerrno>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <string>
 #include <thread>
 #include <fcntl.h>
+#include <spawn.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 using namespace std::chrono_literals;
 using std::string;
+
+static bool
+proc_environment_readable()
+{
+  FILE *file = fopen ("/proc/self/environ", "re");
+  if (!file)
+    return false;
+  char buffer[4096];
+  while (fread (buffer, 1, sizeof (buffer), file) > 0)
+    {}
+  const bool readable = !ferror (file);
+  fclose (file);
+  return readable;
+}
 
 static string
 finish (FileDialog& dialog)
@@ -37,10 +53,28 @@ main (int argc, char **argv)
   // The same executable is a controlled fake dialog helper: no desktop needed.
   if (argc > 1)
     {
+      if (strcmp (argv[1], "snapshot") == 0)
+        {
+          alarm (5);
+          const bool use_proc = proc_environment_readable();
+          const bool bundled = getenv ("ARDOUR_BUNDLED") != nullptr;
+          // procfs supplies startup values; without it, the fallback supplies
+          // current values. Ardour restoration must work with either source.
+          setenv ("LIQUIDSFZ_DIALOG_TEST", "changed", 1);
+          setenv ("PREBUNDLE_ENV", "invalid\n=ignored\nLIQUIDSFZ_DIALOG_TEST=old\nLIQUIDSFZ_DIALOG_TEST=restored=environment\n", 1);
+          setenv ("KDE_FULL_SESSION", "false", 1);
+          const string expected = use_proc ? "original=environment"
+                                          : bundled ? "restored=environment" : "changed";
+          FileDialog dialog (std::vector<string> { argv[0], "environment", expected });
+          assert (finish (dialog) == "/tmp/environment.sfz");
+          assert (strcmp (getenv ("LIQUIDSFZ_DIALOG_TEST"), "changed") == 0);
+          assert (strcmp (getenv ("KDE_FULL_SESSION"), "false") == 0);
+          return 0;
+        }
       if (strcmp (argv[1], "environment") == 0)
         {
           const char *value = getenv ("LIQUIDSFZ_DIALOG_TEST");
-          if (!value || strcmp (value, "original=environment") != 0 || getenv ("ARDOUR_BUNDLED"))
+          if (argc != 3 || !value || strcmp (value, argv[2]) != 0 || getenv ("ARDOUR_BUNDLED"))
             return 1;
           const char result[] = "/tmp/environment.sfz\n";
           return write (STDOUT_FILENO, result, sizeof (result) - 1) == sizeof (result) - 1 ? 0 : 1;
@@ -109,31 +143,28 @@ main (int argc, char **argv)
     assert (dialog.get_filename().empty());
   }
 
-  // Preserve the host environment while passing Ardour's saved copy to the child.
-  const char *names[] = { "ARDOUR_BUNDLED", "PREBUNDLE_ENV", "LIQUIDSFZ_DIALOG_TEST" };
-  string saved[3];
-  bool present[3];
-  for (int i = 0; i < 3; i++)
+  // Install each test environment at exec time so procfs exposes it.
+  for (bool bundled : { false, true })
     {
-      const char *value = getenv (names[i]);
-      present[i] = value != nullptr;
-      if (value)
-        saved[i] = value;
+      std::vector<string> env = { "KDE_FULL_SESSION=true",
+                                 "LIQUIDSFZ_DIALOG_TEST=original=environment" };
+      if (bundled)
+        {
+          env.push_back ("ARDOUR_BUNDLED=true");
+          env.push_back ("PREBUNDLE_ENV=invalid\n=ignored\nLIQUIDSFZ_DIALOG_TEST=old\nLIQUIDSFZ_DIALOG_TEST=original=environment\n");
+        }
+      std::vector<char *> envp;
+      for (auto& entry : env)
+        envp.push_back (entry.data());
+      envp.push_back (nullptr);
+      string mode = "snapshot";
+      char *args[] = { const_cast<char *> (helper.c_str()), mode.data(), nullptr };
+      pid_t child;
+      assert (posix_spawn (&child, helper.c_str(), nullptr, nullptr, args, envp.data()) == 0);
+      int status;
+      assert (waitpid (child, &status, 0) == child);
+      assert (WIFEXITED (status) && WEXITSTATUS (status) == 0);
     }
-  setenv (names[0], "true", 1);
-  setenv (names[1], "invalid\n=ignored\nLIQUIDSFZ_DIALOG_TEST=old\nLIQUIDSFZ_DIALOG_TEST=original=environment\n", 1);
-  setenv (names[2], "bundled", 1);
-  {
-    FileDialog dialog (std::vector<string> { helper, "environment" });
-    assert (finish (dialog) == "/tmp/environment.sfz");
-    assert (strcmp (getenv (names[0]), "true") == 0);
-    assert (strcmp (getenv (names[2]), "bundled") == 0);
-  }
-  for (int i = 0; i < 3; i++)
-    if (present[i])
-      setenv (names[i], saved[i].c_str(), 1);
-    else
-      unsetenv (names[i]);
 
   // Closing the UI with a live helper must kill and reap that child.
   {
