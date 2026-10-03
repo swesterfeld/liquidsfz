@@ -63,9 +63,23 @@ environment_snapshot()
     {
       string contents;
       char buffer[4096];
-      size_t count;
-      while ((count = fread (buffer, 1, sizeof (buffer), file.get())) > 0)
-        contents.append (buffer, count);
+      while (true)
+        {
+          const size_t count = fread (buffer, 1, sizeof (buffer), file.get());
+          const int read_error = errno;
+          contents.append (buffer, count);
+          if (ferror (file.get()))
+            {
+              if (read_error == EINTR)
+                {
+                  clearerr (file.get());
+                  continue;
+                }
+              break;
+            }
+          if (feof (file.get()))
+            break;
+        }
       if (!ferror (file.get()))
         {
           vector<string> env;

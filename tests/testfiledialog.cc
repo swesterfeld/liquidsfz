@@ -26,8 +26,21 @@ proc_environment_readable()
   if (!file)
     return false;
   char buffer[4096];
-  while (fread (buffer, 1, sizeof (buffer), file) > 0)
-    {}
+  while (true)
+    {
+      fread (buffer, 1, sizeof (buffer), file);
+      if (ferror (file))
+        {
+          if (errno == EINTR)
+            {
+              clearerr (file);
+              continue;
+            }
+          break;
+        }
+      if (feof (file))
+        break;
+    }
   const bool readable = !ferror (file);
   fclose (file);
   return readable;
