@@ -15,6 +15,7 @@ class FileDialog
   bool open = false;
   bool failed = false;
   std::string output;
+  const std::vector<std::string> environment;
 
   bool is_kde_full_session();
   void spawn (std::vector<std::string> args);
