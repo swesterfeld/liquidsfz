@@ -6,6 +6,7 @@
 #include <string.h>
 #include <math.h>
 #include <filesystem>
+#include <memory>
 
 #include "pugl/pugl.h"
 #include "pugl/gl.h"
@@ -25,6 +26,7 @@ struct LV2UI
   PuglWorld    *world     = nullptr;
   PuglView     *view      = nullptr;
   LV2Plugin    *plugin    = nullptr;
+  bool         opengl_initialized = false;
 
   LV2UI_Write_Function write_function = nullptr;
   LV2UI_Controller     controller     = nullptr;
@@ -51,15 +53,21 @@ struct LV2UI
 
 LV2UI::~LV2UI()
 {
-  ImGui::SetCurrentContext (imgui_ctx);
-
-  puglEnterContext(view);
-  ImGui_ImplOpenGL3_Shutdown();
-  puglLeaveContext(view);
-
-  ImGui::DestroyContext();
-  puglFreeView(view);
-  puglFreeWorld(world);
+  if (imgui_ctx)
+    {
+      ImGui::SetCurrentContext (imgui_ctx);
+      if (opengl_initialized)
+        {
+          puglEnterContext (view);
+          ImGui_ImplOpenGL3_Shutdown();
+          puglLeaveContext (view);
+        }
+      ImGui::DestroyContext (imgui_ctx);
+    }
+  if (view)
+    puglFreeView (view);
+  if (world)
+    puglFreeWorld (world);
 }
 
 void
@@ -373,6 +381,7 @@ instantiate (const LV2UI_Descriptor*   descriptor,
              LV2UI_Widget*             widget,
              const LV2_Feature* const* features)
 {
+  *widget = nullptr;
   LV2Plugin *plugin = nullptr;
   PuglNativeView parent_win_id = 0;
   LV2_URID_Map* map = nullptr;
@@ -397,18 +406,22 @@ instantiate (const LV2UI_Descriptor*   descriptor,
           plugin = (LV2Plugin *) features[i]->data;
         }
     }
-  if (!map)
+  if (!map || !plugin)
     {
-      return nullptr; // host bug, we need this feature
+      return nullptr; // host bug, we need both features
     }
-  LV2UI *ui = new LV2UI;
+  auto ui = std::make_unique<LV2UI>();
   ui->plugin = plugin;
 
   // 1. Setup Pugl World and View
   PuglWorld* world = puglNewWorld (PUGL_MODULE, 0);
-  PuglView* view = puglNewView (world);
   ui->world = world;
+  if (!world)
+    return nullptr;
+  PuglView* view = puglNewView (world);
   ui->view = view;
+  if (!view)
+    return nullptr;
   ui->write_function = write_function;
   ui->controller = controller;
 
@@ -416,6 +429,8 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   IMGUI_CHECKVERSION();
   ImGuiContext* ctx = ImGui::CreateContext();
   ui->imgui_ctx = ctx;
+  if (!ctx)
+    return nullptr;
   ImGui::SetCurrentContext (ctx);
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = nullptr; // don't write imgui.ini
@@ -474,7 +489,7 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   puglSetParent (view, parent_win_id);
 
   // Bind our app state and event handler
-  puglSetHandle (view, ui);
+  puglSetHandle (view, ui.get());
   puglSetEventFunc (view,
     [] (PuglView *view, const PuglEvent *event)
       {
@@ -487,19 +502,22 @@ instantiate (const LV2UI_Descriptor*   descriptor,
       fprintf (stderr, "failed to create pugl view\n");
       return nullptr;
     }
-  puglShow (view, PUGL_SHOW_PASSIVE);
-
   // Note: To call OpenGL initialization outside of a Pugl event,
   // we must manually make the context current first.
-  puglEnterContext (view);
-  ImGui_ImplOpenGL3_Init ("#version 130");
+  if (puglEnterContext (view) != PUGL_SUCCESS)
+    return nullptr;
+  ui->opengl_initialized = ImGui_ImplOpenGL3_Init ("#version 130");
   puglLeaveContext (view);
+  if (!ui->opengl_initialized)
+    return nullptr;
+
+  puglShow (view, PUGL_SHOW_PASSIVE);
 
   if (ui_resize)
     ui_resize->ui_resize (ui_resize->handle, window_width, window_height);
 
   *widget = (void *) puglGetNativeView (view);
-  return ui;
+  return ui.release();
 }
 
 static void
