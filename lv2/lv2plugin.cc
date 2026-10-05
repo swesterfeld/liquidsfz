@@ -251,7 +251,8 @@ LV2Plugin::run (uint32_t n_samples)
 
   LV2_ATOM_SEQUENCE_FOREACH (midi_in, ev)
     {
-      if (ev->body.type == uris.midi_MidiEvent && !load_in_progress)
+      // All channel messages handled below have exactly three MIDI bytes.
+      if (ev->body.type == uris.midi_MidiEvent && ev->body.size == 3 && !load_in_progress)
         {
           const uint8_t *msg = (const uint8_t*)(ev + 1);
 
@@ -402,18 +403,18 @@ LV2Plugin::save (LV2_State_Store_Function store,
         }
     }
 
-  store (handle, uris.liquidsfz_sfzfile,
+  LV2_State_Status status = store (handle, uris.liquidsfz_sfzfile,
          path.c_str(), path.size() + 1,
          uris.atom_Path,
          LV2_STATE_IS_POD);
+  if (status != LV2_STATE_SUCCESS)
+    return status;
 
-  store (handle, uris.liquidsfz_program,
+  return store (handle, uris.liquidsfz_program,
          &program,
          sizeof (int32_t),
          uris.atom_Int,
          LV2_STATE_IS_POD);
-
-  return LV2_STATE_SUCCESS;
 }
 
 LV2_State_Status
@@ -448,12 +449,18 @@ LV2Plugin::restore (LV2_State_Retrieve_Function retrieve,
 
   int program = 0;
   value = retrieve (handle, uris.liquidsfz_program, &size, &type, &valflags);
-  if (value && size == sizeof (int) && type == uris.atom_Int)
-    program = *(int *) value;
+  if (value)
+    {
+      if (type != uris.atom_Int || size != sizeof (int))
+        return LV2_STATE_ERR_BAD_TYPE;
+      program = *(int *) value;
+    }
 
   value = retrieve (handle, uris.liquidsfz_sfzfile, &size, &type, &valflags);
   if (value)
     {
+      if (type != uris.atom_Path || size == 0 || !memchr (value, 0, size))
+        return LV2_STATE_ERR_BAD_TYPE;
       char *absolute_path = map_path->absolute_path (map_path->handle, (const char *)value);
       if (!absolute_path)
         {

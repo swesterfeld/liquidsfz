@@ -357,7 +357,7 @@ LV2UI::render_frame()
 void
 LV2UI::port_event (uint32_t port_index, uint32_t buffer_size, uint32_t format, const void* buffer)
 {
-  if (port_index == LV2Plugin::LEVEL)
+  if (port_index == LV2Plugin::LEVEL && format == 0)
     {
       plugin_control_level = *(const float *) buffer;
       redraw();
