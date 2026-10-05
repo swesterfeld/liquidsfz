@@ -1579,9 +1579,72 @@ test_velocity_zero_note_off()
       }
 }
 
+void
+test_sample_overrides()
+{
+  // #56, F16: each sample opcode replaces both file and generator selection.
+  printf ("test sample overrides\n");
+  write_sample (vector<float> (1024, 0.25), 44100);
+
+  auto render = [] (const string& sfz) {
+    write_sfz (sfz);
+    Synth synth;
+    synth.set_sample_rate (44100);
+    const bool loaded = synth.load ("testsynth.sfz");
+    assert (loaded);
+    vector<float> left (256), right (256);
+    float *out[] = { left.data(), right.data() };
+    synth.add_event_note_on (0, 0, 60, 100);
+    synth.process (out, left.size());
+    left.insert (left.end(), right.begin(), right.end());
+    return left;
+  };
+
+  for (const string target : { "testsynth.wav", "*sine", "*silence" })
+    {
+      const auto reference = render ("<region>sample=" + target);
+      assert ((peak (reference) > 0) == (target != "*silence"));
+      for (const string source : { "testsynth.wav", "*sine", "*silence" })
+        for (const string scope : { "<global>", "<master>", "<group>", "<region>" })
+          {
+            // Also cover repeated assignments within one region.
+            const string region = scope == "<region>" ? " " : " <region>";
+            const auto actual = render (scope + "sample=" + source + region + "sample=" + target);
+            assert (actual == reference);
+          }
+    }
+
+  for (const string source : { "testsynth.wav", "*sine", "*silence" })
+    for (const string target : { "missing-sample-f16.wav", "*unsupported" })
+      {
+        write_sfz ("<global>sample=" + source + " <region>sample=" + target);
+        Synth synth;
+        string messages;
+        synth.set_log_function ([&] (LiquidSFZ::Log, const char *message) { messages += message; });
+        const bool loaded = synth.load ("testsynth.sfz");
+        if (target == "*unsupported")
+          {
+            assert (!loaded); // Unsupported generators leave no valid selection.
+            assert (messages.find ("unsupported generator *unsupported") != string::npos);
+          }
+        else
+          {
+            assert (loaded); // Missing files retain the existing warning behavior.
+            assert (messages.find ("missing sample:") != string::npos);
+            assert (messages.find (target) != string::npos);
+          }
+        float left[64], right[64];
+        float *out[] = { left, right };
+        synth.add_event_note_on (0, 0, 60, 100);
+        synth.process (out, 64);
+        assert (synth.active_voice_count() == 0);
+      }
+}
+
 int
 main (int argc, char **argv)
 {
+  test_sample_overrides();
   test_filesystem_load_errors();
   test_velocity_zero_note_off();
   test_simple();
