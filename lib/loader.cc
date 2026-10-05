@@ -530,6 +530,10 @@ Loader::set_key_value (const string& key, const string& value)
   synth_->debug ("+++ '%s' = '%s'\n", key.c_str(), value.c_str());
   if (key == "sample")
     {
+      // A sample opcode replaces the inherited file or generator selection.
+      // Unsupported generators warn below and leave the selection empty.
+      region.sample.clear();
+      region.generator = Generator::NONE;
       if (starts_with (value, "*"))
         {
           if (value == "*silence")
