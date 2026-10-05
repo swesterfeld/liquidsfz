@@ -1540,10 +1540,50 @@ test_filesystem_load_errors()
   fs::remove_all (root);
 }
 
+void
+test_velocity_zero_note_off()
+{
+  // #56, F13: velocity-zero note-on must apply octave_offset only once.
+  printf ("test velocity-zero note-off with octave offsets\n");
+  for (int octave_offset : { -1, 0, 1 })
+    for (int key : { 12, 60, 115 })
+      {
+        write_sfz (string_printf ("<control>octave_offset=%d "
+                                 "<region>sample=*sine ampeg_release=0.005", octave_offset));
+        vector<float> reference;
+        for (bool velocity_zero : { false, true })
+          {
+            Synth synth;
+            synth.set_sample_rate (44100);
+            const bool loaded = synth.load ("testsynth.sfz");
+            assert (loaded);
+            vector<float> left (2048), right (2048);
+            float *out[] = { left.data(), right.data() };
+            synth.add_event_note_on (0, 0, key, 100);
+            synth.process (out, 64);
+            assert (synth.active_voice_count() == 1);
+            assert (std::any_of (left.begin(), left.begin() + 64, [] (float x) { return x != 0; }));
+
+            if (velocity_zero)
+              synth.add_event_note_on (17, 0, key, 0);
+            else
+              synth.add_event_note_off (17, 0, key);
+            synth.process (out, left.size());
+            assert (synth.active_voice_count() == 0);
+            left.insert (left.end(), right.begin(), right.end());
+            if (velocity_zero)
+              assert (left == reference);
+            else
+              reference = left;
+          }
+      }
+}
+
 int
 main (int argc, char **argv)
 {
   test_filesystem_load_errors();
+  test_velocity_zero_note_off();
   test_simple();
   test_interp_time_align();
   test_tiny_loop();
