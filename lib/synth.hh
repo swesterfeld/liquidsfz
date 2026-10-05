@@ -98,8 +98,8 @@ private:
   bool  live_mode_ = true;
   int   sample_quality_ = 3;
   uint  preload_time_ = 500;
-  std::array<bool, 128> is_key_switch_;
-  std::array<bool, 128> is_supported_cc_;
+  std::array<bool, 128> is_key_switch_ {};
+  std::array<bool, 128> is_supported_cc_ {};
 
   static constexpr int CC_ALL_SOUND_OFF = 120;
   static constexpr int CC_ALL_NOTES_OFF = 123;
