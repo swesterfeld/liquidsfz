@@ -4,6 +4,9 @@
 #include <cstdio>
 #include <cassert>
 #include <cstring>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <unistd.h>
 
 #include <sndfile.h>
@@ -12,6 +15,7 @@
 
 #include "liquidsfz.hh"
 #include "log.hh"
+#include "utils.hh"
 #include "config.h"
 
 #if HAVE_FFTW
@@ -1461,9 +1465,85 @@ test_unload_playing_sample()
   unlink ("testsynth.bank.xml");
 }
 
+void
+test_filesystem_load_errors()
+{
+  // #56, F20: filesystem lookup failures must not escape the loading API.
+  printf ("test filesystem load errors\n");
+  namespace fs = std::filesystem;
+  char dir_template[] = "/tmp/liquidsfz-paths-XXXXXX";
+  const char *dir = mkdtemp (dir_template);
+  assert (dir);
+  const fs::path root (dir);
+  std::ofstream (root / "file") << "not a directory\n";
+  std::ofstream (root / "Valid.sfz") << "<region>sample=*sine\n";
+  vector<string> bad_paths = { "missing", "file/child" };
+
+  // Symlinks are not available on every filesystem/platform.
+  std::error_code ec;
+  fs::create_symlink ("loop", root / "loop", ec);
+  if (!ec)
+    bad_paths.push_back ("loop");
+  fs::create_symlink ("missing", root / "dangling", ec);
+  if (!ec)
+    bad_paths.push_back ("dangling");
+
+  fs::create_directory (root / "blocked");
+  fs::permissions (root / "blocked", fs::perms::none, ec);
+  // Root or filesystems without Unix permissions may still allow access.
+  fs::directory_iterator probe (root / "blocked", ec);
+  if (ec == std::errc::permission_denied)
+    bad_paths.push_back ("blocked/child");
+
+  for (const auto& bad_path : bad_paths)
+    {
+      printf (" - %s\n", bad_path.c_str());
+      const string filename = (root / bad_path).string();
+      const string resolved = LiquidSFZInternal::path_resolve_case_insensitive (filename);
+      assert (resolved == filename);
+
+      Synth synth;
+      string messages;
+      synth.set_log_function ([&] (LiquidSFZ::Log, const char *message) { messages += message; });
+      const string sfz = (root / "test.sfz").string();
+      std::ofstream (sfz) << "<region>sample=" << bad_path << "\n";
+      // Missing samples are warnings, so the instrument itself still loads.
+      bool ok = synth.load (sfz);
+      assert (ok);
+      assert (messages.find ("missing sample: '" + filename + "'") != string::npos);
+
+      messages.clear();
+      std::ofstream (sfz) << "#include \"" << bad_path << "\"\n";
+      ok = synth.load (sfz);
+      assert (!ok);
+      assert (messages.find ("unable to read #include '" + filename + "'") != string::npos);
+
+      const string bank = (root / "test.bank.xml").string();
+      std::ofstream (bank) << "<AriaBank><AriaProgram name=\"Test\"><AriaElement path=\""
+                           << bad_path << "\"/></AriaProgram></AriaBank>\n";
+      ok = synth.load_bank (bank);
+      assert (ok); // Program files are opened when selected.
+      ok = synth.select_program (0);
+      assert (!ok);
+
+      // The synth remains usable and case-insensitive lookup still works.
+      std::ofstream (sfz) << "#include \"valid.sfz\"\n";
+      ok = synth.load (sfz);
+      assert (ok);
+      float left[64], right[64];
+      float *out[] = { left, right };
+      synth.add_event_note_on (0, 0, 60, 100);
+      synth.process (out, 64);
+      assert (synth.active_voice_count() == 1);
+    }
+  fs::permissions (root / "blocked", fs::perms::owner_all);
+  fs::remove_all (root);
+}
+
 int
 main (int argc, char **argv)
 {
+  test_filesystem_load_errors();
   test_simple();
   test_interp_time_align();
   test_tiny_loop();

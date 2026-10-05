@@ -80,12 +80,13 @@ find_case_insensitive (const fs::path& directory, const string& target_name)
 {
   string target_lower = to_lower (target_name);
 
-  for (const auto& entry : fs::directory_iterator (directory))
+  std::error_code ec;
+  for (fs::directory_iterator it (directory, ec), end; !ec && it != end; it.increment (ec))
     {
-      const string name = entry.path().filename().string();
+      const string name = it->path().filename().string();
 
       if (to_lower (name) == target_lower)
-        return entry.path().filename();
+        return it->path().filename();
     }
   return std::nullopt;
 }
@@ -94,33 +95,42 @@ string
 path_resolve_case_insensitive (const string& path)
 {
   fs::path input_path (path);
+  std::error_code ec;
 
   // fast normalization
   input_path = input_path.lexically_normal();
 
   // resolve quickly if case matches exactly
-  if (fs::exists (input_path))
+  if (fs::exists (input_path, ec))
     return input_path.string();
+  if (ec)
+    return path; // fail -> caller will see open failed for path
 
   fs::path current;
 
   if (input_path.is_absolute())
     current = input_path.root_path();
   else
-    current = fs::current_path();
+    {
+      current = fs::current_path (ec);
+      if (ec)
+        return path;
+    }
 
   for (const auto& part : input_path.relative_path())
     {
       // if exact subpath exists, take it directly
       fs::path candidate = current / part;
-      if (fs::exists (candidate))
+      if (fs::exists (candidate, ec))
         {
           current = candidate;
           continue;
         }
+      if (ec)
+        return path;
 
       // otherwise fall back to case-insensitive search
-      if (!fs::exists (current) || !fs::is_directory (current))
+      if (!fs::is_directory (current, ec) || ec)
         return path; // fail -> caller will see open failed for path
 
       auto match = find_case_insensitive (current, part.string());
