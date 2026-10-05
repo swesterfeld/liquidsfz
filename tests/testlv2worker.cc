@@ -92,7 +92,7 @@ struct Host
   }
 
   void
-  run (bool note = false)
+  run (bool note = false, uint32_t midi_size = 3)
   {
     auto *sequence = reinterpret_cast<LV2_Atom_Sequence *> (midi.data());
     sequence->atom.type = map_uri (this, LV2_ATOM__Sequence);
@@ -103,12 +103,12 @@ struct Host
         auto *event = reinterpret_cast<LV2_Atom_Event *> (sequence + 1);
         event->time.frames = 0;
         event->body.type = map_uri (this, LV2_MIDI__MidiEvent);
-        event->body.size = 3;
+        event->body.size = midi_size;
         auto *msg = reinterpret_cast<uint8_t *> (event + 1);
         msg[0] = 0x90;
         msg[1] = 60;
         msg[2] = 100;
-        sequence->atom.size += sizeof (*event) + 8;
+        sequence->atom.size += sizeof (*event) + lv2_atom_pad_size (midi_size);
       }
     reinterpret_cast<LV2_Atom_Sequence *> (notify.data())->atom.size = notify.size();
     plugin->run (left.size());
@@ -145,6 +145,108 @@ struct Host
     worker->work_response (plugin.get(), 1, "");
   }
 };
+
+struct State
+{
+  Host& host;
+  std::string path;
+  bool have_program = false;
+  int32_t program = 0;
+  size_t program_size = sizeof (int32_t);
+  uint32_t program_type;
+  bool fail_mapping = false;
+  int stores = 0;
+  int fail_store = 0;
+  LV2_State_Map_Path map_path { this, map, map };
+  LV2_Feature feature { LV2_STATE__mapPath, &map_path };
+  const LV2_Feature *features[2] { &feature, nullptr };
+
+  State (Host& h, const std::string& filename) :
+    host (h), path (filename), program_type (h.urids.at (LV2_ATOM__Int))
+  {
+  }
+
+  static char *
+  map (LV2_State_Map_Path_Handle handle, const char *path)
+  {
+    auto& state = *static_cast<State *> (handle);
+    return state.fail_mapping ? nullptr : strdup (path);
+  }
+
+  static const void *
+  retrieve (LV2_State_Handle handle, uint32_t key, size_t *size, uint32_t *type, uint32_t *flags)
+  {
+    auto& state = *static_cast<State *> (handle);
+    *flags = LV2_STATE_IS_POD;
+    if (key == state.host.urids.at ("http://spectmorph.org/plugins/liquidsfz#sfzfile"))
+      {
+        *size = state.path.size() + 1;
+        *type = state.host.urids.at (LV2_ATOM__Path);
+        return state.path.data();
+      }
+    if (state.have_program)
+      {
+        *size = state.program_size;
+        *type = state.program_type;
+        return &state.program;
+      }
+    return nullptr;
+  }
+
+  static LV2_State_Status
+  store (LV2_State_Handle handle, uint32_t, const void *, size_t, uint32_t, uint32_t)
+  {
+    auto& state = *static_cast<State *> (handle);
+    return ++state.stores == state.fail_store ? LV2_STATE_ERR_NO_SPACE : LV2_STATE_SUCCESS;
+  }
+
+  LV2_State_Status restore() { return host.plugin->restore (retrieve, this, features); }
+};
+
+void
+test_payloads_and_state (const std::string& sine)
+{
+  // #56, F23: invalid messages must not use padding as MIDI data.
+  for (uint32_t size : { 0u, 1u, 2u, 4u })
+    {
+      Host host;
+      host.synchronous = true;
+      host.plugin->load_threadsafe (sine, 0);
+      host.run();
+      host.run (true, size);
+      assert (!host.audible());
+      host.run (true);
+      assert (host.audible());
+    }
+
+  Host state_host;
+  State state (state_host, sine);
+  const LV2_Feature *no_features[] = { nullptr };
+  assert (state_host.plugin->restore (State::retrieve, &state, no_features) == LV2_STATE_ERR_NO_FEATURE);
+  state.have_program = true;
+  state.program = 7;
+  state.fail_mapping = true;
+  assert (state.restore() == LV2_STATE_ERR_UNKNOWN);
+  state.fail_mapping = false;
+  assert (state.restore() == LV2_STATE_SUCCESS);
+  assert (state_host.plugin->filename() == sine && state_host.plugin->program() == state.program);
+  state.program_type = state_host.urids.at (LV2_ATOM__Path);
+  assert (state.restore() == LV2_STATE_ERR_BAD_TYPE);
+  assert (state_host.plugin->program() == state.program);
+  state.program_type = state_host.urids.at (LV2_ATOM__Int);
+  state.program_size = 1;
+  assert (state.restore() == LV2_STATE_ERR_BAD_TYPE);
+  assert (state_host.plugin->program() == state.program);
+
+  for (int fail : { 1, 2, 0 })
+    {
+      state.stores = 0;
+      state.fail_store = fail;
+      const auto result = state_host.plugin->save (State::store, &state, state.features);
+      assert (result == (fail ? LV2_STATE_ERR_NO_SPACE : LV2_STATE_SUCCESS));
+      assert (state.stores == (fail ? fail : 2));
+    }
+}
 
 int
 main()
@@ -193,6 +295,8 @@ main()
     host.run (true);
     assert (host.audible() && host.notified() && host.schedules == 2);
   }
+
+  test_payloads_and_state (sine);
 
   unlink (sine.c_str());
   unlink (silence.c_str());
