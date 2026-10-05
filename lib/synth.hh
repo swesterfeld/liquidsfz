@@ -715,6 +715,11 @@ public:
   void
   add_event_note_on (uint time_frames, int channel, int key, int velocity)
   {
+    if (velocity == 0)
+      {
+        add_event_note_off (time_frames, channel, key);
+        return;
+      }
     if (channel < 0 || uint (channel) >= channels_.size())
       {
         debug ("add_event_note_on: bad channel %d\n", channel);
@@ -730,11 +735,6 @@ public:
     if (velocity < 0 || velocity > 127)
       {
         debug ("add_event_note_on: bad velocity %d\n", velocity);
-        return;
-      }
-    if (velocity == 0)
-      {
-        add_event_note_off (time_frames, channel, key);
         return;
       }
     Event event;
