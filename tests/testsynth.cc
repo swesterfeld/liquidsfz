@@ -1580,6 +1580,97 @@ test_velocity_zero_note_off()
 }
 
 void
+test_key_metadata_and_switches()
+{
+  printf ("test key metadata and switches\n");
+  auto check_keys = [] (const string& regions, int first, int last, int switch_key = -1) {
+    write_sfz (regions);
+    Synth synth;
+    const bool loaded = synth.load ("testsynth.sfz");
+    assert (loaded);
+    const auto keys = synth.list_keys();
+    assert (keys.size() == size_t (last - first + 1));
+    for (size_t i = 0; i < keys.size(); i++)
+      {
+        assert (keys[i].key() == first + int (i));
+        assert (keys[i].is_switch() == (keys[i].key() == switch_key));
+        if (keys[i].is_switch())
+          assert (keys[i].label() == "Switch");
+      }
+  };
+  check_keys ("<region>sample=*sine", 0, 127);
+  check_keys ("<region>sample=*sine key=0", 0, 0);
+  check_keys ("<region>sample=*sine key=127", 127, 127);
+  check_keys ("<region>sample=*sine lokey=-10 hikey=2147483647", 0, 127);
+  check_keys ("<region>sample=*sine lokey=128 hikey=2147483647", 0, -1);
+  check_keys ("<region>sample=*sine lokey=10 hikey=9", 0, -1);
+  check_keys ("<control>octave_offset=1 <region>sample=*sine", 12, 127);
+  check_keys ("<control>octave_offset=-1 <region>sample=*sine", 0, 115);
+  const string normal = "<region>sample=*sine";
+  const string switched = "<region>sample=*sine sw_last=0 sw_label=Switch";
+  check_keys (normal + switched, 0, 127, 0);
+  check_keys (switched + normal, 0, 127, 0);
+
+  // Large switch endpoints must produce only MIDI keys, without a long loop.
+  write_sfz ("<region>sample=*sine sw_lolast=0 sw_hilast=2147483647");
+  {
+    Synth synth;
+    const bool loaded = synth.load ("testsynth.sfz");
+    assert (loaded);
+    const auto keys = synth.list_keys();
+    assert (keys.size() == 128);
+    for (size_t i = 0; i < keys.size(); i++)
+      {
+        assert (keys[i].key() == int (i));
+        assert (keys[i].is_switch());
+      }
+  }
+
+  for (int octave_offset : { -1, 0, 1 })
+    for (int switch_key : { 0, 12, 115, 127 })
+      {
+        const int external_switch = switch_key + octave_offset * 12;
+        if (external_switch < 0 || external_switch > 127)
+          continue;
+        for (bool use_default : { false, true })
+          {
+            write_sfz (string_printf ("<control>octave_offset=%d "
+                                     "<region>sample=*sine key=60 sw_lokey=0 sw_hikey=127 "
+                                     "sw_last=%d sw_default=%d sw_label=Switch",
+                                     octave_offset, switch_key, use_default ? switch_key : -1));
+            Synth synth;
+            const bool loaded = synth.load ("testsynth.sfz");
+            assert (loaded);
+            const auto keys = synth.list_keys();
+            assert (keys.size() == 2);
+            bool found_switch = false;
+            for (const auto& key : keys)
+              if (key.is_switch())
+                {
+                  assert (key.key() == external_switch);
+                  assert (key.label() == "Switch");
+                  found_switch = true;
+                }
+              else
+                assert (key.key() == 60 + octave_offset * 12);
+            assert (found_switch);
+
+            float left[64], right[64];
+            float *out[] = { left, right };
+            const int note = 60 + octave_offset * 12;
+            synth.add_event_note_on (0, 0, note, 100);
+            synth.process (out, 64);
+            assert (synth.active_voice_count() == (use_default ? 1u : 0u));
+            synth.all_sound_off();
+            synth.add_event_note_on (0, 0, external_switch, 100);
+            synth.add_event_note_on (0, 0, note, 100);
+            synth.process (out, 64);
+            assert (synth.active_voice_count() == 1);
+          }
+      }
+}
+
+void
 test_sample_overrides()
 {
   // #56, F16: each sample opcode replaces both file and generator selection.
@@ -1644,6 +1735,7 @@ test_sample_overrides()
 int
 main (int argc, char **argv)
 {
+  test_key_metadata_and_switches();
   test_sample_overrides();
   test_filesystem_load_errors();
   test_velocity_zero_note_off();
