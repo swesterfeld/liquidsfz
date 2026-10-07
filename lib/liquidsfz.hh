@@ -87,7 +87,7 @@ public:
   ~KeyInfo();
 
   /**
-   * @returns midi key number (1-127)
+   * @returns midi key number (0-127)
    */
   int key() const;
 
