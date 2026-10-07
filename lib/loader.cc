@@ -1538,14 +1538,13 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
       curve_table.expand_curve (region.amp_velcurve);
 
       /* generate entries for regular notes */
-      if (region.lokey > 0)
-        for (int key = region.lokey; key <= region.hikey; key++)
-          update_key_info (key).is_switch = false;
+      for (int key = std::max (region.lokey, 0); key <= std::min (region.hikey, 127); key++)
+        update_key_info (key); // Preserve switch metadata from other regions.
 
       /* generate entries for key switches */
-      if (region.sw_lolast > 0)
+      if (region.sw_lolast >= 0)
         {
-          for (int key = region.sw_lolast; key <= region.sw_hilast; key++)
+          for (int key = region.sw_lolast; key <= std::min (region.sw_hilast, 127); key++)
             {
               KeyInfo& ki = update_key_info (key);
               ki.is_switch = true;

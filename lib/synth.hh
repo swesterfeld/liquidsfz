@@ -249,9 +249,13 @@ public:
         global_->sample_cache.cleanup_post_load();
 
         is_key_switch_.fill (false);
-        for (auto k : key_list_)
-          if (k.is_switch && k.key >= 0 && uint (k.key) < is_key_switch_.size())
-            is_key_switch_[k.key] = true;
+        for (const auto& k : key_list_)
+          {
+            // apply octave offset transpose (like in note_on, note_off, ...)
+            const int key = k.key - control_.octave_offset * 12;
+            if (k.is_switch && key >= 0 && uint (key) < is_key_switch_.size())
+              is_key_switch_[key] = true;
+          }
 
         is_supported_cc_.fill (false);
         for (auto c : cc_list_)
