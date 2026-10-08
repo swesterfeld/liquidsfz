@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <random>
+#include <stdexcept>
 #include <unistd.h>
 
 #include <sndfile.h>
@@ -1472,10 +1474,21 @@ test_filesystem_load_errors()
   // #56, F20: filesystem lookup failures must not escape the loading API.
   printf ("test filesystem load errors\n");
   namespace fs = std::filesystem;
-  char dir_template[] = "/tmp/liquidsfz-paths-XXXXXX";
-  const char *dir = mkdtemp (dir_template);
-  assert (dir);
-  const fs::path root (dir);
+  const fs::path root = [] {
+    const auto temp = fs::temp_directory_path();
+    std::random_device random;
+    for (int attempt = 0; attempt < 100; attempt++)
+      {
+        const auto path = temp / ("liquidsfz-paths-" + std::to_string (random()));
+        std::error_code ec;
+        if (fs::create_directory (path, ec))
+          return path;
+        // An existing file or directory is a collision; retry with a new name.
+        if (ec && ec != std::errc::file_exists)
+          throw fs::filesystem_error ("create test directory", path, ec);
+      }
+    throw std::runtime_error ("unable to create unique test directory");
+  }();
   std::ofstream (root / "file") << "not a directory\n";
   std::ofstream (root / "Valid.sfz") << "<region>sample=*sine\n";
   vector<string> bad_paths = { "missing", "file/child" };
