@@ -242,7 +242,7 @@ Sample::load()
 {
   update_preload_and_read_ahead();
 
-  size_t load_end = min (max_buffer_index_.load() + n_read_ahead_buffers_, buffers_.size());
+  size_t load_end = min (max (n_preload_buffers_, max_buffer_index_.load() + n_read_ahead_buffers_), buffers_.size());
 
   while (load_index_ < load_end)
     {
@@ -380,6 +380,11 @@ SampleCache::load (const string& filename, uint preload_time_ms, uint offset)
         {
           result.sample = cached_sample;
           result.preload_info = cached_sample->add_preload (preload_time_ms, offset);
+
+          // Satisfy the new preload before returning, even if the sample is idle.
+          // mutex_ serializes this with background loading and cache eviction;
+          // load_buffer() publishes new buffers atomically for existing voices.
+          cached_sample->load();
 
           return result;
         }
