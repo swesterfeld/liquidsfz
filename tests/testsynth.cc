@@ -17,6 +17,7 @@
 #include "log.hh"
 #include "utils.hh"
 #include "config.h"
+#include "samplecache.hh"
 
 #if HAVE_FFTW
 #include <fftw3.h>
@@ -1732,10 +1733,84 @@ test_sample_overrides()
       }
 }
 
+void
+test_cached_sample_preload()
+{
+  printf ("test enlarged preload on cache hits\n");
+  write_sample (vector<float> (441000, 0.25), 44100);
+
+  // Inspect the new prefix before starting playback, so the background loader
+  // cannot hide a missing synchronous preload.
+  for (bool use_offset : { false, true })
+    {
+      using namespace LiquidSFZInternal;
+      SampleCache cache;
+      auto first = cache.load ("testsynth.wav", 1, 0);
+      assert (first.sample);
+      auto second = cache.load ("testsynth.wav", use_offset ? 1 : 5000, use_offset ? 220500 : 0);
+      assert (second.sample == first.sample);
+      assert (cache.cache_size() >= 220501 * sizeof (float));
+      Sample::PlayHandle handle;
+      handle.start_playback (second.sample.get(), true);
+      assert (handle.get (220500) == 0.25f);
+      assert (cache.cache_miss_count() == 0);
+    }
+
+  auto render_note = [] (Synth& synth, int key) {
+    vector<float> left (64), right (64);
+    float *out[] = { left.data(), right.data() };
+    synth.add_event_note_on (0, 0, key, 127);
+    synth.process (out, left.size());
+    assert (synth.active_voice_count() > 0);
+    assert (peak (left) > 0);
+    assert (synth.cache_miss_count() == 0);
+  };
+  const string early = "<region>sample=testsynth.wav key=60 offset=0 ";
+  const string late = "<region>sample=testsynth.wav key=61 offset=220500 ";
+  for (bool reverse : { false, true })
+    {
+      write_sfz (reverse ? late + early : early + late);
+      Synth synth;
+      synth.set_sample_rate (44100);
+      synth.set_preload_time (1);
+      synth.set_live_mode (true);
+      const bool loaded = synth.load ("testsynth.sfz");
+      assert (loaded);
+      render_note (synth, 61);
+      render_note (synth, 60);
+    }
+
+  // A second synth can extend a sample that the first is already playing.
+  {
+    Synth first, second;
+    for (Synth *synth : { &first, &second })
+      {
+        synth->set_sample_rate (44100);
+        synth->set_preload_time (1);
+        synth->set_live_mode (true);
+      }
+    write_sfz (early);
+    bool loaded = first.load ("testsynth.sfz");
+    assert (loaded);
+    render_note (first, 60);
+    write_sfz (late);
+    loaded = second.load ("testsynth.sfz");
+    assert (loaded);
+    render_note (second, 61);
+    float left[64], right[64];
+    float *out[] = { left, right };
+    first.process (out, 64);
+    assert (first.active_voice_count() == 1);
+    assert (left[63] != 0);
+    assert (first.cache_miss_count() == 0);
+  }
+}
+
 int
 main (int argc, char **argv)
 {
   test_key_metadata_and_switches();
+  test_cached_sample_preload();
   test_sample_overrides();
   test_filesystem_load_errors();
   test_velocity_zero_note_off();
