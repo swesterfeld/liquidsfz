@@ -157,11 +157,10 @@ LV2UI::on_event (const PuglEvent *event)
       case PUGL_BUTTON_PRESS:
       case PUGL_BUTTON_RELEASE:
         {
-          int button = 0;
-          if (event->button.button == 1) button = 0;      // Left
-          else if (event->button.button == 2) button = 2; // Middle
-          else if (event->button.button == 3) button = 1; // Right
-          io.AddMouseButtonEvent (button, event->type == PUGL_BUTTON_PRESS);
+          // Pugl and ImGui both use 0=left, 1=right, 2=middle.
+          const auto button = event->button.button;
+          if (button < ImGuiMouseButton_COUNT)
+            io.AddMouseButtonEvent (button, event->type == PUGL_BUTTON_PRESS);
           redraw();
           break;
         }
