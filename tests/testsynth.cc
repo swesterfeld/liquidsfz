@@ -1748,6 +1748,45 @@ test_sample_overrides()
 }
 
 void
+test_sample_eviction_request()
+{
+  printf ("test playback starting after eviction selection\n");
+  using namespace LiquidSFZInternal;
+  write_sample (vector<float> (441000, 0.25), 44100);
+  SampleCache cache;
+  // Keep this sample outside the cache's background list so the ordering below
+  // is deterministic. This thread performs all loader/eviction operations.
+  Sample sample (&cache);
+  auto preload = sample.add_preload (1, 0);
+  const bool loaded = sample.preload ("testsynth.wav");
+  assert (loaded);
+  assert (!sample.playing()); // The cache could select it for eviction here.
+
+  Sample::PlayHandle reader;
+  reader.start_playback (&sample, true);
+  const float missing = reader.get (220500); // Publish a request beyond preload.
+  assert (missing == 0);
+  sample.unload(); // Act on the stale eviction selection after playback starts.
+  sample.load();
+
+  // A fresh handle avoids the failed-lookup backoff in the requesting handle.
+  Sample::PlayHandle check;
+  check.start_playback (&sample, true);
+  assert (check.get (220500) == 0.25f);
+  const size_t playing_size = cache.cache_size();
+  check.end_playback();
+  reader.end_playback();
+
+  // Once idle, eviction must still discard the streamed data.
+  sample.unload();
+  sample.free_unused_data();
+  assert (cache.cache_size() < playing_size);
+  check.start_playback (&sample, true);
+  assert (check.get (0) == 0.25f);
+  assert (check.get (220500) == 0);
+}
+
+void
 test_cached_sample_preload()
 {
   printf ("test enlarged preload on cache hits\n");
@@ -1823,6 +1862,7 @@ test_cached_sample_preload()
 int
 main (int argc, char **argv)
 {
+  test_sample_eviction_request();
   test_key_metadata_and_switches();
   test_cached_sample_preload();
   test_sample_overrides();
