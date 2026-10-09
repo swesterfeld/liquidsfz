@@ -354,6 +354,7 @@ test_tiny_loop()
                   amag_max);
               assert (db (partials[0].mag) >= -0.3 && db (partials[0].mag) < 0);
               assert (fabs (partials[0].freq - f_expect) < 0.01);
+              assert (db (partials[1].mag) < amag_max);
             }
         }
     }
@@ -1097,7 +1098,7 @@ test_width()
       assert (fabs (l440 - xl440) < 0.01);
       assert (fabs (r440 - xr440) < 0.01);
       assert (fabs (l1000 - xl1000) < 0.01);
-      assert (fabs (l1000 - xl1000) < 0.01);
+      assert (fabs (r1000 - xr1000) < 0.01);
     };
   width_test (200,  1.5,  0.5,  0.5,  1.5);
   width_test (100,  1,    0,    0,    1);
