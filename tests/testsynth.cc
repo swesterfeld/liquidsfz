@@ -1747,6 +1747,18 @@ test_sample_overrides()
       }
 }
 
+namespace LiquidSFZInternal
+{
+struct SampleCacheTestAccess
+{
+  static std::unique_lock<std::mutex>
+  lock (SampleCache& cache)
+  {
+    return std::unique_lock<std::mutex> (cache.mutex_);
+  }
+};
+}
+
 void
 test_sample_eviction_request()
 {
@@ -1754,6 +1766,9 @@ test_sample_eviction_request()
   using namespace LiquidSFZInternal;
   write_sample (vector<float> (441000, 0.25), 44100);
   SampleCache cache;
+  // Direct sample operations share the file pool with background cleanup.
+  // Hold the cache lock until after the sample and its handles are destroyed.
+  auto cache_lock = SampleCacheTestAccess::lock (cache);
   // Keep this sample outside the cache's background list so the ordering below
   // is deterministic. This thread performs all loader/eviction operations.
   Sample sample (&cache);
