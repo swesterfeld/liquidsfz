@@ -367,6 +367,8 @@ typedef std::shared_ptr<Sample> SampleP;
 
 class SampleCache
 {
+  friend struct SampleCacheTestAccess;
+
 private:
   std::vector<std::weak_ptr<Sample>> cache_;
   std::mutex          mutex_;
