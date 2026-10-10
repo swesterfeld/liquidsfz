@@ -265,6 +265,16 @@ Sample::load()
 void
 Sample::unload()
 {
+  // Playback may have started since the cache selected this sample. Reset the
+  // request position before checking: readers starting after the check must
+  // not have their new requests overwritten by eviction.
+  const int old_max_buffer_index = max_buffer_index_.exchange (0);
+  if (playing())
+    {
+      update_max_buffer_index (old_max_buffer_index);
+      return;
+    }
+
   update_preload_and_read_ahead();
 
   /* read-copy-update (RCU) pattern to allow accesses from multiple threads without locks
@@ -290,7 +300,6 @@ Sample::unload()
   free_functions_.push_back (free_function);
 
   unload_possible_ = false;
-  max_buffer_index_ = 0;
   load_index_ = 0;
 }
 
