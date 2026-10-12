@@ -6,6 +6,7 @@
 #include "sfzreader.hh"
 
 #include <algorithm>
+#include <limits>
 #include <regex>
 
 #include <assert.h>
@@ -1470,7 +1471,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
 
       if (region.generator == Generator::NONE) /* load sample */
         {
-          uint max_offset = region.offset + region.offset_random + lrint (get_cc_vec_max (region.offset_cc));
+          const double offset_bound = double (region.offset) + region.offset_random + ceil (get_cc_vec_max (region.offset_cc));
+          // clamp from double to uint, using std::min maps NaN to upper bound
+          const uint max_offset = std::max (0.0, std::min (double (std::numeric_limits<uint>::max()), offset_bound));
 
           const auto load_result = sample_cache.load (region.sample, synth_->preload_time(), max_offset);
           region.cached_sample = load_result.sample;
@@ -1599,23 +1602,27 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
 }
 
 float
-Loader::get_cc_curve_max (const CCParamVec::Entry& entry)
+Loader::get_cc_entry_max (const CCParamVec::Entry& entry)
 {
+  if (entry.cc == Synth::EXT_CC_RANDOM_BIPOLAR)
+    return fabs (entry.value);
+  if (entry.cc > 127 && !Synth::is_supported_ext_cc (entry.cc))
+    return 0;
   int curvecc = entry.curvecc;
   if (curvecc >= 0 && curvecc < int (curves.size()))
     {
       if (!curves[curvecc].empty())
         {
-          /* find maximum factor for the curve */
-          float max_factor = 0;
+          /* Include the sign of the modulation amount when finding the maximum. */
+          float max_value = 0;
 
           for (int cc_value = 0; cc_value < 128; cc_value++)
-            max_factor = std::max (max_factor, curves[entry.curvecc].get (cc_value));
+            max_value = std::max (max_value, curves[entry.curvecc].get (cc_value) * entry.value);
 
-          return max_factor;
+          return max_value;
         }
     }
-  return 1;
+  return std::max (0.f, entry.value);
 }
 
 float
@@ -1623,7 +1630,7 @@ Loader::get_cc_vec_max (const CCParamVec& cc_param_vec)
 {
   float max_value = 0;
   for (const auto& entry : cc_param_vec)
-    max_value += get_cc_curve_max (entry) * entry.value;
+    max_value += get_cc_entry_max (entry);
 
   return max_value;
 }

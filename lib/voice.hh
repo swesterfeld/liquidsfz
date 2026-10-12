@@ -14,11 +14,11 @@ class SampleReader
 {
   Sample::PlayHandle *play_handle_ = nullptr;
   const Sample *cached_sample_ = nullptr;
-  int relative_pos_ = 0;
-  int end_pos_ = 0;
+  sample_count_t relative_pos_ = 0;
+  sample_count_t end_pos_ = 0;
   int channels_ = 0;
-  int loop_start_ = -1;
-  int loop_end_ = -1;
+  sample_count_t loop_start_ = -1;
+  sample_count_t loop_end_ = -1;
   int loop_count_ = INT_MAX;
   int loop_iteration_ = 0;
   int region_end_ = 0;
@@ -27,7 +27,7 @@ class SampleReader
   int upsample_buffer_size_ = 0;
   static constexpr int MAX_UPSAMPLE_BUFFER_SIZE = 10;
   std::array<float, MAX_UPSAMPLE_BUFFER_SIZE * 4> samples_; // max: 2x upsampling, stereo
-  int last_index_ = -1000;
+  sample_count_t last_index_ = -1000;
 public:
   void
   restart (Sample::PlayHandle *play_handle, const Sample *cached_sample, int upsample, int region_end)
@@ -65,7 +65,7 @@ public:
   }
 
   template<int UPSAMPLE, int CHANNELS, int INTERP_POINTS>
-  const float *skip (int pos);
+  const float *skip (sample_count_t delta);
 
   bool
   done()
