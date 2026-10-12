@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include <array>
+#include <limits>
 
 #include "voice.hh"
 #include "synth.hh"
@@ -156,11 +157,13 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   if (region.generator == Generator::NONE)
     {
       /* play start position */
-      uint offset = region.offset;
-      offset += lrint (region.offset_random * synth_->normalized_random_value());
-      offset += lrint (synth_->get_cc_vec_value (this, region.offset_cc));
+      double offset = region.offset;
+      offset += rint (double (region.offset_random) * synth_->normalized_random_value());
+      offset += rint (synth_->get_cc_vec_value (this, region.offset_cc));
+      // clamp from double to uint, using std::min maps NaN to upper bound
+      offset = std::max (0.0, std::min (double (std::numeric_limits<uint>::max()), offset));
       ppos_ = offset * upsample;
-      if (ppos_ > region.loop_end * upsample)
+      if (offset > region.loop_end)
         loop_enabled_ = false;
 
       last_ippos_ = 0;
