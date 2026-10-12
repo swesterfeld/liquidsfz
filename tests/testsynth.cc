@@ -1874,9 +1874,99 @@ test_cached_sample_preload()
   }
 }
 
-int
-main (int argc, char **argv)
+void
+test_offset_bounds()
 {
+  printf ("test offset bounds (#56, I03)\n");
+  for (int channels : { 1, 2 })
+    {
+      vector<float> samples (4096 * channels);
+      for (size_t i = 0; i < samples.size(); i++)
+        samples[i] = 0.2 + 0.1 * sin (double (i / channels) * 0.1);
+      write_sample (samples, 44100, channels);
+      for (int quality : { 1, 2, 3 })
+        {
+          auto render = [&] (const string& opcodes, bool silent = false, bool interpolation_tail = false) {
+            write_sfz ("<control>set_cc1=127 <region>sample=testsynth.wav "
+                       "loop_mode=loop_continuous loop_start=1000 loop_end=2000 " + opcodes);
+            Synth synth;
+            synth.set_sample_rate (44100);
+            synth.set_sample_quality (quality);
+            synth.set_live_mode (false);
+            const bool loaded = synth.load ("testsynth.sfz");
+            assert (loaded);
+            vector<float> left (128), right (128);
+            float *out[] = { left.data(), right.data() };
+            synth.add_event_note_on (0, 0, 60, 127);
+            synth.process (out, left.size());
+            for (auto channel : { &left, &right })
+              for (size_t i = 0; i < channel->size(); i++)
+                {
+                  const float value = (*channel)[i];
+                  assert (std::isfinite (value));
+                  if (silent && (!interpolation_tail || i >= 32))
+                    assert (value == 0);
+                }
+            assert (silent ? synth.active_voice_count() == 0 : peak (left) > 0);
+            return left;
+          };
+          assert (render ("offset_oncc1=-100") == render ("offset=0"));
+          assert (render ("offset=1000 offset_oncc1=-100") == render ("offset=900"));
+          assert (render ("offset=4294967295 offset_oncc1=-4294967296") == render ("offset=0"));
+          render ("offset=4294967000", true);
+          render ("offset=2147483648", true); // used to wrap to zero when upsampled
+          render ("offset=4294967295 offset_oncc1=1", true);
+          render ("offset=4294967000 offset_random=4294967295", true);
+          // Starts just past the end may still read the interpolator's short tail.
+          render ("offset=4096", true, true);
+          render ("offset=1001 end=1000", true, true);
+          render ("offset_oncc1=1e30", true);
+          render ("offset_oncc1=1e100", true); // positive infinity after float conversion
+          render ("offset_oncc2=1e100", true); // zero CC times infinity produces NaN
+          assert (render ("offset_oncc1=-1e100") == render ("offset=0"));
+          render ("offset=4095");
+          render ("offset=1000 end=1000"); // end is inclusive
+        }
+
+      // Check the cache boundary directly, including its legitimate zero padding.
+      using namespace LiquidSFZInternal;
+      SampleCache cache;
+      auto loaded = cache.load ("testsynth.wav", 500, 0);
+      assert (bool (loaded.sample));
+      for (sample_count_t pos : { -65LL * channels, -320LL * channels, 1LL << 40 })
+        {
+          Sample::PlayHandle handle;
+          handle.start_playback (loaded.sample.get(), false);
+          assert (handle.get (pos) == 0);
+        }
+      Sample::PlayHandle handle;
+      handle.start_playback (loaded.sample.get(), false);
+      assert (handle.get (-64 * channels) == 0);
+      assert (handle.get (0) == samples[0]);
+    }
+
+  // Inspect preload before note-on so background streaming cannot hide a short prefix.
+  write_sample (vector<float> (441000, 0.25f), 44100);
+  for (const string opcodes : {
+         "<region>offset=220500 offset_oncc1=-220500",
+         "<curve>curve_index=7 v000=-1 v127=0 <region>offset_oncc1=-220500 offset_curvecc1=7",
+         "<region>offset_oncc136=-220500",
+         "<region>offset=4294967295 offset_random=1",
+         "<region>offset=4294967295 offset_oncc1=1" })
+    {
+      write_sfz ("<global>sample=testsynth.wav " + opcodes);
+      Synth synth;
+      synth.set_preload_time (1);
+      const bool loaded = synth.load ("testsynth.sfz");
+      assert (loaded);
+      assert (synth.cache_size() >= 220501 * sizeof (float));
+    }
+}
+
+int
+main()
+{
+  test_offset_bounds();
   test_sample_eviction_request();
   test_key_metadata_and_switches();
   test_cached_sample_preload();
