@@ -104,11 +104,6 @@ private:
   static constexpr int CC_ALL_SOUND_OFF = 120;
   static constexpr int CC_ALL_NOTES_OFF = 123;
 
-  static constexpr int EXT_CC_NOTE_ON_VELOCITY = 131;
-  static constexpr int EXT_CC_NOTE_KEY         = 133;
-  static constexpr int EXT_CC_RANDOM_UNIPOLAR  = 135;
-  static constexpr int EXT_CC_RANDOM_BIPOLAR   = 136;
-
   std::array<float, MAX_BLOCK_SIZE> const_block_0_, const_block_1_;
 
   void
@@ -659,6 +654,11 @@ public:
       }
     return value;
   }
+  static constexpr int EXT_CC_NOTE_ON_VELOCITY = 131;
+  static constexpr int EXT_CC_NOTE_KEY         = 133;
+  static constexpr int EXT_CC_RANDOM_UNIPOLAR  = 135;
+  static constexpr int EXT_CC_RANDOM_BIPOLAR   = 136;
+
   static bool
   is_supported_ext_cc (int cc)
   {
