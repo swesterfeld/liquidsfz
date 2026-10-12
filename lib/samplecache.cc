@@ -16,7 +16,17 @@ namespace LiquidSFZInternal {
 bool
 Sample::PlayHandle::lookup (sample_count_t pos)
 {
-  const sample_count_t buffer_index = (pos + SampleBuffer::frames_overlap * sample_->channels_) / (SampleBuffer::frames_per_buffer * sample_->channels_);
+  /* negative positions inside the padding are valid interpolation reads, but
+   * anything below isn't (and could incorrectly select buffer zero and crash)
+   */
+  const sample_count_t padding = SampleBuffer::frames_overlap * sample_->channels_;
+  if (pos < -padding)
+    {
+      samples_ = nullptr;
+      start_pos_ = end_pos_ = 0;
+      return false;
+    }
+  const sample_count_t buffer_index = (pos + padding) / (SampleBuffer::frames_per_buffer * sample_->channels_);
   if (buffer_index >= 0 && size_t (buffer_index) < sample_->buffers_.size())
     {
       sample_->update_max_buffer_index (buffer_index);
