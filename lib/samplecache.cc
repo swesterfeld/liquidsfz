@@ -16,8 +16,8 @@ namespace LiquidSFZInternal {
 bool
 Sample::PlayHandle::lookup (sample_count_t pos)
 {
-  int buffer_index = (pos + SampleBuffer::frames_overlap * sample_->channels_) / (SampleBuffer::frames_per_buffer * sample_->channels_);
-  if (buffer_index >= 0 && buffer_index < int (sample_->buffers_.size()))
+  const sample_count_t buffer_index = (pos + SampleBuffer::frames_overlap * sample_->channels_) / (SampleBuffer::frames_per_buffer * sample_->channels_);
+  if (buffer_index >= 0 && size_t (buffer_index) < sample_->buffers_.size())
     {
       sample_->update_max_buffer_index (buffer_index);
 

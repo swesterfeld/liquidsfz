@@ -645,7 +645,7 @@ Voice::process_impl (float **orig_outputs, uint orig_n_frames)
           if (!sample_reader_.done() && !envelope_.done())
             {
               const int64_t ippos = ppos_;
-              const int delta_pos = ippos - last_ippos_;
+              const int64_t delta_pos = ippos - last_ippos_;
               const float frac = ppos_ - ippos;
               last_ippos_ = ippos;
 
@@ -905,7 +905,7 @@ Voice::process_width (float *out_l, float *out_r, uint n_frames)
 
 template<int UPSAMPLE, int CHANNELS, int INTERP_POINTS>
 inline const float *
-SampleReader::skip (int delta)
+SampleReader::skip (sample_count_t delta)
 {
   relative_pos_ += delta;
 
@@ -945,7 +945,7 @@ SampleReader::skip (int delta)
         return true;
       return false;
     };
-  auto play_handle_get = [&] (int pos)
+  auto play_handle_get = [&] (sample_count_t pos)
     {
       if (pos / CHANNELS > region_end_)
         return 0.f;
@@ -954,7 +954,7 @@ SampleReader::skip (int delta)
     };
   if constexpr (UPSAMPLE == 1)
     {
-      const int start_x = relative_pos_ - (INTERP_POINTS - 2) / 2;
+      const sample_count_t start_x = relative_pos_ - (INTERP_POINTS - 2) / 2;
       const float *samples = nullptr;
 
       if (!close_to_loop_point_or_region_end (INTERP_POINTS))
@@ -968,7 +968,7 @@ SampleReader::skip (int delta)
         {
           for (int i = 0; i < INTERP_POINTS; i++)
             {
-              int x = start_x + i;
+              sample_count_t x = start_x + i;
               if (in_loop)
                 {
                   while (x < loop_start_ && !loop_first_)
@@ -994,7 +994,7 @@ SampleReader::skip (int delta)
 
       if (!close_to_loop_point_or_region_end (N))
         {
-          const int start_x = (relative_pos_ / 2 * CHANNELS) - N * CHANNELS;
+          const sample_count_t start_x = (relative_pos_ / 2 * CHANNELS) - N * CHANNELS;
           input = play_handle_->get_n (start_x, N * 2 * CHANNELS);
         }
 
@@ -1003,7 +1003,7 @@ SampleReader::skip (int delta)
         {
           for (int n = 0; n < N * 2; n++)
             {
-              int x = (relative_pos_ / 2) + n - N;
+              sample_count_t x = (relative_pos_ / 2) + n - N;
 
               if (in_loop)
                 {
@@ -1021,7 +1021,7 @@ SampleReader::skip (int delta)
         }
       input += N * CHANNELS;
 
-      int diff = relative_pos_ / 2 - last_index_;
+      sample_count_t diff = relative_pos_ / 2 - last_index_;
       if (diff >= 0 && diff < upsample_buffer_size_ - 2)
         {
           // samples are already in upsample buffer
@@ -1030,7 +1030,7 @@ SampleReader::skip (int delta)
         {
           last_index_ = relative_pos_ / 2;
 
-          int i = upsample_buffer_size_ - diff;
+          sample_count_t i = upsample_buffer_size_ - diff;
           if (i > 0 && i < 3)
             {
               /* we are at the end of the upsample buffer and there is some overlap
