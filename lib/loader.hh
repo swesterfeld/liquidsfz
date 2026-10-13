@@ -2,9 +2,11 @@
 
 #pragma once
 
-#include <string>
-#include <set>
+#include <algorithm>
 #include <climits>
+#include <cstdlib>
+#include <set>
+#include <string>
 
 #include "log.hh"
 #include "samplecache.hh"
@@ -522,7 +524,8 @@ public:
   unsigned int
   convert_uint (const std::string& s)
   {
-    return strtoul (s.c_str(), nullptr, 10);
+    const long long value = strtoll (s.c_str(), nullptr, 10);
+    return static_cast<unsigned int> (std::clamp<long long> (value, 0, UINT_MAX)); // saturate
   }
   float
   convert_float (const std::string& s)
