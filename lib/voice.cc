@@ -69,17 +69,20 @@ Voice::update_replay_speed (bool now)
 
   semi_tones += synth_->get_cc_vec_value (this, region_->tune_cc) * 0.01; // tune_oncc
 
+  float speed;
   if (region_->generator == Generator::NOISE || region_->generator == Generator::SILENCE)
     return;
   else if (region_->generator == Generator::SINE)
     {
       semi_tones += region_->pitch_keycenter - 69;
-      replay_speed_.set (exp2f (semi_tones / 12) * 440 * SIN_TABLE_SIZE / sample_rate_, now);
+      speed = exp2f (semi_tones / 12) * 440 * SIN_TABLE_SIZE / sample_rate_;
     }
   else
     {
-      replay_speed_.set (exp2f (semi_tones / 12) * region_->cached_sample->sample_rate() / sample_rate_, now);
+      speed = exp2f (semi_tones / 12) * region_->cached_sample->sample_rate() / sample_rate_;
     }
+  // Bound position increments; ordered min/max also maps NaN to the cap.
+  replay_speed_.set (std::max (0.0f, std::min (65536.0f, speed)), now);
 }
 
 uint

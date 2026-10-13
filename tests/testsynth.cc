@@ -1875,6 +1875,55 @@ test_cached_sample_preload()
 }
 
 void
+test_pitch_caps()
+{
+  printf ("test pitch caps (#56, I03)\n");
+  for (int channels : { 1, 2 })
+    {
+      write_sample (vector<float> (4096 * channels, 0.25f), 48000, channels);
+      for (const string sample : { "testsynth.wav", "*sine" })
+        for (int quality : { 1, 2, 3 })
+          for (int block_size : { 1, 17, 64, 1024 })
+            for (const string pitch : {
+                   "transpose=2000", // infinite replay speed
+                   "transpose=768",  // finite position outside the integer range
+                   "lfo1_freq=1 lfo1_pitch=1e30 lfo1_phase=0.25",
+                   "transpose=2000 lfo1_freq=1 lfo1_pitch=1e30 lfo1_phase=0.25",
+                   "transpose=-2000 lfo1_freq=1 lfo1_pitch=1e30 lfo1_phase=0.25", // 0 * inf
+                   "tune_oncc1=1e100", // zero CC times an infinite amount
+                   "tune_oncc1=1000000" })
+              {
+                write_sfz ("<region>sample=" + sample + " loop_mode=no_loop " + pitch);
+                Synth synth;
+                synth.set_sample_rate (48000);
+                synth.set_sample_quality (quality);
+                synth.set_live_mode (false);
+                const bool loaded = synth.load ("testsynth.sfz");
+                assert (loaded);
+                float left[1024], right[1024];
+                float *out[] = { left, right };
+                auto render = [&] {
+                  synth.process (out, block_size);
+                  for (int i = 0; i < block_size; i++)
+                    assert (std::isfinite (left[i]) && std::isfinite (right[i]));
+                };
+                synth.add_event_note_on (0, 0, 60, 127);
+                render();
+                if (pitch == "tune_oncc1=1000000")
+                  {
+                    assert (synth.active_voice_count() == 1);
+                    synth.add_event_cc (0, 0, 1, 127);
+                    render();
+                  }
+                for (int i = 0; i < 8; i++)
+                  render();
+                if (sample == "*sine")
+                  assert (synth.active_voice_count() == 1);
+              }
+    }
+}
+
+void
 test_offset_bounds()
 {
   printf ("test offset bounds (#56, I03)\n");
@@ -1966,6 +2015,7 @@ test_offset_bounds()
 int
 main()
 {
+  test_pitch_caps();
   test_offset_bounds();
   test_sample_eviction_request();
   test_key_metadata_and_switches();
