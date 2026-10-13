@@ -117,7 +117,8 @@ LFOGen::post_function (float value)
 {
   switch (T)
   {
-    case PITCH:   return exp2f (value);
+    // Cap before smoothing so infinity/NaN cannot contaminate its state.
+    case PITCH:   return std::min (2048.0f, exp2f (value));
     case VOLUME:  return db_to_factor (value);
     case CUTOFF:  return exp2f (value);
   }
