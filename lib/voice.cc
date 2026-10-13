@@ -930,14 +930,12 @@ SampleReader::skip (sample_count_t delta)
 
           relative_pos_ = int64_t (relative_pos_) - wraps * loop_length;
           loop_iteration_ += int (wraps);
+          if (loop_iteration_ == loop_count_)
+            loop_last_ = true;
           if (wraps < wraps_needed)
             {
               stop_loop();
               in_loop = false;
-            }
-          else if (loop_iteration_ == loop_count_)
-            {
-              loop_last_ = true;
             }
           if (wraps)
             loop_first_ = false;
