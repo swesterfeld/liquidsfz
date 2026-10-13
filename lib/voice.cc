@@ -920,23 +920,25 @@ SampleReader::skip (sample_count_t delta)
     {
       in_loop = (relative_pos_ >= loop_start_ * UPSAMPLE);
 
-      while (relative_pos_ > loop_end_ * UPSAMPLE)
+      if (relative_pos_ > loop_end_ * UPSAMPLE)
         {
+          const int64_t loop_length = (int64_t (loop_end_) - loop_start_ + 1) * UPSAMPLE;
+          const int64_t distance = int64_t (relative_pos_) - int64_t (loop_end_) * UPSAMPLE;
+          const int64_t wraps_needed = (distance - 1) / loop_length + 1;
+          const int64_t wraps_left = loop_count_ - loop_iteration_;
+          const int64_t wraps = std::min (wraps_needed, wraps_left);
+
+          relative_pos_ = int64_t (relative_pos_) - wraps * loop_length;
+          loop_iteration_ += int (wraps);
           if (loop_iteration_ == loop_count_)
+            loop_last_ = true;
+          if (wraps < wraps_needed)
             {
               stop_loop();
               in_loop = false;
-              break;
             }
-          else
-            {
-              relative_pos_ -= (loop_end_ - loop_start_ + 1) * UPSAMPLE;
-
-              loop_first_ = false;
-              loop_iteration_++;
-              if (loop_iteration_ == loop_count_)
-                loop_last_ = true;
-            }
+          if (wraps)
+            loop_first_ = false;
         }
     }
 

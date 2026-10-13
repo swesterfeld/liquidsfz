@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include <sndfile.h>
+#include <array>
 #include <vector>
 #include <algorithm>
 
@@ -1960,9 +1961,11 @@ test_offset_bounds()
             return left;
           };
           assert (render ("offset_oncc1=-100") == render ("offset=0"));
+          assert (render ("offset=-1 offset_random=-2") == render ("offset=0"));
           assert (render ("offset=1000 offset_oncc1=-100") == render ("offset=900"));
           assert (render ("offset=4294967295 offset_oncc1=-4294967296") == render ("offset=0"));
           render ("offset=4294967000", true);
+          render ("offset=4294967296", true); // unsigned overflow must saturate, not wrap
           render ("offset=2147483648", true); // used to wrap to zero when upsampled
           render ("offset=4294967295 offset_oncc1=1", true);
           render ("offset=4294967000 offset_random=4294967295", true);
@@ -2012,11 +2015,94 @@ test_offset_bounds()
     }
 }
 
+void
+test_multi_wrap_loops()
+{
+  printf ("test multi-wrap loops (#56, I03)\n");
+  constexpr int sample_rate = 44100;
+
+  for (int channels : { 1, 2 })
+    {
+      vector<float> samples (256 * channels);
+      for (int frame = 0; frame < 256; frame++)
+        for (int channel = 0; channel < channels; channel++)
+          samples[frame * channels + channel] = (frame + 1) * (channel ? -0.002f : 0.001f);
+      write_sample (samples, sample_rate, channels);
+
+      auto render = [&] (const string& opcodes, int quality, int frames, int loop_end = 5) {
+        write_sfz ("<region>sample=testsynth.wav volume_cc7=0 pan_cc10=0 ampeg_attack=0 "
+                   "loop_mode=loop_continuous loop_start=0 "
+                   + string_printf ("loop_end=%d ", loop_end) + opcodes);
+        Synth synth;
+        synth.set_sample_rate (sample_rate);
+        synth.set_sample_quality (quality);
+        synth.set_live_mode (false);
+        synth.set_gain (sqrt (2));
+        assert (synth.load ("testsynth.sfz"));
+        std::array<vector<float>, 2> output = { vector<float> (frames), vector<float> (frames) };
+        float *out[] = { output[0].data(), output[1].data() };
+        synth.add_event_note_on (0, 0, 60, 127);
+        synth.process (out, frames);
+        return output;
+      };
+
+      // 65536 modulo 6 is 4, so after the slower voice has completed its
+      // first loop these voices must visit exactly the same loop positions.
+      // This exercises multi-wrap position arithmetic and loop-edge
+      // interpolation for both 1x and 2x upsampling paths.
+      for (int quality : { 1, 2, 3 })
+        {
+          const auto multi_wrap = render ("pitch=19200", quality, 32); // speed 65536
+          const auto reference = render ("pitch=2400", quality, 32);  // speed 4
+          for (int channel = 0; channel < 2; channel++)
+            for (int frame = 2; frame < 32; frame++)
+              assert (fabs (multi_wrap[channel][frame] - reference[channel][frame]) < 1e-6);
+        }
+
+      // At speed 64, moving from position 0 crosses a six-frame loop ten
+      // times. These cases cover exhausting the loop count before the jump is
+      // wrapped, exactly on the final wrap, and during the following jump.
+      struct FiniteLoopCase
+      {
+        int loop_count;
+        vector<int> positions;
+      };
+      const vector<FiniteLoopCase> cases = {
+        { 3,  { 0, 46, 110, 174, 238 } },
+        { 10, { 0, 4, 68, 132, 196 } },
+        { 12, { 0, 4, 56, 120, 184, 248 } }
+      };
+      for (const auto& finite_case : cases)
+        {
+          const auto output = render (string_printf ("pitch=7200 loop_count=%d", finite_case.loop_count),
+                                      1, finite_case.positions.size());
+          for (int channel = 0; channel < channels; channel++)
+            for (size_t frame = 0; frame < finite_case.positions.size(); frame++)
+              {
+                const float expected = samples[finite_case.positions[frame] * channels + channel];
+                assert (fabs (output[channel][frame] - expected) < 1e-6);
+              }
+        }
+
+      // Also cover the ceiling-division boundary where distance from the loop
+      // end is an exact multiple of the loop length: (64 - 4) / 5.
+      const vector<int> exact_division_positions = { 0, 4, 3, 2, 1, 0 };
+      const auto exact_division = render ("pitch=7200", 1, exact_division_positions.size(), 4);
+      for (int channel = 0; channel < channels; channel++)
+        for (size_t frame = 0; frame < exact_division_positions.size(); frame++)
+          {
+            const float expected = samples[exact_division_positions[frame] * channels + channel];
+            assert (fabs (exact_division[channel][frame] - expected) < 1e-6);
+          }
+    }
+}
+
 int
 main()
 {
   test_pitch_caps();
   test_offset_bounds();
+  test_multi_wrap_loops();
   test_sample_eviction_request();
   test_key_metadata_and_switches();
   test_cached_sample_preload();
