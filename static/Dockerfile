@@ -1,18 +1,18 @@
-# EXPERIMENTAL file to build statically linked LV2
+# build statically linked LV2
 
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 
 RUN sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y software-properties-common
-RUN add-apt-repository ppa:ubuntu-toolchain-r/test
+RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test
 RUN apt-get update && apt-get install -y build-essential \
-    dpkg-dev autoconf-archive libtool libtool-bin \
-    pkg-config lv2-dev curl g++-11 gettext \
+    dpkg-dev autoconf-archive autogen libtool libtool-bin \
+    pkg-config lv2-dev curl g++-15 gettext \
     libgl1-mesa-dev libxrandr-dev libxcursor-dev
 
-ENV CC gcc-11
-ENV CXX g++-11
+ENV CC gcc-15
+ENV CXX g++-15
 
 ADD . /liquidsfz
 WORKDIR /liquidsfz
