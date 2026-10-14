@@ -4,11 +4,11 @@ LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
 AM_CXXFLAGS = $(FFTW_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib
 
-TESTS = testsynth testsfzreader testsfpool
+TESTS = testsynth testsfzreader testsfpool testflac
 
 noinst_PROGRAMS = $(TESTS) testliquid testperf testxf testenvelope testcurve testhydrogen testmidnam testfilter testrtmutex
 
-EXTRA_DIST = gen-upsample.py testupsample.sfz repro-lfo-alloc.sfz
+EXTRA_DIST = gen-upsample.py testupsample.sfz repro-lfo-alloc.sfz fixtures/stereo.flac fixtures/README.md
 
 testliquid_SOURCES = testliquid.cc
 testliquid_LDADD = $(LIQUIDSFZ_LIBS)
@@ -45,6 +45,10 @@ testsfzreader_LDADD = $(LIQUIDSFZ_LIBS)
 
 testsfpool_SOURCES = testsfpool.cc
 testsfpool_LDADD = $(LIQUIDSFZ_LIBS)
+
+testflac_SOURCES = testflac.cc
+testflac_CPPFLAGS = $(AM_CPPFLAGS) '-DTEST_SRCDIR="$(srcdir)"'
+testflac_LDADD = $(LIQUIDSFZ_LIBS)
 
 if COND_WITH_FFTW
 noinst_PROGRAMS += testupsample
