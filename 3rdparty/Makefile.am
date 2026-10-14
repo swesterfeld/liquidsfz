@@ -11,5 +11,5 @@ EXTRA_DIST = imgui/imgui.cpp imgui/imgui.h imgui/imconfig.h imgui/imgui_internal
 noinst_LTLIBRARIES = libliquidsfzglui.la
 
 libliquidsfzglui_la_SOURCES = pugl_all.c imgui_all.cc
-libliquidsfzglui_la_CFLAGS = -I$(srcdir)/pugl/include
-libliquidsfzglui_la_CXXFLAGS = -I$(srcdir)/imgui
+libliquidsfzglui_la_CFLAGS = $(GL_CFLAGS) $(X11_CFLAGS) -I$(srcdir)/pugl/include
+libliquidsfzglui_la_CXXFLAGS = $(GL_CFLAGS) $(X11_CFLAGS) -I$(srcdir)/imgui

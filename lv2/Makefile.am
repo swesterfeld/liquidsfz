@@ -1,4 +1,4 @@
-AM_CXXFLAGS = $(LV2_CFLAGS) $(SNDFILE_CFLAGS) -I$(top_srcdir)/lib \
+AM_CXXFLAGS = $(LV2_CFLAGS) $(SNDFILE_CFLAGS) $(GL_CFLAGS) $(X11_CFLAGS) -I$(top_srcdir)/lib \
 	      -I$(top_srcdir)/3rdparty/pugl/include \
 	      -I$(top_srcdir)/3rdparty/imgui -I$(top_srcdir)/3rdparty/imgui/backends
 

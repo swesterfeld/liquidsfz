@@ -2,7 +2,7 @@ bin_PROGRAMS = liquidsfz
 
 EXTRA_DIST = pantest.sh
 
-AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) $(READLINE_LIBS) -I$(top_srcdir)/lib
+AM_CXXFLAGS = $(JACK_CFLAGS) $(SNDFILE_CFLAGS) $(READLINE_CFLAGS) -I$(top_srcdir)/lib
 
 LIQUIDSFZ_LIBS = $(top_builddir)/lib/libliquidsfz.la $(SNDFILE_LIBS)
 
