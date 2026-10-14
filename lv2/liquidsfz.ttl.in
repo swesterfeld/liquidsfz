@@ -25,7 +25,7 @@ midnam:update a lv2:Feature .
   a lv2:Plugin,
     lv2:InstrumentPlugin;
   doap:name "liquidsfz";
-  doap:license <http://opensource.org/licenses/lgpl-2.1>;
+  doap:license <https://opensource.org/licenses/MPL-2.0>;
   doap:maintainer
     [
       foaf:name "Stefan Westerfeld";
