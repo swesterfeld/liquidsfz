@@ -1,4 +1,4 @@
-# EXPERIMENTAL file to build statically linked LV2
+# build statically linked LV2
 
 FROM ubuntu:22.04
 
