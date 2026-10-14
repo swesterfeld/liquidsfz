@@ -1412,6 +1412,50 @@ test_repro_lfo_alloc()
 }
 
 void
+test_bank_definitions()
+{
+  printf ("test bank definitions\n");
+  write_sample (vector<float> (1024, 0.5f), 44100, 1);
+  std::ofstream ("testsynth-include.sfz") << "<region> sample=testsynth.wav\n";
+
+  for (bool include : { false, true })
+    {
+      write_sfz (include ? "#include \"$empty$file\"\n" : "<region> sample=$empty$file\n");
+      for (const string& definition : { string ("<Define name=\"\" value=\"\"/>"),
+                                       string ("<Define value=\"\"/>"),
+                                       string ("<Define name=\"\" value=\"x\"/>"),
+                                       string ("") })
+        {
+          std::ofstream ("testsynth.bank.xml")
+            << "<AriaBank>" << definition
+            << "<Define name=\"$empty\" value=\"\"/>"
+            << "<Define name=\"$file\" value=\""
+            << (include ? "testsynth-include.sfz" : "testsynth.wav")
+            << "\"/><AriaProgram name=\"Test\"><AriaElement path=\"testsynth.sfz\"/>"
+            << "</AriaProgram></AriaBank>\n";
+
+          Synth synth;
+          const bool loaded = synth.load_bank ("testsynth.bank.xml");
+          assert (loaded);
+          if (loaded)
+            {
+              // Valid definitions still expand in both paths; empty values are legal.
+              const bool selected = synth.select_program (0);
+              assert (selected);
+              synth.set_live_mode (false);
+              synth.add_event_note_on (0, 0, 60, 100);
+              float left[64], right[64];
+              float *out[] = { left, right };
+              synth.process (out, 64);
+              assert (std::any_of (left, left + 64, [] (float x) { return x != 0; }));
+            }
+        }
+    }
+  unlink ("testsynth-include.sfz");
+  unlink ("testsynth.bank.xml");
+}
+
+void
 test_unload_playing_sample()
 {
   // https://github.com/swesterfeld/liquidsfz/issues/56, F04
@@ -2122,6 +2166,7 @@ main()
   test_lfo_phase_wrapping();
   test_repro_lfo_alloc();
   test_unload_playing_sample();
+  test_bank_definitions();
 
   unlink ("testsynth.sfz");
   unlink ("testsynth.wav");
