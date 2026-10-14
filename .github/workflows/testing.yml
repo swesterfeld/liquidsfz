@@ -20,6 +20,14 @@ jobs:
         N="$(git log -1 --format="%cL")" && B="$(git branch --show-current)"
         MSG=$(git log -1 --format="%s")
         .github/workflows/ircbot.py -q -j "#Anklang" -n AnklangGH -U "$N" -D "$B" -S "$S" "$MSG" "$URL"
+  linux-static:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Test Static Plugin Build
+      run: docker build -f static/Dockerfile -t liquidsfz-dbuild-static .
   macos:
     runs-on: macos-latest
     steps:
