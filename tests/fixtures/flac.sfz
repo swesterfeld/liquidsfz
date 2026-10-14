@@ -1,0 +1,3 @@
+<region> sample=stereo.flac key=60 loop_mode=loop_continuous
+ampeg_attack=0 ampeg_decay=0 ampeg_sustain=100 ampeg_release=0
+amp_veltrack=0 volume_cc7=0 pan_cc10=0

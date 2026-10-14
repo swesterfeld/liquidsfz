@@ -25,6 +25,7 @@ RUN make clean
 RUN make -j16
 RUN make check
 RUN make install
+RUN tests/testlv2output /usr/local/liquidsfz/lib/lv2/liquidsfz.lv2/liquidsfz_lv2.so tests/fixtures/flac.sfz
 
 # docker build -t liquidsfz .
 # docker run -v /tmp:/data -t liquidsfz tar Cczfv /usr/local /data/liquidsfz-static.tar.gz liquidsfz
