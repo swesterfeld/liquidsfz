@@ -278,10 +278,17 @@ Synth::load_bank (const string& filename)
       string name = define.attribute ("name").as_string();
       string value = define.attribute ("value").as_string();
 
-      Control::Define def;
-      def.variable = name;
-      def.value = value;
-      defines.push_back (def);
+      if (name != "")
+        {
+          Control::Define def;
+          def.variable = name;
+          def.value = value;
+          defines.push_back (def);
+        }
+      else
+        {
+          warning ("%s: ignoring bank define with empty name\n", filename.c_str());
+        }
     }
   if (programs.size())
     {
