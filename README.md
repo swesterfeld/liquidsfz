@@ -20,7 +20,7 @@ compatibility.
 
 ## COMPILING
 
-To compile liquidsfz, use the usual
+To compile liquidsfz from a release source archive, use the usual
 
     ./configure
     make
@@ -28,17 +28,38 @@ To compile liquidsfz, use the usual
 
 You need the packages (on Debian/Ubuntu):
 
+* build-essential (including a C++17 compiler)
+* pkg-config
 * libjack-jackd2-dev (JACK client)
 * libreadline-dev (JACK client)
 * lv2-dev (LV2 plugin)
+* libgl-dev (LV2 GUI)
+* libx11-dev, libxext-dev, libxrandr-dev, libxcursor-dev (LV2 GUI)
+* xz-utils (installing the LV2 GUI font)
 * libsndfile1-dev
 
-Some components can be disabled during configure, --without-jack will turn off
-building the JACK client, --without-lv2 will turn off building the LV2 plugin.
+Some components can be disabled during configure: `--without-jack` turns off
+the JACK client and its JACK/Readline dependencies; `--without-lv2` turns off
+the LV2 plugin and its LV2/OpenGL/X11 dependencies.
 
-If you are building from git, you also need the package (for autogen.sh to work):
+If you are building from Git, you also need these packages for `autogen.sh`:
 
+* autoconf
+* automake
+* libtool
 * autoconf-archive
+
+The LV2 GUI uses the ImGui submodule. Initialize it after cloning, then use
+`autogen.sh` in place of `configure`:
+
+    git submodule update --init --recursive
+    ./autogen.sh
+    make
+    make install
+
+`autogen.sh` also runs `configure` and accepts its options, for example
+`./autogen.sh --without-jack`. Release source archives already include the
+required ImGui sources and generated `configure` script.
 
 ## USING JACK
 
@@ -69,6 +90,11 @@ you can try [QLiquidSFZ](https://github.com/be1/qliquidsfz).
 We provide an LV2 plugin, for hosts like Ardour/Carla/Qtractor and others, which
 is built and installed by default. It can also be downloaded as binary release
 below.
+
+On Linux, the GUI's "Load SFZ/XML File..." button requires one of `zenity`,
+`kdialog`, or `yad` at runtime. Install any one of these packages with your
+distribution's package manager. This also applies to the binary LV2 plugin;
+these helpers are not required to compile liquidsfz.
 
 ## LICENSE
 
