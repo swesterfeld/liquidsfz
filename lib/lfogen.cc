@@ -45,11 +45,11 @@ LFOGen::start (const Region& region, int sample_rate)
 
       double delay = region.lfos[i].delay;
       delay += synth_->get_cc_vec_value (voice_, region.lfos[i].delay_cc);
-      lfos[i].delay_len = std::max (delay * sample_rate, 0.0);
+      lfos[i].delay_len = sat_round<uint> (delay * sample_rate);
 
       double fade = region.lfos[i].fade;
       fade += synth_->get_cc_vec_value (voice_, region.lfos[i].fade_cc);
-      lfos[i].fade_len = std::max (fade * sample_rate, 0.0);
+      lfos[i].fade_len = sat_round<uint> (fade * sample_rate);
       lfos[i].fade_pos = 0;
 
       if (lfos[i].params->pitch || !lfos[i].params->pitch_cc.empty())
