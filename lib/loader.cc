@@ -893,7 +893,7 @@ Loader::set_key_value_control (const string& key, const string& value)
       /* we don't really support floating point CCs
        * however we convert to ensure sane defaults for .sfz files using this opcode
        */
-      int ivalue = std::clamp<int> (lrint (convert_float (value) * 127), 0, 127);
+      int ivalue = std::clamp (sat_round<int> (convert_float (value) * 127), 0, 127);
       SetCC& set_cc = update_set_cc (sub_key, ivalue);
 
       CCInfo& cc_info = update_cc_info (set_cc.cc);
