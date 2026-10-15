@@ -1243,6 +1243,90 @@ test_filter()
 }
 
 void
+test_fil_type()
+{
+  printf ("test fil_type opcode:\n");
+  constexpr int sample_rate = 48000;
+  constexpr int n_frames = 4800;
+  const int frequencies[] = { 250, 1000, 4000 };
+  // Steady-state gains in dB for cutoff=1000, resonance=0 (Q=1).
+  // These are analytical responses with bilinear frequency warping; the
+  // 4/6-pole filters cascade two/three identical 2-pole sections.
+  const struct {
+    const char *type;
+    double gain_db[3];
+  } cases[] = {
+    { "lpf_1p", { -0.2626, -3.0103, -12.4828 } },
+    { "hpf_1p", { -12.3154, -3.0103,  -0.2524 } },
+    { "lpf_2p", {   0.2616,  0.0000, -24.2095 } },
+    { "hpf_2p", { -23.8441,  0.0000,   0.2515 } },
+    { "bpf_2p", { -11.7913,  0.0000, -11.9790 } },
+    { "brf_2p", {  -0.2975, -160.00,  -0.2845 } },
+    { "lpf_4p", {   0.5231,  0.0000, -48.4189 } },
+    { "hpf_4p", { -47.6883,  0.0000,   0.5029 } },
+    { "lpf_6p", {   0.7847,  0.0000, -72.6284 } },
+    { "hpf_6p", { -71.5324,  0.0000,   0.7544 } },
+  };
+
+  for (int channels : { 1, 2 })
+    for (int f = 0; f < 3; f++)
+      {
+        vector<float> samples;
+        // Keep the sample end (and its fade-out) outside the measured audio.
+        for (int i = 0; i < n_frames * 2; i++)
+          for (int ch = 0; ch < channels; ch++)
+            samples.push_back (0.5 * sin (2 * M_PI * frequencies[f] * i / sample_rate + ch * M_PI / 2));
+        write_sample (samples, sample_rate, channels);
+
+        auto render = [&] (const string& opcodes)
+          {
+            write_sfz ("<region>sample=testsynth.wav pitch_keycenter=60 volume_cc7=0 pan_cc10=0 " + opcodes);
+            Synth synth;
+            synth.set_sample_rate (sample_rate);
+            synth.set_live_mode (false);
+            const bool loaded = synth.load ("testsynth.sfz");
+            assert (loaded);
+            vector<float> left (n_frames), right (n_frames);
+            float *outputs[] = { left.data(), right.data() };
+            synth.add_event_note_on (0, 0, 60, 127);
+            synth.process (outputs, n_frames);
+            std::array<double, 2> rms {};
+            for (int ch = 0; ch < 2; ch++)
+              {
+                // Discard startup transients, then measure complete periods.
+                for (int i = n_frames / 2; i < n_frames; i++)
+                  {
+                    assert (std::isfinite (outputs[ch][i]));
+                    rms[ch] += double (outputs[ch][i]) * outputs[ch][i];
+                  }
+                rms[ch] = sqrt (rms[ch] / (n_frames / 2));
+              }
+            return rms;
+          };
+
+        const auto bypass = render ("");
+        assert (bypass[0] > 0.1 && bypass[1] > 0.1);
+        for (int slot : { 1, 2 })
+          for (const auto& test : cases)
+            {
+              const auto rms = render (string_printf (slot == 1 ? "fil_type=%s cutoff=1000 resonance=0"
+                                                                : "fil2_type=%s cutoff2=1000 resonance2=0", test.type));
+              for (int ch = 0; ch < 2; ch++)
+                {
+                  const double gain_db = db (rms[ch] / bypass[ch]);
+                  printf (" - %s slot=%d channels=%d channel=%d freq=%d gain=%.4f expect=%.4f\n",
+                          test.type, slot, channels, ch, frequencies[f], gain_db, test.gain_db[f]);
+                  // The notch is ideally zero; allow numerical roundoff there.
+                  if (test.gain_db[f] == -160)
+                    assert (gain_db < -80);
+                  else
+                    assert (fabs (gain_db - test.gain_db[f]) < 0.1);
+                }
+            }
+      }
+}
+
+void
 test_unsupported_peq_filter()
 {
   // #56, F11: PEQ is supported by eqN_*, not by the regular filter slots.
@@ -2188,6 +2272,7 @@ main()
   test_width();
   test_end();
   test_filter();
+  test_fil_type();
   test_unsupported_peq_filter();
   test_grow_voices_with_lfo();
   test_lfo_phase_wrapping();
