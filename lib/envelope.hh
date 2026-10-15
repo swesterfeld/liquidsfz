@@ -3,6 +3,7 @@
 #pragma once
 
 #include "loader.hh"
+#include "utils.hh"
 
 #include <algorithm>
 
@@ -87,14 +88,14 @@ public:
   void
   start (const Region& r, int sample_rate)
   {
-    delay_len_ = std::max (int (sample_rate * delay_), 0);
-    attack_len_ = std::max (int (sample_rate * attack_), 0);
-    hold_len_ = std::max (int (sample_rate * hold_), 0);
-    decay_len_ = std::max (int (sample_rate * decay_), 0);
+    delay_len_ = std::max (sat_round<int> (sample_rate * delay_), 0);
+    attack_len_ = std::max (sat_round<int> (sample_rate * attack_), 0);
+    hold_len_ = std::max (sat_round<int> (sample_rate * hold_), 0);
+    decay_len_ = std::max (sat_round<int> (sample_rate * decay_), 0);
     sustain_level_ = std::clamp<float> (sustain_ * 0.01, 0, 1); // percent->level
-    release_len_ = std::max (int (sample_rate * release_), 1);
-    stop_len_ = std::max (int (sample_rate * 0.030), 1);
-    off_time_len_ = std::max (int (sample_rate * r.off_time), 1);
+    release_len_ = std::max (sat_round<int> (sample_rate * release_), 1);
+    stop_len_ = std::max (sat_round<int> (sample_rate * 0.030), 1);
+    off_time_len_ = std::max (sat_round<int> (sample_rate * r.off_time), 1);
 
     level_ = 0;
     state_ = State::START;

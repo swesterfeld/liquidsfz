@@ -2141,9 +2141,36 @@ test_multi_wrap_loops()
     }
 }
 
+static void
+test_large_durations()
+{
+  for (const char *opcodes : { "delay=1e20 ampeg_attack=1e20", "ampeg_attack=1e20" })
+    {
+      {
+        std::ofstream sfz ("testsynth.sfz");
+        sfz << "<region> sample=*sine " << opcodes << '\n';
+      }
+      Synth synth;
+      synth.set_sample_rate (48000);
+      synth.set_live_mode (false);
+      assert (synth.load ("testsynth.sfz"));
+      synth.add_event_note_on (0, 0, 60, 127);
+      std::array<float, 1024> left {}, right {};
+      float *out[] = { left.data(), right.data() };
+      synth.process (out, left.size());
+      for (size_t i = 0; i < left.size(); i++)
+        {
+          assert (std::isfinite (left[i]) && std::isfinite (right[i]));
+          if (opcodes[0] == 'd')
+            assert (left[i] == 0 && right[i] == 0);
+        }
+    }
+}
+
 int
 main()
 {
+  test_large_durations();
   test_pitch_caps();
   test_offset_bounds();
   test_multi_wrap_loops();

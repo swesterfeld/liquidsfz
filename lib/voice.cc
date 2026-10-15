@@ -122,7 +122,7 @@ Voice::start (const Region& region, int channel, int key, int velocity, double t
   double delay = region.delay;
   delay += region.delay_random * synth_->normalized_random_value();
   delay += synth_->get_cc_vec_value (this, region_->delay_cc); // delay_oncc
-  delay_samples_ = std::max (delay * sample_rate, 0.0);
+  delay_samples_ = sat_round<uint> (delay * sample_rate);
 
   /* loop? */
   loop_enabled_ = false;
