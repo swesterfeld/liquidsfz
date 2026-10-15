@@ -130,6 +130,15 @@ AC_ARG_ENABLE([asan], [AS_HELP_STRING([--enable-asan], [build using address sani
 ])
 dnl -------------------------------------------------------------------------
 
+dnl -------------------- undefined behavior sanitizer -----------------------
+AC_ARG_ENABLE([ubsan], [AS_HELP_STRING([--enable-ubsan], [build using undefined behavior sanitizer])],
+[], [enable_ubsan=no])
+if test "x$enable_ubsan" = "xyes"; then
+  CXXFLAGS="$CXXFLAGS -fsanitize=undefined -fno-omit-frame-pointer"
+  LDFLAGS="$LDFLAGS -fsanitize=undefined"
+fi
+dnl -------------------------------------------------------------------------
+
 dnl -------------------- realtime sanitizer ---------------------------------
 AC_ARG_ENABLE([rtsan], [AS_HELP_STRING([--enable-rtsan], [build using realtime sanitizer (Clang)])],
 [], [enable_rtsan=no])
@@ -229,6 +238,7 @@ echo "  LV2 plug-in support  . .: $with_lv2"
 echo "  JACK support . . . . . .: $with_jack"
 echo "  Use FFTW library . . . .: $with_fftw"
 echo "  Use address sanitizer. .: $enable_asan"
+echo "  Use undefined sanitizer : $enable_ubsan"
 echo "  Use realtime sanitizer .: $enable_rtsan"
 echo "  Use stdc++ debug mode  .: $enable_debug_cxx"
 echo "  Install prefix . . . . .: $prefix"
