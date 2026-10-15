@@ -394,23 +394,28 @@ private:
         uint todo = std::min (config_count_down, n_frames - i);
         if constexpr (filter_order (T) == 1)
           {
-            process_biquad<T, 0, C> (left + i, right + i, todo);
+            process_biquad<T, 0, C> (left, right, todo);
           }
         if constexpr (filter_order (T) == 2)
           {
-            process_biquad<T, 0, C> (left + i, right + i, todo);
+            process_biquad<T, 0, C> (left, right, todo);
           }
         if constexpr (filter_order (T) == 4)
           {
-            process_biquad<T, 0, C> (left + i, right + i, todo);
-            process_biquad<T, 1, C> (left + i, right + i, todo);
+            process_biquad<T, 0, C> (left, right, todo);
+            process_biquad<T, 1, C> (left, right, todo);
           }
         if constexpr (filter_order (T) == 6)
           {
-            process_biquad<T, 0, C> (left + i, right + i, todo);
-            process_biquad<T, 1, C> (left + i, right + i, todo);
-            process_biquad<T, 2, C> (left + i, right + i, todo);
+            process_biquad<T, 0, C> (left, right, todo);
+            process_biquad<T, 1, C> (left, right, todo);
+            process_biquad<T, 2, C> (left, right, todo);
           }
+
+        left += todo;
+        if constexpr (C == 2)
+          right += todo;
+
         i += todo;
         config_count_down -= todo;
       }
@@ -432,7 +437,11 @@ private:
           }
         uint todo = std::min (config_count_down, n_frames - i);
 
-        process_biquad<Type::PEQ, 0, C> (left + i, right + i, todo);
+        process_biquad<Type::PEQ, 0, C> (left, right, todo);
+
+        left += todo;
+        if constexpr (C == 2)
+          right += todo;
 
         i += todo;
         config_count_down -= todo;
