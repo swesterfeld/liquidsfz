@@ -3,6 +3,11 @@
 #pragma once
 
 #include <cstring>
+#include <algorithm>
+#include <cstdint>
+#include <cmath>
+#include <limits>
+#include <type_traits>
 
 // detect compiler
 #if __clang__
@@ -55,6 +60,26 @@ typedef unsigned int uint;
 
 namespace LiquidSFZInternal
 {
+
+// Round to the nearest integer (ties away from zero), saturating at T's limits.
+template<typename T>
+inline T
+sat_round (double d)
+{
+  static_assert (std::is_integral<T>::value, "sat_round requires an integer type");
+
+  if (std::isnan (d))
+    return 0;
+
+  const double rounded = std::round (d);
+  // Inclusive comparisons also handle limits that round outwards in double
+  // (for example UINT64_MAX becomes 2^64), without casting that value to T.
+  if (rounded <= static_cast<double> (std::numeric_limits<T>::min()))
+    return std::numeric_limits<T>::min();
+  if (rounded >= static_cast<double> (std::numeric_limits<T>::max()))
+    return std::numeric_limits<T>::max();
+  return static_cast<T> (rounded);
+}
 
 inline double
 db_to_factor (double dB)
