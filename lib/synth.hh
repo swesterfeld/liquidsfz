@@ -22,6 +22,7 @@ struct Channel
 {
   std::vector<uint8_t> cc_values = std::vector<uint8_t> (128, 0);
   int pitch_bend = 0x2000;
+  std::array<bool, 128> keys_pressed {};
 
   void
   init (const Control& control)
@@ -31,6 +32,7 @@ struct Channel
       if (set_cc.cc >= 0 && set_cc.cc <= 127)
         cc_values[set_cc.cc] = std::clamp (set_cc.value, 0, 127);
     pitch_bend = 0x2000;
+    keys_pressed.fill (false);
   }
 };
 
@@ -99,6 +101,10 @@ private:
   int   sample_quality_ = 3;
   uint  preload_time_ = 500;
   std::array<bool, 128> is_key_switch_ {};
+  std::array<uint, 128> key_pressed_channels_ {}; // Channels holding each key, not voice counts.
+  mutable LiquidSFZ::Synth::KeyStates switch_key_states_ {};
+  mutable bool switch_key_states_dirty_ = true;
+  std::uint64_t key_state_revision_ = 1;
   std::array<bool, 128> is_supported_cc_ {};
 
   static constexpr int CC_ALL_SOUND_OFF = 120;
@@ -109,6 +115,9 @@ private:
   void
   init_channels()
   {
+    key_state_revision_++;
+    switch_key_states_dirty_ = true;
+    key_pressed_channels_.fill (0);
     for (auto& channel : channels_)
       channel.init (control_);
   }
@@ -314,6 +323,9 @@ public:
   {
     return cc_list_;
   }
+  LiquidSFZ::Synth::KeyStates key_states() const;
+  std::uint64_t key_state_revision() const noexcept { return key_state_revision_; }
+
   std::vector<KeyInfo>
   list_keys()
   {
@@ -402,6 +414,12 @@ public:
   void
   note_on (int chan, int key, int vel)
   {
+    if (!channels_[chan].keys_pressed[key])
+      {
+        channels_[chan].keys_pressed[key] = true;
+        key_pressed_channels_[key]++;
+        key_state_revision_++;
+      }
     /* kill overlapping notes */
     for (Voice *voice : active_voices_)
       {
@@ -433,11 +451,16 @@ public:
     // - random must be >= 0.0
     // - random must be <  1.0  (and never 1.0)
     double random = normalized_random_value();
+    bool switch_changed = false;
 
     for (auto& region : regions_)
       {
         if (is_key_switch_[key] && region.sw_lokey <= key && region.sw_hikey >= key && trigger == Trigger::ATTACK)
-          region.switch_match = region.sw_lolast <= key && region.sw_hilast >= key;
+          {
+            const bool match = region.sw_lolast <= key && region.sw_hilast >= key;
+            switch_changed |= region.switch_match != match;
+            region.switch_match = match;
+          }
 
         if (region.lokey <= key && region.hikey >= key &&
             region.lovel <= vel && region.hivel >= vel &&
@@ -499,11 +522,22 @@ public:
               region.play_seq = 1;
           }
       }
+    if (switch_changed)
+      {
+        switch_key_states_dirty_ = true;
+        key_state_revision_++;
+      }
     // log_debug ("### active voice count: %d\n", active_voice_count());
   }
   void
   note_off (int chan, int key)
   {
+    if (channels_[chan].keys_pressed[key])
+      {
+        channels_[chan].keys_pressed[key] = false;
+        key_pressed_channels_[key]--;
+        key_state_revision_++;
+      }
     for (Voice *voice : active_voices_)
       {
         if (voice->state_ == Voice::ACTIVE &&
