@@ -5,6 +5,7 @@
 #include <string>
 #include <mutex>
 #include <atomic>
+#include <array>
 
 #include "liquidsfz.hh"
 #include "rtmutex.hh"
@@ -43,6 +44,14 @@
 class LV2Plugin
 {
 public:
+  struct KeyboardKey
+  {
+    bool active = false;
+    bool is_switch = false;
+    std::string label;
+  };
+  using Keyboard = std::array<KeyboardKey, 128>;
+
   enum PortIndex
   {
     MIDI_IN    = 0,
@@ -81,6 +90,15 @@ private:
   const float             *freewheel = nullptr;
   LV2_Atom_Sequence       *notify_port = nullptr;
 
+  Keyboard                 current_keyboard;
+  std::array<std::atomic<unsigned char>, 128> keyboard_state {};
+  static_assert (std::atomic<unsigned char>::is_always_lock_free);
+  static_assert (std::atomic<bool>::is_always_lock_free && std::atomic<unsigned>::is_always_lock_free);
+  std::atomic<bool> keyboard_state_requested { false };
+  std::atomic<unsigned> keyboard_state_serial { 0 };
+  std::uint64_t keyboard_state_revision = 0; // Audio/worker thread only.
+  LiquidSFZ::Synth::KeyStates published_keyboard_state {};
+  void publish_keyboard_state();
   std::string              current_filename;
   std::string              current_status;
   int                      current_program = 0;
@@ -123,6 +141,11 @@ public:
 
   void load_threadsafe (const std::string& filename, uint program);
   float load_progress_threadsafe() const;
+  Keyboard keyboard();
+  LiquidSFZ::Synth::KeyStates key_states() const;
+  // Request once per UI idle tick; audio publishes only changed state.
+  void request_keyboard_state();
+  unsigned key_state_serial() const;
   std::vector<std::string> programs();
   int program();
   std::string filename();
