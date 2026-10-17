@@ -2251,9 +2251,164 @@ test_large_durations()
     }
 }
 
+void
+test_key_state_revision()
+{
+  printf ("test keyboard state revision\n");
+  write_sfz ("<group> sw_lokey=24 sw_hikey=25 sw_default=24\n"
+             "<region> sample=*sine key=60 sw_last=24\n"
+             "<region> sample=*sine key=61 sw_last=25\n");
+  Synth synth;
+  auto revision = synth.key_state_revision();
+  assert (synth.load ("testsynth.sfz"));
+  assert (synth.key_state_revision() > revision);
+  float left[64], right[64];
+  float *outputs[] = { left, right };
+  auto process = [&] (bool changed)
+    {
+      const auto before = synth.key_state_revision();
+      synth.process (outputs, 64);
+      if (changed)
+        assert (synth.key_state_revision() > before);
+      else
+        assert (synth.key_state_revision() == before);
+      // Reading a snapshot must not consume changes or modify the revision.
+      const auto after = synth.key_state_revision();
+      synth.key_states();
+      synth.key_states();
+      assert (synth.key_state_revision() == after);
+    };
+  auto note = [&] (int channel, int key, int velocity, bool changed)
+    {
+      const auto before = synth.key_state_revision();
+      synth.add_event_note_on (0, channel, key, velocity);
+      assert (synth.key_state_revision() == before); // Queuing is not processing.
+      process (changed);
+    };
+  process (false);
+  synth.add_event_cc (0, 0, 7, 100);
+  synth.add_event_pitch_bend (0, 0, 9000);
+  process (false);
+  note (0, 60, 100, true);
+  note (0, 60, 100, false); // Retrigger does not change the held-key state.
+  note (1, 60, 100, true);
+  const auto held = synth.key_states();
+  revision = synth.key_state_revision();
+  synth.add_event_note_off (0, 0, 60);
+  assert (synth.key_state_revision() == revision);
+  process (true);
+  assert (synth.key_states() == held); // Conservative change across channels.
+  note (1, 60, 0, true);
+  note (1, 60, 0, false);
+  assert (!(synth.key_states()[60] & Synth::KEY_PRESSED));
+  note (0, 60, 100, true);
+  note (1, 60, 0, false); // Releasing an unheld channel must not decrement the count.
+  assert (synth.key_states()[60] & Synth::KEY_PRESSED);
+  note (0, 60, 0, true);
+  assert (!(synth.key_states()[60] & Synth::KEY_PRESSED));
+
+  note (0, 24, 100, true);
+  note (0, 25, 100, true);
+  note (0, 24, 100, true); // Already held, but changes the selected switch.
+  assert (synth.key_states()[24] & Synth::KEY_SWITCH_ACTIVE);
+  note (0, 24, 100, false);
+  for (int cc : { 120, 123 })
+    {
+      note (0, 60, 100, true);
+      synth.add_event_cc (0, 0, cc, 0);
+      process (true);
+      assert (!(synth.key_states()[60] & Synth::KEY_PRESSED));
+    }
+  for (bool reset : { false, true })
+    {
+      note (0, 60, 100, true);
+      revision = synth.key_state_revision();
+      if (reset)
+        synth.system_reset();
+      else
+        synth.all_sound_off();
+      assert (synth.key_state_revision() > revision);
+      assert (!(synth.key_states()[60] & Synth::KEY_PRESSED));
+    }
+  revision = synth.key_state_revision();
+  assert (synth.load ("testsynth.sfz"));
+  assert (synth.key_state_revision() > revision); // Reload must not reset it.
+  revision = synth.key_state_revision();
+  assert (!synth.load ("")); // Failed load unloads the previous instrument.
+  assert (synth.key_state_revision() > revision);
+  for (auto state : synth.key_states())
+    assert (state == 0);
+}
+
+void
+test_keyboard_state()
+{
+  printf ("test keyboard state\n");
+  for (int octave_offset : { -1, 0, 1 })
+    {
+      const int shift = octave_offset * 12;
+      write_sfz (string_printf (
+        "<control> octave_offset=%d\n"
+        "<group> sw_lokey=24 sw_hikey=26 sw_default=24\n"
+        "<region> sample=*sine lokey=60 hikey=61 sw_lolast=24 sw_hilast=25\n"
+        "<region> sample=*sine lokey=62 hikey=63 sw_last=26\n"
+        "<group> sw_lokey=36 sw_hikey=37 sw_default=36\n"
+        "<region> sample=*sine key=80 sw_last=36\n"
+        "<group>\n<region> sample=*sine key=70\n", octave_offset));
+      Synth synth;
+      assert (synth.load ("testsynth.sfz"));
+      float left[64], right[64];
+      float *outputs[] = { left, right };
+      auto process = [&] { synth.process (outputs, 64); };
+      auto state = [&] (int key) { return synth.key_states()[key + shift]; };
+      auto note = [&] (int channel, int key, int velocity)
+        {
+          synth.add_event_note_on (0, channel, key + shift, velocity);
+          process();
+        };
+      assert (state (24) == Synth::KEY_SWITCH_ACTIVE);
+      assert (state (25) == Synth::KEY_SWITCH_ACTIVE);
+      assert (state (60) == Synth::KEY_REGION_ACTIVE);
+      assert (state (61) == Synth::KEY_REGION_ACTIVE);
+      assert (state (62) == 0 && state (70) == 0);
+      note (0, 26, 100);
+      assert (state (26) == (Synth::KEY_SWITCH_ACTIVE | Synth::KEY_PRESSED));
+      assert (state (24) == 0 && state (25) == 0 && state (60) == 0);
+      assert (state (62) == Synth::KEY_REGION_ACTIVE && state (63) == Synth::KEY_REGION_ACTIVE);
+      assert (state (80) == Synth::KEY_REGION_ACTIVE); // Independent switch group.
+      note (0, 26, 0);
+      assert (state (26) == Synth::KEY_SWITCH_ACTIVE); // Selection survives release.
+      note (1, 25, 100);
+      assert (state (60) == Synth::KEY_REGION_ACTIVE && state (62) == 0);
+      note (1, 25, 0);
+      note (0, 60, 100);
+      note (1, 60, 100);
+      synth.add_event_note_off (0, 0, 60 + shift);
+      process();
+      assert (state (60) & Synth::KEY_PRESSED);
+      synth.add_event_cc (0, 1, 64, 127);
+      note (1, 60, 0);
+      assert (!(state (60) & Synth::KEY_PRESSED)); // Sustain is not a held key.
+      note (0, 61, 100);
+      synth.add_event_cc (0, 0, 123, 0);
+      process();
+      assert (!(state (61) & Synth::KEY_PRESSED));
+      note (0, 60, 100);
+      synth.all_sound_off();
+      assert (state (60) == Synth::KEY_REGION_ACTIVE);
+
+      write_sfz ("<region> sample=*sine key=60 sw_lokey=24 sw_hikey=25 sw_last=24");
+      assert (synth.load ("testsynth.sfz"));
+      for (auto flags : synth.key_states())
+        assert (flags == 0); // No sw_default: no selected region after reload.
+    }
+}
+
 int
 main()
 {
+  test_key_state_revision();
+  test_keyboard_state();
   test_large_durations();
   test_pitch_caps();
   test_offset_bounds();
