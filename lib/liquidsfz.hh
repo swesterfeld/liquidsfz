@@ -364,20 +364,29 @@ public:
   using KeyStates = std::array<unsigned char, 128>;
 
   /**
-   * Return current keyboard state, indexed by external MIDI note number.
+   * \brief Get current keyboard state for each midi note
+   *
    * Each entry is a combination of KeyState flags. Selection reflects only
    * keyswitch conditions, not velocity, CC, random or sequence conditions.
-   * No allocation; call on the synth thread, after process() or loading.
+   *
+   * @returns current keyboard state array
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   KeyStates key_states() const;
 
   /**
-   * Change counter for key_states(), updated when events are processed, not
-   * queued. It also advances on loads, unloads and resets, and is never reset
-   * during this Synth's lifetime. A changed revision may yield the same
-   * snapshot (for example, when another MIDI channel still holds a key).
-   * Readers keep their own last revision; querying does not consume changes.
-   * No allocation or locking; call on the synth thread, like key_states().
+   * \brief Get change counter for key_states()
+   *
+   * The counter is updated when events are processed, not queued. It also
+   * advances on loads, unloads and resets, and is never reset during this
+   * Synth's lifetime. A changed revision may yield the same snapshot (for
+   * example, when another MIDI channel still holds a key).  Readers keep their
+   * own last revision; querying does not consume changes.
+   *
+   * @returns change counter for key_states()
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
    */
   std::uint64_t key_state_revision() const noexcept;
 
