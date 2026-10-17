@@ -109,9 +109,56 @@ Synth::process (float **outputs, uint n_frames)
   process_audio (outputs, n_frames - offset, offset);
 }
 
+LiquidSFZ::Synth::KeyStates
+Synth::key_states() const
+{
+  using API = LiquidSFZ::Synth;
+  if (switch_key_states_dirty_)
+    {
+      // Difference arrays keep this O(regions + keys), even with large banks.
+      std::array<int, 129> switches {}, regions {};
+      auto add_range = [] (auto& counts, int low, int high)
+        {
+          low = std::max (low, 0);
+          high = std::min (high, 127);
+          if (low <= high)
+            {
+              counts[low]++;
+              counts[high + 1]--;
+            }
+        };
+      for (const auto& region : regions_)
+        if (region.sw_lolast >= 0 && region.switch_match)
+          {
+            add_range (switches, region.sw_lolast, region.sw_hilast);
+            add_range (regions, region.lokey, region.hikey);
+          }
+      int ns = 0, nr = 0;
+      for (int key = 0; key < 128; key++)
+        {
+          ns += switches[key];
+          nr += regions[key];
+          switch_key_states_[key] = (ns ? API::KEY_SWITCH_ACTIVE : 0) | (nr ? API::KEY_REGION_ACTIVE : 0);
+        }
+      switch_key_states_dirty_ = false;
+    }
+  API::KeyStates result {};
+  for (int key = 0; key < 128; key++)
+    {
+      const int midi_key = key + control_.octave_offset * 12;
+      if (midi_key >= 0 && midi_key < 128)
+        result[midi_key] = switch_key_states_[key] | (key_pressed_channels_[key] ? API::KEY_PRESSED : 0);
+    }
+  return result;
+}
+
 void
 Synth::all_sound_off()
 {
+  key_state_revision_++;
+  key_pressed_channels_.fill (0);
+  for (auto& channel : channels_)
+    channel.keys_pressed.fill (false);
   for (auto& voice : voices_)
     voice.kill();
 

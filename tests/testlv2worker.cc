@@ -92,7 +92,7 @@ struct Host
   }
 
   void
-  run (bool note = false, uint32_t midi_size = 3)
+  run (bool note = false, uint32_t midi_size = 3, uint8_t status = 0x90, uint8_t key = 60, uint8_t value = 100)
   {
     auto *sequence = reinterpret_cast<LV2_Atom_Sequence *> (midi.data());
     sequence->atom.type = map_uri (this, LV2_ATOM__Sequence);
@@ -105,9 +105,9 @@ struct Host
         event->body.type = map_uri (this, LV2_MIDI__MidiEvent);
         event->body.size = midi_size;
         auto *msg = reinterpret_cast<uint8_t *> (event + 1);
-        msg[0] = 0x90;
-        msg[1] = 60;
-        msg[2] = 100;
+        msg[0] = status;
+        msg[1] = key;
+        msg[2] = value;
         sequence->atom.size += sizeof (*event) + lv2_atom_pad_size (midi_size);
       }
     reinterpret_cast<LV2_Atom_Sequence *> (notify.data())->atom.size = notify.size();
@@ -248,6 +248,112 @@ test_payloads_and_state (const std::string& sine)
     }
 }
 
+void
+test_keyboard_metadata (const std::string& directory, const std::string& sine)
+{
+  const auto filename = directory + "/keyboard.sfz";
+  std::ofstream (filename) << "<region> sample=*sine lokey=60 hikey=72 sw_lokey=24 sw_hikey=25 sw_last=24 sw_default=24 sw_label=Legato\n";
+  Host host;
+  for (const auto& key : host.plugin->keyboard())
+    assert (!key.active && !key.is_switch);
+  host.plugin->load_threadsafe (filename, 0);
+  host.plugin->request_keyboard_state();
+  host.run();
+  host.finish_work();
+  host.deliver_response();
+  host.plugin->request_keyboard_state();
+  host.run();
+  const auto keys = host.plugin->keyboard();
+  assert (!keys[59].active && !keys[73].active);
+  for (int key = 60; key <= 72; key++)
+    assert (keys[key].active && !keys[key].is_switch);
+  assert (keys[24].active && keys[24].is_switch && keys[24].label == "Legato");
+  using Synth = LiquidSFZ::Synth;
+  assert (host.plugin->key_states()[24] == Synth::KEY_SWITCH_ACTIVE);
+  assert (host.plugin->key_states()[60] == Synth::KEY_REGION_ACTIVE);
+  host.plugin->request_keyboard_state();
+  host.run (true);
+  host.plugin->request_keyboard_state();
+  host.run (true, 3, 0x91);
+  host.plugin->request_keyboard_state();
+  host.run (true, 3, 0x80);
+  assert (host.plugin->key_states()[60] & Synth::KEY_PRESSED);
+  host.plugin->request_keyboard_state();
+  host.run (true, 3, 0x91, 60, 0);
+  assert (!(host.plugin->key_states()[60] & Synth::KEY_PRESSED));
+  host.plugin->request_keyboard_state();
+  host.run (true, 3, 0x92, 24);
+  assert (host.plugin->key_states()[24] & Synth::KEY_PRESSED);
+  host.plugin->request_keyboard_state();
+  host.run (true, 3, 0x82, 24);
+  assert (host.plugin->key_states()[24] == Synth::KEY_SWITCH_ACTIVE);
+  host.plugin->request_keyboard_state();
+  host.run (true);
+  host.plugin->request_keyboard_state();
+  host.plugin->activate();
+  assert (!(host.plugin->key_states()[60] & Synth::KEY_PRESSED));
+  host.plugin->load_threadsafe (sine, 0);
+  host.plugin->request_keyboard_state();
+  host.run();
+  host.finish_work();
+  host.deliver_response();
+  host.plugin->request_keyboard_state();
+  host.run();
+  assert (!host.plugin->keyboard()[24].is_switch);
+  for (auto state : host.plugin->key_states())
+    assert (state == 0);
+  host.plugin->load_threadsafe (directory + "/missing.sfz", 0);
+  host.plugin->request_keyboard_state();
+  host.run();
+  host.finish_work();
+  host.deliver_response();
+  host.plugin->request_keyboard_state();
+  host.run();
+  for (const auto& key : host.plugin->keyboard())
+    assert (!key.active && !key.is_switch);
+  unlink (filename.c_str());
+}
+
+void
+test_keyboard_publication (const std::string& sine)
+{
+  Host host;
+  host.synchronous = true;
+  host.plugin->load_threadsafe (sine, 0);
+  host.run();
+  host.run (true);
+  assert (host.plugin->key_state_serial() == 0); // No UI, no publication.
+  assert (host.plugin->key_states()[60] == 0);
+
+  host.plugin->request_keyboard_state(); // Opening shows notes already held.
+  host.run();
+  const auto serial = host.plugin->key_state_serial();
+  assert (serial != 0);
+  assert (host.plugin->key_states()[60] & LiquidSFZ::Synth::KEY_PRESSED);
+  for (int i = 0; i < 100; i++)
+    {
+      host.plugin->request_keyboard_state();
+      host.run();
+    }
+  assert (host.plugin->key_state_serial() == serial); // Sustained note, no updates.
+
+  // Dense MIDI without a UI (or between idle ticks) produces no publications.
+  for (int i = 0; i < 100; i++)
+    host.run (true, 3, i % 2 ? 0x90 : 0x80);
+  assert (host.plugin->key_state_serial() == serial);
+  host.run (true, 3, 0x80);
+  for (int i = 0; i < 100; i++)
+    host.plugin->request_keyboard_state(); // Requests also coalesce.
+  host.run();
+  assert (host.plugin->key_state_serial() == serial + 1);
+  assert (!(host.plugin->key_states()[60] & LiquidSFZ::Synth::KEY_PRESSED));
+  host.run (true);
+  assert (host.plugin->key_state_serial() == serial + 1); // Request was consumed.
+  host.plugin->request_keyboard_state();
+  host.run();
+  assert (host.plugin->key_state_serial() == serial + 2);
+}
+
 int
 main()
 {
@@ -271,6 +377,23 @@ main()
     assert (host.loads == 1 && host.notified());
     host.run (true);
     assert (host.audible() && host.schedules == 1);
+  }
+
+  // The keyboard's note-on/off messages travel through the normal MIDI port.
+  {
+    Host host;
+    host.synchronous = true;
+    host.plugin->load_threadsafe (sine, 0);
+    host.run();
+    host.run (true);
+    assert (host.audible());
+    for (int i = 0; i < 20; i++)
+      host.run();
+    assert (host.audible());
+    host.run (true, 3, 0x80);
+    for (int i = 0; i < 100; i++)
+      host.run();
+    assert (!host.audible());
   }
 
   // Asynchronous work stays silent until its response, and serializes a newer
@@ -297,6 +420,8 @@ main()
   }
 
   test_payloads_and_state (sine);
+  test_keyboard_metadata (directory, sine);
+  test_keyboard_publication (sine);
 
   unlink (sine.c_str());
   unlink (silence.c_str());

@@ -3,6 +3,8 @@
 #pragma once
 
 #include <memory>
+#include <array>
+#include <cstdint>
 #include <functional>
 #include <vector>
 #include <string>
@@ -353,6 +355,40 @@ public:
    * @returns a vector that contains information for the supported keys
    */
   std::vector<KeyInfo> list_keys() const;
+
+  enum KeyState {
+    KEY_PRESSED = 1,          ///< Held on at least one MIDI channel (not sustain).
+    KEY_SWITCH_ACTIVE = 2,    ///< In the sw_last range of a selected region.
+    KEY_REGION_ACTIVE = 4     ///< Playable key of a selected keyswitched region.
+  };
+  using KeyStates = std::array<unsigned char, 128>;
+
+  /**
+   * \brief Get current keyboard state for each midi note
+   *
+   * Each entry is a combination of KeyState flags. Selection reflects only
+   * keyswitch conditions, not velocity, CC, random or sequence conditions.
+   *
+   * @returns current keyboard state array
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
+   */
+  KeyStates key_states() const;
+
+  /**
+   * \brief Get change counter for key_states()
+   *
+   * The counter is updated when events are processed, not queued. It also
+   * advances on loads, unloads and resets, and is never reset during this
+   * Synth's lifetime. A changed revision may yield the same snapshot (for
+   * example, when another MIDI channel still holds a key).  Readers keep their
+   * own last revision; querying does not consume changes.
+   *
+   * @returns change counter for key_states()
+   *
+   * <em>This function is real-time safe and can be used from the audio thread.</em>
+   */
+  std::uint64_t key_state_revision() const noexcept;
 
   /**
    * \brief Add a note on event

@@ -207,6 +207,17 @@ LV2Plugin::work (LV2_Worker_Respond_Function respond,
           else
             set_status (string_printf ("ERROR loading '%s'.", fp.filename().c_str()));
         }
+      // Publish a copy for the UI; it must never query the synth while the
+      // audio or worker thread is using it.
+      Keyboard keyboard;
+      for (const auto& key : synth.list_keys())
+        keyboard[key.key()] = { true, key.is_switch(), key.label() };
+      {
+        RTMutexWaitLockGuard lg (rt_mutex);
+        current_keyboard = std::move (keyboard);
+        ui_redraw_required = true;
+      }
+      publish_keyboard_state();
       load_progress = -1;
 
       { // midnam string is accessed from other threads than the worker thread
@@ -238,6 +249,7 @@ void
 LV2Plugin::activate()
 {
   synth.all_sound_off();
+  publish_keyboard_state();
 }
 
 void
@@ -288,6 +300,7 @@ LV2Plugin::run (uint32_t n_samples)
         }
 
       synth.process (outputs, n_samples);
+      publish_keyboard_state();
     }
   else
     {
@@ -744,4 +757,54 @@ lv2_descriptor (uint32_t index)
       case 0:  return &descriptor;
       default: return NULL;
     }
+}
+
+LV2Plugin::Keyboard
+LV2Plugin::keyboard()
+{
+  RTMutexWaitLockGuard lg (rt_mutex);
+  return current_keyboard;
+}
+
+void
+LV2Plugin::publish_keyboard_state()
+{
+  // No UI request means no state scan or publication. A boolean coalesces
+  // requests, limiting snapshots to the UI idle rate even with dense MIDI.
+  if (!keyboard_state_requested.load (std::memory_order_relaxed))
+    return;
+  if (!keyboard_state_requested.exchange (false, std::memory_order_relaxed))
+    return;
+  const auto revision = synth.key_state_revision();
+  if (revision == keyboard_state_revision)
+    return;
+  keyboard_state_revision = revision;
+  const auto state = synth.key_states();
+  if (state == published_keyboard_state)
+    return;
+  published_keyboard_state = state;
+  for (size_t key = 0; key < state.size(); key++)
+    keyboard_state[key].store (state[key], std::memory_order_relaxed);
+  keyboard_state_serial.fetch_add (1, std::memory_order_release);
+}
+
+void
+LV2Plugin::request_keyboard_state()
+{
+  keyboard_state_requested.store (true, std::memory_order_relaxed);
+}
+
+unsigned
+LV2Plugin::key_state_serial() const
+{
+  return keyboard_state_serial.load (std::memory_order_acquire);
+}
+
+LiquidSFZ::Synth::KeyStates
+LV2Plugin::key_states() const
+{
+  LiquidSFZ::Synth::KeyStates result;
+  for (size_t key = 0; key < result.size(); key++)
+    result[key] = keyboard_state[key].load (std::memory_order_relaxed);
+  return result;
 }

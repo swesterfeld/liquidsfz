@@ -13,12 +13,16 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "lv2plugin.hh"
+#include "log.hh"
 #include "filedialog.hh"
+
 
 #define LIQUIDSFZ_UI_URI      "http://spectmorph.org/plugins/liquidsfz#ui"
 
 using std::string;
 using std::vector;
+
+using LiquidSFZInternal::string_printf;
 
 struct LV2UI
 {
@@ -34,12 +38,26 @@ struct LV2UI
   std::unique_ptr<FileDialog> file_dialog;
 
   int redraw_required_frames = 0;
+  bool keyboard_redraw_pending = false;
+  unsigned keyboard_serial = 0;
   bool show_missing_file_dialog_helpers = false;
   double last_time = 0;
   string cache_status;
 
   float plugin_control_level = 0;
   float progress = -1;
+  LV2_URID midi_event = 0;
+  LV2_URID event_transfer = 0;
+  LiquidSFZ::Synth::KeyStates keyboard_state {};
+  int held_key = -1;
+  bool keyboard_mouse_down = false;
+  bool keyboard_initial_scroll = true;
+
+  void set_key (int key);
+  void release_key();
+  void render_keyboard();
+  void update_keyboard_state();
+  bool take_redraw_request();
 
   ~LV2UI();
 
@@ -53,6 +71,7 @@ struct LV2UI
 
 LV2UI::~LV2UI()
 {
+  release_key();
   if (imgui_ctx)
     {
       ImGui::SetCurrentContext (imgui_ctx);
@@ -74,21 +93,14 @@ void
 LV2UI::idle()
 {
   puglUpdate (world, 0.0);
-
   ImGui::SetCurrentContext (imgui_ctx);
-  if (plugin->redraw_required() || redraw_required_frames)
-    {
-      if (redraw_required_frames)
-        redraw_required_frames--;
-
-      puglObscureView (view);
-    }
 
   if (file_dialog)
     {
       string filename = file_dialog->get_filename();
       if (filename != "")
         {
+          release_key();
           plugin->load_threadsafe (filename, 0);
           file_dialog.reset();
           redraw();
@@ -103,6 +115,7 @@ LV2UI::idle()
   float new_progress = plugin->load_progress_threadsafe();
   if (new_progress != progress)
     {
+      release_key();
       progress = new_progress;
       redraw();
     }
@@ -112,6 +125,22 @@ LV2UI::idle()
       cache_status = new_cache_status;
       redraw();
     }
+  update_keyboard_state();
+  plugin->request_keyboard_state();
+  if (plugin->redraw_required())
+    redraw();
+  if (take_redraw_request())
+    puglObscureView (view);
+}
+
+bool
+LV2UI::take_redraw_request()
+{
+  const bool needed = keyboard_redraw_pending || redraw_required_frames > 0;
+  keyboard_redraw_pending = false;
+  if (redraw_required_frames > 0)
+    redraw_required_frames--;
+  return needed;
 }
 
 void
@@ -126,7 +155,12 @@ LV2UI::redraw()
 PuglStatus
 LV2UI::on_event (const PuglEvent *event)
 {
-  if (event->type == PUGL_REALIZE || event->type == PUGL_UNREALIZE)
+  if (event->type == PUGL_UNREALIZE)
+    {
+      release_key();
+      return PUGL_SUCCESS;
+    }
+  if (event->type == PUGL_REALIZE)
     return PUGL_SUCCESS;
 
   ImGui::SetCurrentContext (imgui_ctx);
@@ -137,10 +171,14 @@ LV2UI::on_event (const PuglEvent *event)
       case PUGL_CONFIGURE:
         io.DisplaySize = ImVec2 (event->configure.width, event->configure.height);
         glViewport (0, 0, event->configure.width, event->configure.height);
+        redraw();
         break;
 
       case PUGL_CLOSE:
-        //state->quit = true;
+      case PUGL_FOCUS_OUT:
+        release_key();
+        io.AddMouseButtonEvent (0, false);
+        redraw();
         break;
 
       case PUGL_POINTER_IN:
@@ -150,6 +188,8 @@ LV2UI::on_event (const PuglEvent *event)
         break;
 
       case PUGL_POINTER_OUT:
+        release_key();
+        io.AddMouseButtonEvent (0, false);
         io.AddMousePosEvent (-FLT_MAX, -FLT_MAX); // place mouse pointer "off-screen"
         redraw();
         break;
@@ -159,6 +199,13 @@ LV2UI::on_event (const PuglEvent *event)
         {
           // Pugl and ImGui both use 0=left, 1=right, 2=middle.
           const auto button = event->button.button;
+          io.AddMousePosEvent (event->button.x, event->button.y);
+          if (button == 0)
+            {
+              keyboard_mouse_down = event->type == PUGL_BUTTON_PRESS;
+              if (!keyboard_mouse_down)
+                set_key (-1);
+            }
           if (button < ImGuiMouseButton_COUNT)
             io.AddMouseButtonEvent (button, event->type == PUGL_BUTTON_PRESS);
           redraw();
@@ -172,6 +219,7 @@ LV2UI::on_event (const PuglEvent *event)
 
       case PUGL_EXPOSE:
         {
+          keyboard_redraw_pending = false;
           bool old_popup_open = ImGui::IsPopupOpen (nullptr, ImGuiPopupFlags_AnyPopupId);
 
           ImGui_ImplOpenGL3_NewFrame();
@@ -212,8 +260,7 @@ LV2UI::render_frame()
       ImGuiWindowFlags_NoResize |
       ImGuiWindowFlags_NoMove |
       ImGuiWindowFlags_NoCollapse |
-      ImGuiWindowFlags_NoBringToFrontOnFocus |
-      ImGuiWindowFlags_AlwaysAutoResize;
+      ImGuiWindowFlags_NoBringToFrontOnFocus;
 
   ImGui::Begin ("MainUI", nullptr, flags);
 
@@ -327,6 +374,7 @@ LV2UI::render_frame()
                   if (ImGui::Selectable (programs[i].c_str(), is_selected))
                     {
                       /* load new program (same file) */
+                      release_key();
                       plugin->load_threadsafe (filename, i);
                     }
 
@@ -354,11 +402,154 @@ LV2UI::render_frame()
 
           ImGui::EndTable();
         }
+      render_keyboard();
     }
   ImVec2 required_size = ImGui::GetWindowSize();
 
   ImGui::End();
   return required_size;
+}
+
+void
+LV2UI::set_key (int key)
+{
+  if (key == held_key)
+    return;
+  auto send = [&] (int note, bool on)
+    {
+      struct {
+        LV2_Atom atom;
+        uint8_t data[3];
+      } message { { 3, midi_event }, { uint8_t (on ? 0x90 : 0x80), uint8_t (note), uint8_t (on ? 100 : 0) } };
+      write_function (controller, LV2Plugin::MIDI_IN, sizeof (LV2_Atom) + 3, event_transfer, &message);
+    };
+  if (held_key >= 0)
+    send (held_key, false);
+  held_key = key;
+  if (held_key >= 0)
+    send (held_key, true);
+  keyboard_redraw_pending = true;
+}
+
+void
+LV2UI::release_key()
+{
+  keyboard_mouse_down = false;
+  set_key (-1);
+}
+
+void
+LV2UI::update_keyboard_state()
+{
+  const unsigned serial = plugin->key_state_serial();
+  if (serial == keyboard_serial)
+    return;
+  keyboard_serial = serial;
+  const auto state = plugin->key_states();
+  if (state != keyboard_state)
+    {
+      keyboard_state = state;
+      keyboard_redraw_pending = true;
+    }
+}
+
+void
+LV2UI::render_keyboard()
+{
+  const auto keys = plugin->keyboard();
+  using Synth = LiquidSFZ::Synth;
+  const float scale = ImGui::GetFontSize() / 13.f;
+  // The 128 MIDI notes contain 75 white keys. Fit them when space allows,
+  // otherwise keep a usable minimum width and allow horizontal scrolling.
+  const float white_width = std::max (10 * scale, (ImGui::GetContentRegionAvail().x - scale) / 75);
+  const float height = 60 * scale;
+  ImGui::Separator();
+
+  ImGui::BeginChild ("Keyboard", ImVec2 (0, height + ImGui::GetStyle().ScrollbarSize + 4 * scale),
+                     ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+  const ImVec2 origin = ImGui::GetCursorScreenPos();
+  auto black = [] (int key)
+    {
+      const int note = key % 12;
+      return note == 1 || note == 3 || note == 6 || note == 8 || note == 10;
+    };
+  std::array<ImVec2, 128> min, max;
+  int whites = 0;
+  for (int key = 0; key < 128; key++)
+    {
+      const bool b = black (key);
+      const float x = (whites - (b ? 0.32f : 0.f)) * white_width;
+      min[key] = ImVec2 (origin.x + x, origin.y);
+      max[key] = ImVec2 (min[key].x + white_width * (b ? 0.64f : 1.f), origin.y + height * (b ? 0.62f : 1.f));
+      if (!b)
+        whites++;
+    }
+  ImGui::InvisibleButton ("Keys", ImVec2 (whites * white_width, height));
+  if (keyboard_initial_scroll)
+    {
+      ImGui::SetScrollHereX (0.5f);
+      keyboard_initial_scroll = false;
+    }
+  int hovered = -1;
+  const ImVec2 mouse = ImGui::GetIO().MousePos;
+  // Test black keys last, since they overlap the white keys.
+  for (bool b : { false, true })
+    for (int key = 0; key < 128; key++)
+      if (black (key) == b && ImGui::IsItemHovered() &&
+          mouse.x >= min[key].x && mouse.x < max[key].x && mouse.y >= min[key].y && mouse.y < max[key].y)
+        hovered = key;
+  const bool enabled = progress < 0 && !file_dialog;
+  if (ImGui::IsItemActive() && keyboard_mouse_down && enabled)
+    set_key (hovered);
+  else if (held_key >= 0)
+    set_key (-1);
+
+  auto *draw = ImGui::GetWindowDrawList();
+  for (bool b : { false, true })
+    for (int key = 0; key < 128; key++)
+      if (black (key) == b)
+        {
+          ImU32 color = b ? IM_COL32 (30, 33, 38, 255) : IM_COL32 (105, 110, 118, 255);
+          if (keys[key].active)
+            color = b ? IM_COL32 (50, 65, 60, 255) : IM_COL32 (230, 239, 233, 255);
+          if (keys[key].is_switch)
+            color = b ? IM_COL32 (140, 95, 35, 255) : IM_COL32 (245, 204, 133, 255);
+          const bool selected_key = keys[key].is_switch && (keyboard_state[key] & Synth::KEY_SWITCH_ACTIVE);
+          if (selected_key)
+            color = b ? IM_COL32 (100, 65, 135, 255) : IM_COL32 (213, 182, 240, 255);
+          if (key == held_key || (keyboard_state[key] & Synth::KEY_PRESSED))
+            color = IM_COL32 (85, 155, 245, 255);
+          draw->AddRectFilled (min[key], max[key], color, 2 * scale);
+          draw->AddRect (min[key], max[key], IM_COL32 (20, 22, 26, 255), 2 * scale);
+          if (key % 12 == 0)
+            {
+              char label[8];
+              snprintf (label, sizeof (label), "%d", key / 12 - 1);
+              const float font_size = 10 * scale;
+              const float label_width = ImGui::GetFont()->CalcTextSizeA (font_size, FLT_MAX, 0, label).x;
+              draw->AddText (ImGui::GetFont(), font_size,
+                             ImVec2 ((min[key].x + max[key].x - label_width) / 2, max[key].y - 23 * scale),
+                             IM_COL32 (25, 28, 32, 255), label);
+            }
+        }
+  if (hovered >= 0)
+    {
+      string line1 = string_printf ("MIDI %d: %s", hovered, keys[hovered].is_switch ? "Keyswitch" : keys[hovered].active ? "Playable" : "Unused");
+      string line2 = keyboard_state[hovered] & Synth::KEY_SWITCH_ACTIVE ? "Selected keyswitch" : "";
+      string line3 = keys[hovered].label;
+
+      if (line2 != "" || line3 != "")
+        {
+          ImGui::BeginTooltip();
+          ImGui::TextUnformatted (line1.c_str());
+          if (line2 != "")
+            ImGui::TextUnformatted (line2.c_str());
+          if (line3 != "")
+            ImGui::TextUnformatted (line3.c_str());
+          ImGui::EndTooltip();
+        }
+    }
+  ImGui::EndChild();
 }
 
 void
@@ -423,6 +614,8 @@ instantiate (const LV2UI_Descriptor*   descriptor,
     return nullptr;
   ui->write_function = write_function;
   ui->controller = controller;
+  ui->midi_event = map->map (map->handle, LV2_MIDI__MidiEvent);
+  ui->event_transfer = map->map (map->handle, LV2_ATOM__eventTransfer);
 
   // 2. Setup ImGui
   IMGUI_CHECKVERSION();
@@ -452,7 +645,7 @@ instantiate (const LV2UI_Descriptor*   descriptor,
   /* Compute required window width / height */
   float frame_height = font_size + (style.FramePadding.y * 2.0f);
 
-  int window_width = 400 * scale_factor;
+  int window_width = 640 * scale_factor;
   int window_height =
     (
       style.WindowPadding.y +
@@ -470,15 +663,16 @@ instantiate (const LV2UI_Descriptor*   descriptor,
       style.WindowPadding.y
     );
 
+  window_height += 88 * scale_factor;
+
   /* setup window */
 
   // XXXpuglSetClassName(world, "ImGui Minimal Example");
   // XXXpuglSetWindowTitle(view, "ImGui Minimal Example");
 
-  puglSetSizeHint (view, PUGL_MIN_SIZE, window_width, window_height);
-  puglSetSizeHint (view, PUGL_MAX_SIZE, window_width, window_height);
+  puglSetSizeHint (view, PUGL_MIN_SIZE, 400 * scale_factor, window_height);
   puglSetSizeHint (view, PUGL_DEFAULT_SIZE, window_width, window_height);
-  puglSetViewHint (view, PUGL_RESIZABLE, false);
+  puglSetViewHint (view, PUGL_RESIZABLE, true);
   puglSetBackend (view, puglGlBackend());
 
   // Request OpenGL 3.3 Core Profile (adjust to match your ImGui glsl version)
@@ -548,6 +742,17 @@ idle (LV2UI_Handle handle)
 
 static const LV2UI_Idle_Interface idle_iface = { idle };
 
+static int
+resize (LV2UI_Feature_Handle handle, int width, int height)
+{
+  if (width <= 0 || height <= 0)
+    return 1;
+  auto *ui = static_cast<LV2UI *> (handle);
+  return puglSetSizeHint (ui->view, PUGL_CURRENT_SIZE, width, height);
+}
+
+static const LV2UI_Resize resize_iface = { nullptr, resize };
+
 static const void*
 extension_data (const char* uri)
 {
@@ -556,6 +761,8 @@ extension_data (const char* uri)
   if (!strcmp(uri, LV2_UI__idleInterface)) {
     return &idle_iface;
   }
+  if (!strcmp (uri, LV2_UI__resize))
+    return &resize_iface;
   return nullptr;
 }
 

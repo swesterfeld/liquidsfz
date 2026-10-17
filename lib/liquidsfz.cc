@@ -344,3 +344,15 @@ Synth::list_keys() const
     }
   return result;
 }
+
+Synth::KeyStates
+Synth::key_states() const
+{
+  return impl->synth.key_states();
+}
+
+std::uint64_t
+Synth::key_state_revision() const noexcept
+{
+  return impl->synth.key_state_revision();
+}
