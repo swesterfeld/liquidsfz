@@ -13,6 +13,7 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "lv2plugin.hh"
+#include "log.hh"
 #include "filedialog.hh"
 
 
@@ -20,6 +21,8 @@
 
 using std::string;
 using std::vector;
+
+using LiquidSFZInternal::string_printf;
 
 struct LV2UI
 {
@@ -531,13 +534,20 @@ LV2UI::render_keyboard()
         }
   if (hovered >= 0)
     {
-      ImGui::BeginTooltip();
-      ImGui::Text ("MIDI %d: %s", hovered, keys[hovered].is_switch ? "Keyswitch" : keys[hovered].active ? "Playable" : "Unused");
-      if (keyboard_state[hovered] & Synth::KEY_SWITCH_ACTIVE)
-        ImGui::TextUnformatted ("Selected keyswitch range");
-      if (!keys[hovered].label.empty())
-        ImGui::TextUnformatted (keys[hovered].label.c_str());
-      ImGui::EndTooltip();
+      string line1 = string_printf ("MIDI %d: %s", hovered, keys[hovered].is_switch ? "Keyswitch" : keys[hovered].active ? "Playable" : "Unused");
+      string line2 = keyboard_state[hovered] & Synth::KEY_SWITCH_ACTIVE ? "Selected keyswitch" : "";
+      string line3 = keys[hovered].label;
+
+      if (line2 != "" || line3 != "")
+        {
+          ImGui::BeginTooltip();
+          ImGui::TextUnformatted (line1.c_str());
+          if (line2 != "")
+            ImGui::TextUnformatted (line2.c_str());
+          if (line3 != "")
+            ImGui::TextUnformatted (line3.c_str());
+          ImGui::EndTooltip();
+        }
     }
   ImGui::EndChild();
 }
