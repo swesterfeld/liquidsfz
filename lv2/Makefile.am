@@ -16,7 +16,7 @@ all-local: liquidsfz_lv2.$(PLUGIN_EXT)
 
 install-exec-hook: liquidsfz_lv2.$(PLUGIN_EXT)
 	mkdir -p $(DESTDIR)$(liquidsfz_lv2dir)
-	cp liquidsfz_lv2.$(PLUGIN_EXT) $(DESTDIR)$(liquidsfz_lv2dir)
+	$(INSTALL_PROGRAM) liquidsfz_lv2.$(PLUGIN_EXT) "$(DESTDIR)$(liquidsfz_lv2dir)"
 
 install-data-hook:
 	mkdir -p $(DESTDIR)$(liquidsfz_lv2dir)
