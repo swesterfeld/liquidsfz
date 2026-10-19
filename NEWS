@@ -1,3 +1,52 @@
+Overview of Changes in liquidsfz-0.4.2:
+
+* File dialog updates:
+  - for bundled Ardour: restore environment variables to make file dialog work
+  - fix yad arguments (use yad --file instead of --file-selection)
+  - replace some unsafe fork() based code with posix_spawn()
+  - use procfs on linux to safely read environment while host may modify it
+* LV2Plugin: add midi keyboard widget, display switches and range/notes
+  - add API for querying Synth keyboard state
+  - add UI for drawing keyboard, make it fast to only draw if keys changed
+* Support building with clang++ realtime sanitizer
+* Support building with undefined behaviour sanitizer
+* Update static build base to Ubuntu 22.04, g++-15
+* Fixes:
+  - fix negative offset crashes
+  - use RTMutex in liquidsfz jack client to avoid RT unsafe std::mutex
+  - make frequency wrapping never stall audio thread for small loops
+  - avoid undefined behaviour for some float->int conversions (saturate)
+  - avoid undefined behaviour in Filter (nullptr addition)
+  - Loader::convert_uint: saturate values out of uint range, don't wrap
+  - avoid problems with very large playback frequencies (cap freqencies)
+  - minor build flags cleanups
+  - license of the LV2 plugin now says MPL-2.0
+  - add test to check flac support in static build
+* Fixes after AI code review (#56):
+  - do not hold the plugin mutex while scheduling LV2 work (F01)
+  - keep LFO back-pointers valid when growing the voice vector (F03)
+  - stop all voices before unloading regions (F04)
+  - run queued JACK synth commands under the synth lock (F05)
+  - bounds-check UI program selection (F07)
+  - release mmap/fd resources even when opening a sound file fails (F08)
+  - make phase wrapping never stall audio thread (F09)
+  - remove hidden allocation from LFO modulation updates (F10)
+  - reject PEQ as a regular filter type (F11)
+  - allocate enough FFT output space in the resampling test tool (F12)
+  - transpose velocity-zero note-on only once (F13)
+  - apply octave offset to keyswitch lookup (F14)
+  - include key zero and preserve switch metadata (F15)
+  - reset sample selection on overrides (F16)
+  - initialize keyswitch / supported ccs arrays (F17)
+  - satisfy enlarged preload on cache hits (F19)
+  - handle filesystem lookup errors without exceptions (F20)
+  - use normalized Pugl mouse button indices (F21)
+  - handle UI initialization failures safely (F22)
+  - validate MIDI and state values and report save errors (F23)
+  - restore missing synthesis assertions (F24)
+  - preserve playback requests during eviction (I02)
+  - ignore bank define with empty variable names (I08)
+
 Overview of Changes in liquidsfz-0.4.1:
 
 * New robust low level SFZ parser:
