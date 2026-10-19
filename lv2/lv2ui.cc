@@ -516,7 +516,7 @@ LV2UI::render_keyboard()
             color = b ? IM_COL32 (140, 95, 35, 255) : IM_COL32 (245, 204, 133, 255);
           const bool selected_key = keys[key].is_switch && (keyboard_state[key] & Synth::KEY_SWITCH_ACTIVE);
           if (selected_key)
-            color = b ? IM_COL32 (100, 65, 135, 255) : IM_COL32 (213, 182, 240, 255);
+            color = b ? IM_COL32 (180, 40, 40, 255) : IM_COL32 (200, 70, 70, 255);
           if (key == held_key || (keyboard_state[key] & Synth::KEY_PRESSED))
             color = IM_COL32 (85, 155, 245, 255);
           draw->AddRectFilled (min[key], max[key], color, 2 * scale);
