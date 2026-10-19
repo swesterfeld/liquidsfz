@@ -1,4 +1,4 @@
-AC_INIT([liquidsfz],[0.4.1])
+AC_INIT([liquidsfz],[0.4.2])
 AC_CONFIG_SRCDIR([src/liquidsfz.cc])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -9,7 +9,7 @@ AC_DISABLE_SHARED
 LT_INIT([pic-only])
 
 LV2_MINOR_VERSION=4
-LV2_MICRO_VERSION=2
+LV2_MICRO_VERSION=4
 
 dnl we don't try to map our version numbers to lv2, but keep seperate lv2 versions
 dnl  - increment lv2 minor version for releases with features
