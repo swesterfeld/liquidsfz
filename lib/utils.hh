@@ -24,10 +24,14 @@
     #include <sanitizer/rtsan_interface.h>
     #define LIQUIDSFZ_HAVE_RTSAN 1
     #define LIQUIDSFZ_CLANG_NONBLOCKING [[clang::nonblocking]]
+    #define LIQUIDSFZ_CLANG_BLOCKING [[clang::blocking]]
   #endif
 #endif
 #ifndef LIQUIDSFZ_CLANG_NONBLOCKING
   #define LIQUIDSFZ_CLANG_NONBLOCKING
+#endif
+#ifndef LIQUIDSFZ_CLANG_BLOCKING
+  #define LIQUIDSFZ_CLANG_BLOCKING
 #endif
 
 #if LIQUIDSFZ_COMP_GCC

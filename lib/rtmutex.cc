@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 #include "rtmutex.hh"
+#include "utils.hh"
 
 #include <algorithm>
 #include <chrono>
@@ -18,7 +19,7 @@ RTMutex::try_lock()
 }
 
 void
-RTMutex::wait_for_lock()
+RTMutex::wait_for_lock() LIQUIDSFZ_CLANG_BLOCKING
 {
   auto delay = 20us;
   constexpr auto max_delay = 4166us; // one frame at 240 fps
