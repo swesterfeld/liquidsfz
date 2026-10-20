@@ -9,7 +9,7 @@ RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test
 RUN apt-get update && apt-get install -y build-essential \
     dpkg-dev autoconf-archive autogen libtool libtool-bin \
     pkg-config lv2-dev curl g++-15 gettext \
-    libgl1-mesa-dev libxrandr-dev libxcursor-dev
+    libgl1-mesa-dev libxrandr-dev libxcursor-dev libfftw3-dev
 
 ENV CC gcc-15
 ENV CXX g++-15
@@ -20,7 +20,7 @@ WORKDIR /liquidsfz
 ENV PKG_CONFIG_PATH=/liquidsfz/static/prefix/lib/pkgconfig
 ENV PKG_CONFIG="pkg-config --static"
 RUN cd static && ./build-deps.sh
-RUN ./autogen.sh --prefix=/usr/local/liquidsfz --with-static-cxx --without-jack
+RUN ./autogen.sh --prefix=/usr/local/liquidsfz --with-static-cxx --without-jack --with-fftw
 RUN make clean
 RUN make -j16
 RUN make check
