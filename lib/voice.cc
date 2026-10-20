@@ -592,7 +592,7 @@ template<int QUALITY, int CHANNELS, Generator GENERATOR>
 void
 Voice::process_impl (float **orig_outputs, uint orig_n_frames)
 {
-  static_assert (QUALITY >= 1 || QUALITY <= 3);
+  static_assert (QUALITY >= 1 && QUALITY <= 3);
   static_assert (CHANNELS == 1 || CHANNELS == 2);
   constexpr int UPSAMPLE = QUALITY == 3 ? 2 : 1;
 
