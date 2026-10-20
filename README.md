@@ -12,7 +12,7 @@ It can also load and play Hydrogen drumkits. We support JACK and LV2.
 The main goal is to provide a library that is easy to integrate into other
 projects.
 
- * API documentation is available here: https://space.twc.de/~stefan/liquidsfz/api-0.4.1
+ * API documentation is available here: https://space.twc.de/~stefan/liquidsfz/api-0.4.2
  * There is also a list of [currently supported SFZ opcodes](OPCODES.md)
 
 The API should be fairly stable at this point, so we try to maintain source
@@ -103,10 +103,10 @@ The code is licensed under
 
 ## RELEASES
 
-The current version of liquidsfz is liquidsfz-0.4.1, and can be downloaded
+The current version of liquidsfz is liquidsfz-0.4.2, and can be downloaded
 here:
 
-* https://github.com/swesterfeld/liquidsfz/releases/download/0.4.1/liquidsfz-0.4.1.tar.bz2
+* https://github.com/swesterfeld/liquidsfz/releases/download/0.4.2/liquidsfz-0.4.2.tar.bz2
 
 ## BINARY LV2 PLUGIN
 
@@ -117,7 +117,7 @@ binary.
 
 The Linux version is available here:
 
-* https://github.com/swesterfeld/liquidsfz/releases/download/0.4.1/liquidsfz-0.4.1-x86_64.tar.gz
+* https://github.com/swesterfeld/liquidsfz/releases/download/0.4.2/liquidsfz-0.4.2-x86_64.tar.gz
 
 To install it, extract the archive and
 
