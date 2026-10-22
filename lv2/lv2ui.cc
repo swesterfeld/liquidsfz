@@ -11,7 +11,7 @@
 #include "pugl/pugl.h"
 #include "pugl/gl.h"
 #include "imgui.h"
-#include "imgui_impl_opengl3.h"
+#include <backends/imgui_impl_opengl3.h>
 #include "lv2plugin.hh"
 #include "log.hh"
 #include "filedialog.hh"

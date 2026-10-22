@@ -10,6 +10,11 @@ EXTRA_DIST = imgui/imgui.cpp imgui/imgui.h imgui/imconfig.h imgui/imgui_internal
 
 noinst_LTLIBRARIES = libliquidsfzglui.la
 
-libliquidsfzglui_la_SOURCES = pugl_all.c imgui_all.cc
+# Recreate the archive when switching between bundled and system ImGui.
+libliquidsfzglui_la_DEPENDENCIES = Makefile
+libliquidsfzglui_la_SOURCES = pugl_all.c
+if !COND_SYSTEM_IMGUI
+libliquidsfzglui_la_SOURCES += imgui_all.cc
+endif
 libliquidsfzglui_la_CFLAGS = $(GL_CFLAGS) $(X11_CFLAGS) -I$(srcdir)/pugl/include
 libliquidsfzglui_la_CXXFLAGS = $(GL_CFLAGS) $(X11_CFLAGS) -I$(srcdir)/imgui

@@ -95,10 +95,34 @@ AM_CONDITIONAL([COND_WITH_JACK], [test "x$with_jack" != "xno"])
 dnl -------------------------------------------------------------------------
 
 dnl -------------------- lv2 support is optional ----------------------------
+AC_ARG_WITH([system-imgui],
+  [AS_HELP_STRING([--with-system-imgui], [use installed ImGui with its OpenGL3 backend instead of bundled sources])],
+  [], [with_system_imgui=no])
+
 AC_ARG_WITH([lv2], [AS_HELP_STRING([--with-lv2], [build support for LV2])], [], [with_lv2=yes])
 if test "x$with_lv2" != "xno"; then
   AC_LV2_REQUIREMENTS
-  if test ! -f "$srcdir/3rdparty/imgui/imgui.cpp"; then
+  if test "x$with_system_imgui" = "xyes"; then
+    PKG_CHECK_MODULES([IMGUI], [imgui >= 1.90])
+    saved_CPPFLAGS="$CPPFLAGS"
+    saved_LIBS="$LIBS"
+    CPPFLAGS="$CPPFLAGS $IMGUI_CFLAGS"
+    LIBS="$IMGUI_LIBS $GL_LIBS $LIBS"
+    AC_LANG_PUSH([C++])
+    AC_MSG_CHECKING([for the ImGui OpenGL3 backend])
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <imgui.h>
+#include <backends/imgui_impl_opengl3.h>
+    ]], [[
+      ImGui_ImplOpenGL3_Init();
+    ]])], [have_system_imgui=yes], [have_system_imgui=no])
+    AC_MSG_RESULT([$have_system_imgui])
+    AC_LANG_POP([C++])
+    CPPFLAGS="$saved_CPPFLAGS"
+    LIBS="$saved_LIBS"
+    AS_IF([test "x$have_system_imgui" != "xyes"],
+      [AC_MSG_ERROR([system ImGui must include the OpenGL3 backend headers and implementation])])
+  elif test ! -f "$srcdir/3rdparty/imgui/imgui.cpp"; then
     echo "IMGUI is missing. Usually this means you cloned the repo without submodules, use"
     echo
     echo "git submodule update --init --recursive"
@@ -106,6 +130,7 @@ if test "x$with_lv2" != "xno"; then
   fi
 fi
 AM_CONDITIONAL([COND_WITH_LV2], [test "x$with_lv2" != "xno"])
+AM_CONDITIONAL([COND_SYSTEM_IMGUI], [test "x$with_system_imgui" = "xyes"])
 dnl -------------------------------------------------------------------------
 
 dnl -------------------- fftw is optional ----------------------------
@@ -235,6 +260,7 @@ echo "--------------------------------------------------------------------------
 echo "  Build static library . .: $enable_static"
 echo "  Build shared library . .: $enable_shared"
 echo "  LV2 plug-in support  . .: $with_lv2"
+echo "  Use system ImGui . . . .: $with_system_imgui"
 echo "  JACK support . . . . . .: $with_jack"
 echo "  Use FFTW library . . . .: $with_fftw"
 echo "  Use address sanitizer. .: $enable_asan"
