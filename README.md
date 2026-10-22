@@ -42,6 +42,9 @@ Some components can be disabled during configure: `--without-jack` turns off
 the JACK client and its JACK/Readline dependencies; `--without-lv2` turns off
 the LV2 plugin and its LV2/OpenGL/X11 dependencies.
 
+The LV2 GUI uses bundled ImGui by default. To use an installed ImGui library
+instead, configure with `--with-system-imgui`.
+
 If you are building from Git, you also need these packages for `autogen.sh`:
 
 * autoconf
@@ -49,8 +52,8 @@ If you are building from Git, you also need these packages for `autogen.sh`:
 * libtool
 * autoconf-archive
 
-The LV2 GUI uses the ImGui submodule. Initialize it after cloning, then use
-`autogen.sh` in place of `configure`:
+The default LV2 GUI build uses the ImGui submodule. Initialize it after cloning,
+then use `autogen.sh` in place of `configure`:
 
     git submodule update --init --recursive
     ./autogen.sh

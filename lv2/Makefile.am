@@ -1,6 +1,13 @@
 AM_CXXFLAGS = $(LV2_CFLAGS) $(SNDFILE_CFLAGS) $(GL_CFLAGS) $(X11_CFLAGS) -I$(top_srcdir)/lib \
-	      -I$(top_srcdir)/3rdparty/pugl/include \
-	      -I$(top_srcdir)/3rdparty/imgui -I$(top_srcdir)/3rdparty/imgui/backends
+	      -I$(top_srcdir)/3rdparty/pugl/include
+
+if COND_SYSTEM_IMGUI
+AM_CXXFLAGS += $(IMGUI_CFLAGS)
+IMGUI_LINK_LIBS = $(IMGUI_LIBS)
+else
+AM_CXXFLAGS += -I$(top_srcdir)/3rdparty/imgui
+IMGUI_LINK_LIBS =
+endif
 
 liquidsfz_lv2dir = $(libdir)/lv2/liquidsfz.lv2
 
@@ -39,12 +46,12 @@ if COND_MACOS
 liquidsfz_lv2.$(PLUGIN_EXT): $(liquidsfz_lv2_deps) $(srcdir)/macos_export_symbols
 	$(CXX) -fPIC -DPIC -shared -o liquidsfz_lv2.$(PLUGIN_EXT) $(srcdir)/lv2plugin.cc $(srcdir)/lv2ui.cc $(srcdir)/filedialog.cc $(CXXFLAGS) $(AM_CXXFLAGS) \
 	$(top_builddir)/lib/.libs/$(LIQUIDSFZ_PLUGIN_LIB) $(STATIC_CXX_LDFLAGS) $(LDFLAGS) $(SNDFILE_LIBS) \
-	$(top_builddir)/3rdparty/.libs/libliquidsfzglui.a $(GL_LIBS) $(X11_LIBS) \
+	$(top_builddir)/3rdparty/.libs/libliquidsfzglui.a $(IMGUI_LINK_LIBS) $(GL_LIBS) $(X11_LIBS) \
 	-exported_symbols_list $(srcdir)/macos_export_symbols
 else
 liquidsfz_lv2.$(PLUGIN_EXT): $(liquidsfz_lv2_deps) $(srcdir)/ldscript.map
 	$(CXX) -fPIC -DPIC -shared -o liquidsfz_lv2.$(PLUGIN_EXT) $(srcdir)/lv2plugin.cc $(srcdir)/lv2ui.cc $(srcdir)/filedialog.cc $(CXXFLAGS) $(AM_CXXFLAGS) \
 	$(top_builddir)/lib/.libs/$(LIQUIDSFZ_PLUGIN_LIB) $(STATIC_CXX_LDFLAGS) $(LDFLAGS) $(SNDFILE_LIBS) \
-	$(top_builddir)/3rdparty/.libs/libliquidsfzglui.a $(GL_LIBS) $(X11_LIBS) \
+	$(top_builddir)/3rdparty/.libs/libliquidsfzglui.a $(IMGUI_LINK_LIBS) $(GL_LIBS) $(X11_LIBS) \
 	-Wl,-rpath=$(libdir) -Wl,--version-script=$(srcdir)/ldscript.map
 endif
