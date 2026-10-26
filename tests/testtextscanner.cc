@@ -2,12 +2,12 @@
 
 #include "textscanner.hh"
 #include "synth.hh"
+#include "testutils.hh"
 
 #include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <string>
-#include <unistd.h>
 
 using namespace LiquidSFZInternal;
 using std::string;
@@ -125,11 +125,8 @@ test_loader (const string& directory)
 int
 main()
 {
-  alarm (20);
   test_scanner();
-  char temp[] = "/tmp/liquidsfz-textscanner-XXXXXX";
-  const char *directory = mkdtemp (temp);
-  assert (directory);
-  test_loader (directory);
+  const auto directory = LiquidSFZTest::create_temp_directory ("liquidsfz-textscanner-");
+  test_loader (directory.string());
   std::filesystem::remove_all (directory);
 }
