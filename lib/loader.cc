@@ -4,28 +4,62 @@
 #include "synth.hh"
 #include "hydrogenimport.hh"
 #include "sfzreader.hh"
+#include "textscanner.hh"
 
 #include <algorithm>
 #include <limits>
-#include <regex>
 
 #include <assert.h>
 
 using std::string;
+using std::string_view;
 using std::vector;
-using std::regex;
-using std::regex_replace;
 
 using namespace LiquidSFZInternal;
 
-static string
-strip_spaces (const string& s)
+static bool
+parse_define (const string& line, Control::Define& define, size_t& consumed)
 {
-  static const regex lws_re ("^\\s*");
-  static const regex tws_re ("\\s*$");
+  TextScanner scanner (line);
+  string_view name, value;
+  scanner.literal ("#define");
+  scanner.spaces();
+  scanner.literal ("$");
+  scanner.token (name);
+  scanner.spaces();
+  scanner.token (value);
+  if (!scanner.ok())
+    return false;
 
-  string r = regex_replace (s, tws_re, "");
-  return regex_replace (r, lws_re, "");
+  define.variable = "$" + string (name);
+  define.value = value;
+  consumed = scanner.position();
+  return true;
+}
+
+static bool
+parse_include (const string& line, string& filename, size_t& consumed)
+{
+  TextScanner scanner (line);
+  string_view path;
+  scanner.literal ("#include");
+  scanner.skip_spaces();
+  scanner.literal ("=");
+  scanner.skip_spaces();
+  scanner.quoted (path);
+  if (!scanner.ok())
+    {
+      scanner = TextScanner (line);
+      scanner.literal ("#include");
+      scanner.spaces();
+      scanner.quoted (path);
+    }
+  if (!scanner.ok())
+    return false;
+
+  filename = path;
+  consumed = scanner.position();
+  return true;
 }
 
 static string
@@ -298,31 +332,36 @@ bool
 Loader::parse_freq_cc_lfo (Region& region, int l, const string& lfo_key, const string& value)
 {
   /* parse opcodes like "lfo1_freq_lfo6_oncc1=3" */
-  std::smatch sm;
-
-  static const regex lfo_mod_re ("freq_lfo([0-9]+)(\\S+)");
-  if (!regex_match (lfo_key, sm, lfo_mod_re))
+  TextScanner scanner (lfo_key);
+  string_view id, cc_key;
+  scanner.literal ("freq_lfo");
+  scanner.digits (id);
+  scanner.token (cc_key);
+  scanner.end();
+  if (!scanner.ok())
     return false;
 
-  int dest_lfo_id = convert_int (sm[1].str());
+  int dest_lfo_id = convert_int (string (id));
   int lfo_mod_index = lfo_mod_index_by_dest_id (region, l, dest_lfo_id);
 
-  return parse_cc (sm[2].str(), value, region.lfos[l].lfo_mods[lfo_mod_index].lfo_freq_cc, "_*");
+  return parse_cc (string (cc_key), value, region.lfos[l].lfo_mods[lfo_mod_index].lfo_freq_cc, "_*");
 }
 
 bool
 Loader::parse_lfo_param (Region& region, const string& key, const string& value)
 {
-  if (!starts_with (key, "lfo"))
+  TextScanner scanner (key);
+  string_view id, suffix;
+  scanner.literal ("lfo");
+  scanner.digits (id);
+  scanner.literal ("_");
+  scanner.token (suffix);
+  scanner.end();
+  if (!scanner.ok())
     return false;
 
-  static const regex lfo_re ("lfo([0-9]+)_(\\S+)");
-  std::smatch sm;
-  if (!regex_match (key, sm, lfo_re))
-    return false;
-
-  int    l = lfo_index_by_id (region, convert_int (sm[1].str()));
-  string lfo_key = sm[2].str();
+  int    l = lfo_index_by_id (region, convert_int (string (id)));
+  string lfo_key (suffix);
 
   /* process opcodes */
   int sub_key;
@@ -1120,9 +1159,6 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
       char ch = contents[i];
       char next = i + 1 < contents.size() ? contents[i + 1] : 0;
 
-      static const regex define_re ("#define\\s+(\\$\\S+)\\s+(\\S+)(.*)");
-      static const regex include_re ("#include\\s*(?:=\\s*|\\s+)\"([^\"]*)\"(.*)");
-      std::smatch sm;
       Control::Define define;
 
       if (ch == '/' && next == '*') /* block comment */
@@ -1158,27 +1194,27 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
       else if (ch == '#')
         {
           string line = line_lookahead (contents, i);
-          if (regex_match (line, sm, define_re))
+          Control::Define parsed_define;
+          string raw_filename;
+          size_t consumed = 0;
+          if (parse_define (line, parsed_define, consumed))
             {
               bool overwrite = false;
               for (auto& old_def : control.defines)
                 {
-                  if (old_def.variable == sm[1])
+                  if (old_def.variable == parsed_define.variable)
                     {
-                      old_def.value = strip_spaces (sm[2]);
+                      old_def.value = parsed_define.value;
                       overwrite = true;
                     }
                 }
               if (!overwrite)
                 {
-                  Control::Define define;
-                  define.variable = sm[1];
-                  define.value    = strip_spaces (sm[2]);
-                  control.defines.push_back (define);
+                  control.defines.push_back (parsed_define);
                 }
-              i += sm.length() - sm[3].length();
+              i += consumed;
             }
-          else if (regex_match (line, sm, include_re))
+          else if (parse_include (line, raw_filename, consumed))
             {
               /* if there is text before the #include statement, this needs to
                * written to lines to preserve the order of the opcodes
@@ -1192,7 +1228,6 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
               /*
                * handle $VARIABLE in include path
                */
-              string raw_filename = sm[1].str();
               std::replace (raw_filename.begin(), raw_filename.end(), '\\', PATH_SEPARATOR); // native path
 
               string subst_filename;
@@ -1227,7 +1262,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
                                  line_info.location().c_str(), MAX_INCLUDE_DEPTH, include_filename.c_str());
                   return false;
                 }
-              i += sm.length() - sm[2].length();
+              i += consumed;
             }
           else
             {
