@@ -8,6 +8,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "log.hh"
@@ -429,7 +430,7 @@ class Loader
   LineInfo current_line_info;
   Synth *synth_ = nullptr;
 
-  bool find_variable (const std::string& line, Control::Define& out_define);
+  bool find_variable (std::string_view line, Control::Define& out_define);
   bool parse_eg_param (const std::string& eg, EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
   bool parse_ampeg_param (EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
   bool parse_fileg_param (EGParam& amp_param, const std::string& key, const std::string& value, const std::string& param_str);
