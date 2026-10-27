@@ -18,7 +18,7 @@ using std::vector;
 using namespace LiquidSFZInternal;
 
 static bool
-parse_define (const string& line, Control::Define& define, size_t& consumed)
+parse_define (string_view line, Control::Define& define, size_t& consumed)
 {
   TextScanner scanner (line);
   string_view name, value;
@@ -38,7 +38,7 @@ parse_define (const string& line, Control::Define& define, size_t& consumed)
 }
 
 static bool
-parse_include (const string& line, string& filename, size_t& consumed)
+parse_include (string_view line, string& filename, size_t& consumed)
 {
   TextScanner scanner (line);
   string_view path;
@@ -1100,24 +1100,22 @@ load_file (FILE *file, vector<char>& contents)
   return !ferror (file);
 }
 
-static string
-line_lookahead (vector<char>& contents, size_t pos)
+static string_view
+line_lookahead (const vector<char>& contents, size_t pos)
 {
-  string result;
-  while (pos < contents.size() && (contents[pos] != '\n' && contents[pos] != '\r'))
-    result += contents[pos++];
-  return result;
+  string_view remaining (contents.data() + pos, contents.size() - pos);
+  return remaining.substr (0, remaining.find_first_of ("\r\n"));
 }
 
 bool
-Loader::find_variable (const string& line, Control::Define& out_define)
+Loader::find_variable (string_view line, Control::Define& out_define)
 {
   for (const auto& [length, definitions] : control.defines)
     {
       if (length > line.size())
         break;
 
-      auto it = definitions.find (line.substr (0, length));
+      auto it = definitions.find (string (line.substr (0, length)));
       if (it != definitions.end())
         {
           // Like ARIA, use the shortest matching variable name.
@@ -1189,12 +1187,12 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
         }
       else if (ch == '/' && next == '/') /* line comment */
         {
-          string line = line_lookahead (contents, i);
+          string_view line = line_lookahead (contents, i);
           i += line.size();
         }
       else if (ch == '#')
         {
-          string line = line_lookahead (contents, i);
+          string_view line = line_lookahead (contents, i);
           Control::Define parsed_define;
           string raw_filename;
           size_t consumed = 0;
@@ -1223,7 +1221,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
               size_t x = 0;
               while (x < raw_filename.size())
                 {
-                  if (raw_filename[x] == '$' && find_variable (raw_filename.substr (x), define))
+                  if (raw_filename[x] == '$' && find_variable (string_view (raw_filename).substr (x), define))
                     {
                       subst_filename += define.value;
                       x += define.variable.size();
@@ -1262,7 +1260,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
         }
       else if (ch == '$')
         {
-          string line = line_lookahead (contents, i);
+          string_view line = line_lookahead (contents, i);
           if (find_variable (line, define))
             {
               line_info.line += define.value;
