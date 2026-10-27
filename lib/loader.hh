@@ -5,8 +5,10 @@
 #include <algorithm>
 #include <climits>
 #include <cstdlib>
+#include <map>
 #include <set>
 #include <string>
+#include <unordered_map>
 
 #include "log.hh"
 #include "samplecache.hh"
@@ -402,7 +404,8 @@ struct Control
     std::string variable;
     std::string value;
   };
-  std::vector<Define> defines;
+  // Visit name lengths in ascending order so the shortest matching name wins.
+  std::map<size_t, std::unordered_map<std::string, std::string>> defines;
   std::vector<SetCC> set_cc;
 };
 

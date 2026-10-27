@@ -1112,19 +1112,20 @@ line_lookahead (vector<char>& contents, size_t pos)
 bool
 Loader::find_variable (const string& line, Control::Define& out_define)
 {
-  size_t best_len = string::npos;
-  for (const auto& define : control.defines)
+  for (const auto& [length, definitions] : control.defines)
     {
-      if (starts_with (line, define.variable) && (define.variable.length() < best_len))
+      if (length > line.size())
+        break;
+
+      auto it = definitions.find (line.substr (0, length));
+      if (it != definitions.end())
         {
-          /* if there are multiple variable names that match, use the shortest one
-           * this seems to be what ARIA does in this case
-           */
-          best_len = define.variable.length();
-          out_define = define;
+          // Like ARIA, use the shortest matching variable name.
+          out_define = { it->first, it->second };
+          return true;
         }
     }
-  return (best_len != string::npos);
+  return false;
 }
 
 bool
@@ -1199,19 +1200,7 @@ Loader::preprocess_file (const std::string& filename, vector<LineInfo>& lines, i
           size_t consumed = 0;
           if (parse_define (line, parsed_define, consumed))
             {
-              bool overwrite = false;
-              for (auto& old_def : control.defines)
-                {
-                  if (old_def.variable == parsed_define.variable)
-                    {
-                      old_def.value = parsed_define.value;
-                      overwrite = true;
-                    }
-                }
-              if (!overwrite)
-                {
-                  control.defines.push_back (parsed_define);
-                }
+              control.defines[parsed_define.variable.size()][parsed_define.variable] = parsed_define.value;
               i += consumed;
             }
           else if (parse_include (line, raw_filename, consumed))
@@ -1353,7 +1342,9 @@ Loader::parse (const string& filename, SampleCache& sample_cache, const vector<C
   sample_path = path_dirname (filename);
 
   // used by AriaBank files
-  control.defines = defines;
+  control.defines.clear();
+  for (const auto& define : defines)
+    control.defines[define.variable.size()].emplace (define.variable, define.value);
 
   // read file
   vector<LineInfo> lines;
