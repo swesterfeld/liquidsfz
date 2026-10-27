@@ -120,6 +120,18 @@ test_loader (const string& directory)
   load ("<region> sample=*sine tune=$X\n", tune17, bank_defines);
   load ("#define $X 1\n<region> sample=*sine tune=$X7\n", tune17, bank_defines);
 
+  // Lookahead stops at either line-ending byte and also handles EOF directly.
+  for (const string& newline : { "\n", "\r\n", "\r" })
+    load ("#define $X 17" + newline + "// ignored $X #include \"missing\"" + newline
+          + "<region> sample=*sine tune=$X", tune17);
+
+  // Repeated lookaheads on a long line followed by a multiline block comment.
+  string repeated_variables = "#define $X 17\n<region> sample=*sine ";
+  for (int i = 0; i < 10000; i++)
+    repeated_variables += "tune=$X ";
+  load (repeated_variables + "/*\n skipped\n */ tune=$X", tune17);
+  load ("#define $X 17\n<region> sample=*sine tune=$X // comment at EOF", tune17);
+
   const auto check_lfos = [] (const Loader& loader) {
     assert (loader.regions.size() == 1);
     const auto& lfos = loader.regions[0].lfos;
